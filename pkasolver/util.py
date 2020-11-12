@@ -13,23 +13,26 @@ from scipy import stats
 
 def importsdf(sdf):
     df = PandasTools.LoadSDF(sdf)
-    df["Smiles"] = [Chem.MolToSmiles(m) for m in df["ROMol"]]
+    df["smiles"] = [Chem.MolToSmiles(m) for m in df["ROMol"]]
     return df
 
 def morganfp(df,neigh,nB,useFeatures=True):
     #create morganfp and ad to df
-    name = "Morgan_fp, neighbors= " + str(neigh) + ", Bits= " +str(nB)
-    df[name]= [AllChem.GetMorganFingerprintAsBitVect(m,neigh,nBits=nB,useFeatures=useFeatures) for m in df["ROMol"]] 
+    df['morganfp']= [AllChem.GetMorganFingerprintAsBitVect(m,neigh,nBits=nB,useFeatures=useFeatures) for m in df["ROMol"]] 
     return df
 
-def make_stat_variables(df, X_list, y_name):
-    X = np.asfarray(np.array(df[X_list]),float)    
-    X_names = X_list
-    y = np.asfarray(np.array(df[y_name]),float).ravel()
-    y_name = y_name
-    return X, y, #X_names, y_name
+def make_fp_array(df):
+    return np.array([np.array(row) for row in df['morganfp']])
 
-def plotresults(prediction,true_vals,path,name):
+def make_stat_variables(df, X_list, y_name):
+    X = np.asfarray(df[X_list],float)
+    y = np.asfarray(df[y_name],float).reshape(-1)
+    return X, y
+
+def catVariables(X_feat,X_fp):
+    return np.concatenate((X_feat,X_fp),axis=1)
+
+def plotresults(prediction,true_vals,name):
     a = {'y': true_vals, 'y_hat': prediction}
     df = pd.DataFrame(data=a)
 
@@ -68,7 +71,6 @@ def plotresults(prediction,true_vals,path,name):
     ax = sns.distplot(df['y']-df['y_hat'], bins=10)
     ax.set_xlabel('$\mathrm{pKa}_{exp} - \mathrm{pKa}_{calc}$')
     
-    #plt.savefig(path+name)
     plt.show()
     plt.close()
 
