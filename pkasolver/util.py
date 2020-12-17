@@ -167,7 +167,7 @@ def conjugates_to_DataFrame(df: pd.DataFrame):
         index = int(df.marvin_atom[i])
         pKa_type = df.marvin_pKa_type[i]
         pka = float(df.marvin_pKa[i])
-        conjugates.append(create_conjugate(mol, index, pKa_type, pka))
+        conjugates.append(create_conjugate(mol, index, pka))
     df["Conjugates"] = conjugates
     return df
 
@@ -203,20 +203,20 @@ def pka_to_ka(df):
 
 
 def mol_to_pyg(prot, deprot):
-    
+
     i = 0
     num_atoms = prot.GetNumAtoms()
-    x = []
-    b = []
-    b_attr = []
+    nodes = []
+    edges = []
+    edges_attr = []
 
     for mol in [prot, deprot]:
 
         for atom in mol.GetAtoms():
-            x.append(
+            nodes.append(
                 list(
                     (
-                        atom.GetIdx(),
+                        atom.GetIdx() + num_atoms * i,
                         atom.GetAtomicNum(),
                         atom.GetFormalCharge(),
                         atom.GetChiralTag(),
@@ -228,7 +228,7 @@ def mol_to_pyg(prot, deprot):
             )
 
         for bond in mol.GetBonds():
-            b.append(
+            edges.append(
                 np.array(
                     [
                         [bond.GetBeginAtomIdx() + num_atoms * i],
@@ -236,7 +236,7 @@ def mol_to_pyg(prot, deprot):
                     ]
                 )
             )
-            b.append(
+            edges.append(
                 np.array(
                     [
                         [bond.GetEndAtomIdx() + num_atoms * i],
@@ -245,13 +245,13 @@ def mol_to_pyg(prot, deprot):
                 )
             )
             bond_type = bond.GetBondType()
-            b_attr.append(bond_type)
-            b_attr.append(bond_type)
+            edges_attr.append(bond_type)
+            edges_attr.append(bond_type)
 
         i += 1
 
-    X = torch.tensor(np.array([np.array(xi) for xi in x]), dtype=torch.float)
-    edge_index = torch.tensor(np.hstack(np.array(b)), dtype=torch.long)
-    edge_attr = torch.tensor(np.array(b_attr).T, dtype=torch.float)
+    X = torch.tensor(np.array([np.array(xi) for xi in nodes]), dtype=torch.float)
+    edge_index = torch.tensor(np.hstack(np.array(edges)), dtype=torch.long)
+    edge_attr = torch.tensor(np.array(edges_attr).T, dtype=torch.float)
 
     return Data(x=X, edge_index=edge_index, edge_attr=edge_attr)
