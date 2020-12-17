@@ -3,6 +3,7 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import PandasTools
 from rdkit.Chem import AllChem
+from pkasolver.analysis import compute_kl_divergence, compute_js_divergence
 
 
 import matplotlib.pyplot as plt
@@ -50,10 +51,6 @@ def make_stat_variables(df, X_list: list, y_name: list):
 def cat_variables(X_feat, X_fp):
     """Concatinates an array of descriptors with an array of morgan fingerprints"""
     return np.concatenate((X_feat, X_fp), axis=1)
-
-
-from pkasolver.analysis import compute_kl_divergence
-from pkasolver.analysis import compute_js_divergence
 
 
 def plot_results(prediction, true_vals, name: str):
@@ -123,14 +120,15 @@ def plot_results(prediction, true_vals, name: str):
     plt.close()
 
 
-def create_conjugate(mol, id, type, pka, pH=7.4):
+def create_conjugate(mol, id, pka, pH=7.4):
     """create a new molecule that is the conjugated base/acid to the input molecule"""
-    nmol = Chem.RWMol(mol)
-    atom = nmol.GetAtomWithIdx(id)
+    mol = Chem.RWMol(mol)
+    atom = mol.GetAtomWithIdx(id)
     charge = atom.GetFormalCharge()
     Ex_Hs = atom.GetNumExplicitHs()
     Tot_Hs = atom.GetTotalNumHs()
 
+    #
     if pka > pH and Tot_Hs > 0:
         atom.SetFormalCharge(charge - 1)
         if Ex_Hs > 0:
@@ -140,30 +138,43 @@ def create_conjugate(mol, id, type, pka, pH=7.4):
         if Tot_Hs == 0 or Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs + 1)
     else:
+        # pka > pH and Tot_Hs < 0
         atom.SetFormalCharge(charge + 1)
         if Tot_Hs == 0 or Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs + 1)
 
     atom.UpdatePropertyCache()
-    return nmol
+    return mol
 
 
-def conjugates_to_DataFrame(df):
-    """adds a column with conjugate molecules to the input DataFrame"""
+def conjugates_to_DataFrame(df: pd.DataFrame):
+    """
+     [summary]
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
+
+    #  |   |    |    |    | -> what's in
+    #
+    #
+
     conjugates = []
     for i in range(len(df.index)):
         mol = df.ROMol[i]
-        indx = int(df.marvin_atom[i])
+        index = int(df.marvin_atom[i])
         pKa_type = df.marvin_pKa_type[i]
         pka = float(df.marvin_pKa[i])
-        conjugates.append(create_conjugate(mol, indx, pKa_type, pka))
+        conjugates.append(create_conjugate(mol, index, pKa_type, pka))
     df["Conjugates"] = conjugates
     return df
 
 
 def sort_conjugates(df):
     """sorts the input DataFrame so that the protonated and deprotonated molecules are in their corresponding columns"""
-    df
+
     prot = []
     deprot = []
     for i in range(len(df.index)):
@@ -173,7 +184,7 @@ def sort_conjugates(df):
 
         charge_mol = int(mol.GetAtomWithIdx(indx).GetFormalCharge())
         charge_conj = int(conj.GetAtomWithIdx(indx).GetFormalCharge())
-        pka = float(df.pKa[i])
+
         if charge_mol < charge_conj:
             prot.append(conj)
             deprot.append(mol)
@@ -192,6 +203,7 @@ def pka_to_ka(df):
 
 
 def mol_to_pyg(prot, deprot):
+    
     i = 0
     num_atoms = prot.GetNumAtoms()
     x = []
