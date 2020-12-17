@@ -10,6 +10,9 @@ import os
 import seaborn as sns
 from scipy import stats
 
+import torch
+from torch_geometric.data import Data
+
 
 def import_sdf(sdf):
     """
@@ -21,20 +24,20 @@ def import_sdf(sdf):
     return df
 
 
-def morgan_fp(df, neigh: int, nB: int, useFeatures=True):
+def morgan_fp(df, mol_column, neigh: int, nB: int, useFeatures=True):
     """creates morgan fingerprints and adds them to DataFrame"""
-    df["morganfp"] = [
+    df[mol_column + "_morganfp"] = [
         AllChem.GetMorganFingerprintAsBitVect(
             m, neigh, nBits=nB, useFeatures=useFeatures
         )
-        for m in df["ROMol"]
+        for m in df[mol_column]
     ]
     return df
 
 
-def make_fp_array(df):
+def make_fp_array(df, column_name):
     """Creats a numpy array of the morgan fingerprint with each bit in a separate column"""
-    return np.array([np.array(row) for row in df["morganfp"]])
+    return np.array([np.array(row) for row in df[column_name]])
 
 
 def make_stat_variables(df, X_list: list, y_name: list):
@@ -49,30 +52,40 @@ def cat_variables(X_feat, X_fp):
     return np.concatenate((X_feat, X_fp), axis=1)
 
 
+from pkasolver.analysis import compute_kl_divergence
+from pkasolver.analysis import compute_js_divergence
+
+
 def plot_results(prediction, true_vals, name: str):
     """Plots the prediction results in 3 sub graphs showing the regression of y_hat against y """
     a = {"y": true_vals, "y_hat": prediction}
     df = pd.DataFrame(data=a)
 
-    fig = plt.figure(figsize=(18, 13))
-    fig.suptitle(name)
-    plt.subplot(221)
-
     r2 = (stats.pearsonr(df["y"], df["y_hat"])[0]) ** 2
-
-    # calculate manually
     d = df["y"] - df["y_hat"]
     mse_f = np.mean(d ** 2)
     mae_f = np.mean(abs(d))
     rmse_f = np.sqrt(mse_f)
     r2_f = 1 - (sum(d ** 2) / sum((df["y"] - np.mean(df["y"])) ** 2))
 
+    kl_div = compute_kl_divergence(df["y"], df["y_hat"], n_bins=20)
+    js_div = compute_js_divergence(df["y"], df["y_hat"], n_bins=20)
+
     stat_info = f"""
+    $r^2$ = {r2_f:.2} 
     MAE = {mae_f:.2}
     MASE = {mse_f:.2}
     RMSE = {rmse_f:.2}
-    $r^2$ = {r2_f:.2} 
     """
+
+    dist_info = f"""
+    kl divergence = {kl_div:.2}
+    js divergence = {js_div:.2}
+    """
+
+    fig = plt.figure(figsize=(18, 13))
+    fig.suptitle(name)
+    plt.subplot(221)
 
     ax = sns.regplot(x="y", y="y_hat", data=df)
     ax.text(
@@ -91,6 +104,15 @@ def plot_results(prediction, true_vals, name: str):
     ax = sns.distplot(df["y"], bins=20, label="$\mathrm{pKa}_{exp}$")
     sns.distplot(df["y_hat"], bins=20, label="$\mathrm{pKa}_{calc}$")
     ax.set_xlabel("pKa")
+    ax.text(
+        0,
+        1,
+        dist_info,
+        horizontalalignment="left",
+        verticalalignment="top",
+        transform=ax.transAxes,
+        linespacing=1,
+    )
     ax.legend()
 
     plt.subplot(223)
@@ -99,3 +121,125 @@ def plot_results(prediction, true_vals, name: str):
 
     plt.show()
     plt.close()
+
+
+def create_conjugate(mol, id, type, pka, pH=7.4):
+    """create a new molecule that is the conjugated base/acid to the input molecule"""
+    nmol = Chem.RWMol(mol)
+    atom = nmol.GetAtomWithIdx(id)
+    charge = atom.GetFormalCharge()
+    Ex_Hs = atom.GetNumExplicitHs()
+    Tot_Hs = atom.GetTotalNumHs()
+
+    if pka > pH and Tot_Hs > 0:
+        atom.SetFormalCharge(charge - 1)
+        if Ex_Hs > 0:
+            atom.SetNumExplicitHs(Ex_Hs - 1)
+    elif pka < pH:
+        atom.SetFormalCharge(charge + 1)
+        if Tot_Hs == 0 or Ex_Hs > 0:
+            atom.SetNumExplicitHs(Ex_Hs + 1)
+    else:
+        atom.SetFormalCharge(charge + 1)
+        if Tot_Hs == 0 or Ex_Hs > 0:
+            atom.SetNumExplicitHs(Ex_Hs + 1)
+
+    atom.UpdatePropertyCache()
+    return nmol
+
+
+def conjugates_to_DataFrame(df):
+    """adds a column with conjugate molecules to the input DataFrame"""
+    conjugates = []
+    for i in range(len(df.index)):
+        mol = df.ROMol[i]
+        indx = int(df.marvin_atom[i])
+        pKa_type = df.marvin_pKa_type[i]
+        pka = float(df.marvin_pKa[i])
+        conjugates.append(create_conjugate(mol, indx, pKa_type, pka))
+    df["Conjugates"] = conjugates
+    return df
+
+
+def sort_conjugates(df):
+    """sorts the input DataFrame so that the protonated and deprotonated molecules are in their corresponding columns"""
+    df
+    prot = []
+    deprot = []
+    for i in range(len(df.index)):
+        indx = int(df.marvin_atom[i])
+        mol = df.ROMol[i]
+        conj = df.Conjugates[i]
+
+        charge_mol = int(mol.GetAtomWithIdx(indx).GetFormalCharge())
+        charge_conj = int(conj.GetAtomWithIdx(indx).GetFormalCharge())
+        pka = float(df.pKa[i])
+        if charge_mol < charge_conj:
+            prot.append(conj)
+            deprot.append(mol)
+        elif charge_mol > charge_conj:
+            prot.append(mol)
+            deprot.append(conj)
+    df["protonated"] = prot
+    df["deprotonated"] = deprot
+    df = df.drop(columns=["ROMol", "Conjugates"])
+    return df
+
+
+def pka_to_ka(df):
+    df["ka"] = [(10 ** -float(i)) for i in df.pKa]
+    return df
+
+
+def mol_to_pyg(prot, deprot):
+    i = 0
+    num_atoms = prot.GetNumAtoms()
+    x = []
+    b = []
+    b_attr = []
+
+    for mol in [prot, deprot]:
+
+        for atom in mol.GetAtoms():
+            x.append(
+                list(
+                    (
+                        atom.GetIdx(),
+                        atom.GetAtomicNum(),
+                        atom.GetFormalCharge(),
+                        atom.GetChiralTag(),
+                        atom.GetHybridization(),
+                        atom.GetNumExplicitHs(),
+                        atom.GetIsAromatic(),
+                    )
+                )
+            )
+
+        for bond in mol.GetBonds():
+            b.append(
+                np.array(
+                    [
+                        [bond.GetBeginAtomIdx() + num_atoms * i],
+                        [bond.GetEndAtomIdx() + num_atoms * i],
+                    ]
+                )
+            )
+            b.append(
+                np.array(
+                    [
+                        [bond.GetEndAtomIdx() + num_atoms * i],
+                        [bond.GetBeginAtomIdx() + num_atoms * i],
+                    ]
+                )
+            )
+            bond_type = bond.GetBondType()
+            b_attr.append(bond_type)
+            b_attr.append(bond_type)
+
+        i += 1
+
+    X = torch.tensor(np.array([np.array(xi) for xi in x]), dtype=torch.float)
+    edge_index = torch.tensor(np.hstack(np.array(b)), dtype=torch.long)
+    edge_attr = torch.tensor(np.array(b_attr).T, dtype=torch.float)
+
+    return Data(x=X, edge_index=edge_index, edge_attr=edge_attr)

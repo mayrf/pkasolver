@@ -62,8 +62,11 @@ from sklearn.model_selection import (
 )
 from sklearn.metrics import make_scorer
 
+import time
 
-def hyperparameter_tuning(X, y, parameters: dict):
+
+def hyperparameter_tuning(X, y, parameters: dict, test_df):
+
     reg = RandomForestRegressor()
 
     def kl_divergence_score(y_true, y_pred):
