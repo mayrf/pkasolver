@@ -29,8 +29,8 @@ def js_divergence(p, q):
 
 
 def compute_kl_divergence(train_sample, test_sample, n_bins=10):
-    """
-    Computes the KL Divergence using the support intersection between two different samples
+    """Compute the KL Divergence using the support
+    intersection between two different samples.
     """
     e, p = compute_probs(train_sample, n=n_bins)
     _, q = compute_probs(test_sample, n=e)
@@ -43,7 +43,7 @@ def compute_kl_divergence(train_sample, test_sample, n_bins=10):
 def compute_js_divergence(train_sample, test_sample, n_bins=10):
     """
     Computes the JS Divergence using the support
-    intersection between two different samples
+    intersection between two different samples.
     """
     e, p = compute_probs(train_sample, n=n_bins)
     _, q = compute_probs(test_sample, n=e)
@@ -66,7 +66,7 @@ import time
 
 
 def hyperparameter_tuning(X, y, parameters: dict, test_df):
-
+    """Take Regression variables and parameters, conduct a hyperparameter tuning and return a GridSearchCV object."""
     reg = RandomForestRegressor()
 
     def kl_divergence_score(y_true, y_pred):

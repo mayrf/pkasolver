@@ -3,6 +3,7 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import PandasTools
 from rdkit.Chem import AllChem
+from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
 from pkasolver.analysis import compute_kl_divergence, compute_js_divergence
 
 
@@ -16,9 +17,7 @@ from torch_geometric.data import Data
 
 
 def import_sdf(sdf):
-    """
-    Import sdf file into a pandas Dataframe
-    """
+    """Import an sdf file and return a Pandas Dataframe with an additional Smiles column."""
 
     df = PandasTools.LoadSDF(sdf)
     df["smiles"] = [Chem.MolToSmiles(m) for m in df["ROMol"]]
@@ -26,7 +25,9 @@ def import_sdf(sdf):
 
 
 def morgan_fp(df, mol_column, neigh: int, nB: int, useFeatures=True):
-    """creates morgan fingerprints and adds them to DataFrame"""
+    """Take Pandas DataFrame, creates Morgan fingerprints from the molecules in "mol_column"
+    and add them to DataFrame.
+    """
     df[mol_column + "_morganfp"] = [
         AllChem.GetMorganFingerprintAsBitVect(
             m, neigh, nBits=nB, useFeatures=useFeatures
@@ -37,24 +38,29 @@ def morgan_fp(df, mol_column, neigh: int, nB: int, useFeatures=True):
 
 
 def make_fp_array(df, column_name):
-    """Creats a numpy array of the morgan fingerprint with each bit in a separate column"""
+    """Take Pandas DataFrame and return a Numpy Array
+    with size "Number of Molecules" x "Bits of Morgan Fingerprint."
+    """
     return np.array([np.array(row) for row in df[column_name]])
 
 
 def make_stat_variables(df, X_list: list, y_name: list):
-    """Creats a numpy array of any other specified descriptors"""
+    """Take Pandas DataFrame and and return a Numpy Array of any other specified descriptors
+    with size "Number of Molecules" x "Number of specified descriptors in X_list."
+    """
     X = np.asfarray(df[X_list], float)
     y = np.asfarray(df[y_name], float).reshape(-1)
     return X, y
 
 
 def cat_variables(X_feat, X_fp):
-    """Concatinates an array of descriptors with an array of morgan fingerprints"""
+    """Take to Numpy Arrays and return an Array with the input Arrays concatinated along the columns."""
     return np.concatenate((X_feat, X_fp), axis=1)
 
 
 def plot_results(prediction, true_vals, name: str):
-    """Plots the prediction results in 3 sub graphs showing the regression of y_hat against y """
+    """Plot the prediction results in three subgraphs, showing the regression of y_hat against y."""
+
     a = {"y": true_vals, "y_hat": prediction}
     df = pd.DataFrame(data=a)
 
@@ -121,7 +127,7 @@ def plot_results(prediction, true_vals, name: str):
 
 
 def create_conjugate(mol, id, pka, pH=7.4):
-    """create a new molecule that is the conjugated base/acid to the input molecule"""
+    """create a new molecule that is the conjugated base/acid to the input molecule."""
     mol = Chem.RWMol(mol)
     atom = mol.GetAtomWithIdx(id)
     charge = atom.GetFormalCharge()
@@ -148,19 +154,7 @@ def create_conjugate(mol, id, pka, pH=7.4):
 
 
 def conjugates_to_DataFrame(df: pd.DataFrame):
-    """
-     [summary]
-
-    Returns
-    -------
-    [type]
-        [description]
-    """
-
-    #  |   |    |    |    | -> what's in
-    #
-    #
-
+    """Take DataFrame and return a DataFrame with a column of calculated conjugated molecules."""
     conjugates = []
     for i in range(len(df.index)):
         mol = df.ROMol[i]
@@ -173,8 +167,7 @@ def conjugates_to_DataFrame(df: pd.DataFrame):
 
 
 def sort_conjugates(df):
-    """sorts the input DataFrame so that the protonated and deprotonated molecules are in their corresponding columns"""
-
+    """Take DataFrame, check and correct the protonated and deprotonated molecules columns and return the new Dataframe."""
     prot = []
     deprot = []
     for i in range(len(df.index)):
@@ -198,12 +191,13 @@ def sort_conjugates(df):
 
 
 def pka_to_ka(df):
+    """Take DataFrame, calculate and add the "ka" to a new column and return the new Dataframe."""
     df["ka"] = [(10 ** -float(i)) for i in df.pKa]
     return df
 
 
 def mol_to_pyg(prot, deprot):
-
+    """Take pair of protonated and deprotonated molecules and return a Pytorch Geometric Data object."""
     i = 0
     num_atoms = prot.GetNumAtoms()
     nodes = []
@@ -211,6 +205,8 @@ def mol_to_pyg(prot, deprot):
     edges_attr = []
 
     for mol in [prot, deprot]:
+
+        # ComputeGasteigerCharges(mol)
 
         for atom in mol.GetAtoms():
             nodes.append(
@@ -223,6 +219,9 @@ def mol_to_pyg(prot, deprot):
                         atom.GetHybridization(),
                         atom.GetNumExplicitHs(),
                         atom.GetIsAromatic(),
+                        atom.GetTotalValence(),
+                        atom.GetTotalDegree(),
+                        # atom.GetProp("_GasteigerCharge")
                     )
                 )
             )
@@ -244,7 +243,7 @@ def mol_to_pyg(prot, deprot):
                     ]
                 )
             )
-            bond_type = bond.GetBondType()
+            bond_type = bond.GetBondTypeAsDouble()
             edges_attr.append(bond_type)
             edges_attr.append(bond_type)
 
@@ -252,6 +251,6 @@ def mol_to_pyg(prot, deprot):
 
     X = torch.tensor(np.array([np.array(xi) for xi in nodes]), dtype=torch.float)
     edge_index = torch.tensor(np.hstack(np.array(edges)), dtype=torch.long)
-    edge_attr = torch.tensor(np.array(edges_attr).T, dtype=torch.float)
+    edge_attr = torch.tensor(np.array(edges_attr).reshape(-1, 1), dtype=torch.float)
 
     return Data(x=X, edge_index=edge_index, edge_attr=edge_attr)
