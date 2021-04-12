@@ -46,7 +46,19 @@ def pyg_split_to_loaders(dataset,train_test_split, batch_size, shuffle=False):
         test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, follow_batch=['x', 'x2'])
         return train_loader, test_loader
     
-def update_checkpoint(checkpoint,epoch,model, optimizer, update, checkpoint_path):
+def update_checkpoint(checkpoint,epoch, optimizer, update, checkpoint_path, model_p, model_d=None):
+    """Take checkpoint, epoch, model, optimizer, update string and checkpoint path.
+    Save checkpoint and return checkpoint object.
+    """
+    checkpoint['epoch']=epoch
+    checkpoint['model_(p)_state']=model_p
+    checkpoint['model_d_state']=model_d
+    checkpoint['optimizer_state']=optimizer
+    checkpoint['progress']+= update + '\n'
+    torch.save(checkpoint,checkpoint_path)
+    return checkpoint
+
+def update_checkpoint_paired(checkpoint,epoch,model_p, model_d, optimizer, update, checkpoint_path):
     """Take checkpoint, epoch, model, optimizer, update string and checkpoint path.
     Save checkpoint and return checkpoint object.
     """
