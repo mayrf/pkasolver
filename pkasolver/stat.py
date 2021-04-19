@@ -111,7 +111,7 @@ def calc_importances(ig, dataset, sample_size, device='cpu'):
     attr_e = np.empty((0,dataset[0].num_edge_features))
     i = 0
     for input_data in random.sample(dataset, sample_size):
-        _attr, _delta = ig.attribute((input_data.x, input_data.edge_attr),additional_forward_args=(input_data.edge_index, torch.zeros(input_data.x.shape[0], dtype=int).to(device=device)), internal_batch_size=input_data.x.shape[0], return_convergence_delta=True)
+        _attr, _delta = ig.attribute((input_data.x, input_data.edge_attr),allow_unused=True,additional_forward_args=(input_data.edge_index, torch.zeros(input_data.x.shape[0], dtype=int).to(device=device)), internal_batch_size=input_data.x.shape[0], return_convergence_delta=True)
         attr_n = np.append(attr_n, _attr[0].detach().numpy(), axis=0)
         attr_e = np.append(attr_e, _attr[1].detach().numpy(), axis=0)
         if i%5==0:

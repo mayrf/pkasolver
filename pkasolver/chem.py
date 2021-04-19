@@ -1,4 +1,17 @@
 from rdkit import Chem
+from rdkit.Chem.AllChem import GetMorganFingerprintAsBitVect
+
+def morgan_fp(df, mol_column, neigh: int, nB: int, useFeatures=True):
+    """Take Pandas DataFrame, creates Morgan fingerprints from the molecules in "mol_column"
+    and add them to DataFrame.
+    """
+    df[mol_column + "_morganfp"] = [
+        GetMorganFingerprintAsBitVect(
+            m, neigh, nBits=nB, useFeatures=useFeatures
+        )
+        for m in df[mol_column]
+    ]
+    return df
 
 def create_conjugate(mol, id, pka, pH=7.4):
     """Create a new molecule that is the conjugated base/acid to the input molecule."""
