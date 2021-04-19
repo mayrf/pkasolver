@@ -3,7 +3,7 @@ from rdkit.Chem import PandasTools
 from rdkit import Chem
 import pandas as pd
 import pickle
-from pkasolver.chemistry import create_conjugate
+from pkasolver.chem import create_conjugate
 from torch_geometric.data import Data
 from pkasolver import constants as c
 import torch
@@ -54,6 +54,30 @@ def sort_conjugates(df):
     df = df.drop(columns=["ROMol", "Conjugates"])
     return df
 
+#################################################
+
+def make_fp_array(df, column_name):
+    """Take Pandas DataFrame and return a Numpy Array
+    with size "Number of Molecules" x "Bits of Morgan Fingerprint."
+    """
+    return np.array([np.array(row) for row in df[column_name]])
+
+
+def make_stat_variables(df, X_list: list, y_name: list):
+    """Take Pandas DataFrame and and return a Numpy Array of any other specified descriptors
+    with size "Number of Molecules" x "Number of specified descriptors in X_list."
+    """
+    X = np.asfarray(df[X_list], float)
+    y = np.asfarray(df[y_name], float).reshape(-1)
+    return X, y
+
+
+def cat_variables(X_feat, X_fp):
+    """Take to Numpy Arrays and return an Array with the input Arrays concatinated along the columns."""
+    return np.concatenate((X_feat, X_fp), axis=1)
+
+##############################################
+
 #Run Function
 
 def preprocess(name, sdf):
@@ -61,20 +85,15 @@ def preprocess(name, sdf):
     df = import_sdf(sdf)
     df = conjugates_to_dataframe(df)
     df = sort_conjugates(df)
-    with open(f'processed/pd_{name}.pkl', 'wb') as pickle_file:
-        pickle.dump(df,pickle_file)
+    return df
         
 def preprocess_all(datasets, title='pd_all_datasets'):
     """Take dict of sdf paths, process to Dataframes and save it as a pickle file."""
     pd_datasets = {}
-    directory = 'data/pandas_df'
     for name, path in datasets.items(): 
-        df = import_sdf(path)
-        df = conjugates_to_dataframe(df)
-        df = sort_conjugates(df)
-        pd_datasets[name]=df        
-    with open(f'{directory}/{title}.pkl', 'wb') as pickle_file:
-        pickle.dump(pd_datasets,pickle_file)
+        pd_datasets[name]=preprocess(name,path)
+    return pd_datasets
+    
         
         
 #############################################
@@ -131,10 +150,18 @@ def make_edges_and_attr(mol, e_features):
                 ]
             )
         )
+        edges.append(
+            np.array(
+                [
+                    [bond.GetEndAtomIdx()],
+                    [bond.GetBeginAtomIdx()],
+                ]
+            )
+        )
         edge = []
         for feat in e_features.values():
             edge.append(feat(bond))
-        edge_attr.append(edge)
+        edge_attr.extend([edge]*2)
         
     edge_index = torch.tensor(np.hstack(np.array(edges)), dtype=torch.long)
     edge_attr = torch.tensor(np.array(edge_attr), dtype=torch.float)
