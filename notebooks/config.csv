@@ -1,0 +1,8 @@
+Python,.py
+node_features,"['atomic_number', 'formal_charge', 'chiral_tag', 'hybridization', 'explicit_Hs_number', 'aromatic_tag', 'total_valence', 'total_degree']"
+edge_features,"['bond_type', 'is_conjugated']"
+batch_size,64
+paired,False
+num_graph_layers,1
+num_linear_layers,1
+hidden_channels,96

@@ -206,7 +206,7 @@ def load_data(dataset, id_list):
             load_data.append(data)
     return load_data
 
-def make_pyg_dataset(df, list_n, list_e, paired=False):
+def make_pyg_dataset(df, list_n, list_e, paired=True):
     """Take a Dataframe, a list of strings of node features, a list of strings of edge features
     and return a List of PyG Data objects.
     
@@ -225,7 +225,26 @@ def make_pyg_dataset(df, list_n, list_e, paired=False):
         dataset[i].ID = df.ID[i]
     return dataset
 
+def slice_list(input_list, size):
+    input_size = len(input_list)
+    slice_size = input_size // size
+    remain = input_size % size
+    result = []
+    iterator = iter(input_list)
+    for i in range(size):
+        result.append([])
+        for j in range(slice_size):
+            result[i].append(next(iterator))
+        if remain:
+            result[i].append(next(iterator))
+            remain -= 1
+    return result
 
+def cross_val_lists(sliced_lists, num):
+    not_flattend = [x for i,x in enumerate(sliced_lists) if i!=num]
+    train_list = [item for subl in not_flattend for item in subl]
+    val_list = sliced_lists[num]
+    return train_list, val_list
 
 
 
