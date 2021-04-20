@@ -99,60 +99,87 @@ import torch
 from captum.attr import IntegratedGradients
 from captum.attr import LayerConductance
 from captum.attr import NeuronConductance
-
 import matplotlib.pyplot as plt
-#%matplotlib inline
+import seaborn as sns
+import pandas as pd
+from scipy.linalg import block_diag
+import copy
 
-def calc_importances(ig, dataset, sample_size, device='cpu'):
-    """Take Integrated Gradients Object, PyG Dataset and desired sample size. 
-    Return two np.arrays of importances of nodes and edges, respectivly.
+def calc_importances(ig, dataset, sample_size, node_feature_names, edge_feature_names=None, PAIRED=None, device='cpu'):
+    """Return a DataFrame with the Attributions of all Features, 
+    calculated for a number of random samples of a given dataset. 
     """
-    attr_n = np.empty((0,dataset[0].num_features))
-    attr_e = np.empty((0,dataset[0].num_edge_features))
+    dataset = copy.deepcopy(dataset)
+    if edge_feature_names == None:
+        edge_feature_names=[]    
+    feature_names= node_feature_names + edge_feature_names 
+    if PAIRED:
+        feature_names = feature_names + ['2_' + s for s in feature_names]
+        print(feature_names)
+    attr = np.empty((0,len(feature_names)))
+    ids = []
+    
     i = 0
     for input_data in random.sample(dataset, sample_size):
-        _attr, _delta = ig.attribute((input_data.x, input_data.edge_attr),allow_unused=True,additional_forward_args=(input_data.edge_index, torch.zeros(input_data.x.shape[0], dtype=int).to(device=device)), internal_batch_size=input_data.x.shape[0], return_convergence_delta=True)
-        attr_n = np.append(attr_n, _attr[0].detach().numpy(), axis=0)
-        attr_e = np.append(attr_e, _attr[1].detach().numpy(), axis=0)
+        input_data.batch=torch.zeros(input_data.x.shape[0], dtype=int).to(device=device)
+        input_data.x2_batch=torch.zeros(input_data.x2.shape[0], dtype=int).to(device=device)
+        if PAIRED and edge_feature_names==[]:
+            ids.extend([input_data.ID]*(input_data.x.shape[0]+input_data.x2.shape[0]))
+            input1=(input_data.x,input_data.x2)
+            input2=(input_data.edge_attr,input_data.edge_attr2,input_data)
+        elif PAIRED and edge_feature_names!=[]:
+            ids.extend([input_data.ID]*(input_data.x.shape[0]+input_data.edge_index.shape[1]+
+                                        input_data.x2.shape[0]+input_data.edge_index2.shape[1]))
+            input1=(input_data.x,input_data.x2,input_data.edge_attr,input_data.edge_attr2)
+            input2=(input_data)
+        elif not PAIRED and edge_feature_names==[]:
+            ids.extend([input_data.ID]*(input_data.x.shape[0]))
+            input1=(input_data.x)
+            input2=(input_data.edge_attr,input_data.x2,input_data.edge_attr2,input_data)
+        elif not PAIRED and edge_feature_names!=[]:
+            ids.extend([input_data.ID]*(input_data.x.shape[0]+input_data.edge_index.shape[1]))
+            input1=(input_data.x, input_data.edge_attr)
+            input2=(input_data.x2,input_data.edge_attr2,input_data)
+            
+        
+        _attr = ig.attribute(input1,
+                             additional_forward_args=(input2), 
+                             internal_batch_size=input_data.x.shape[0])
+        if not PAIRED and edge_feature_names==[]:
+            attr_row = _attr.detach().numpy()
+            
+        else:
+            attr_row = block_diag(*[a.detach().numpy() for a in _attr])
+
+        attr = np.vstack((attr, attr_row))
+        
         if i%5==0:
             print(f'{i+1} of {sample_size}')
         i += 1
-    return attr_n, attr_e
+    print(len(ids))
+    df =pd.DataFrame(attr,columns=feature_names)
+    df.insert(0, 'ID', ids)
+    return df
 
-def visualize_importances(node_feature_names, edge_feature_names, node_importances, edge_importances,  title="Average Feature Importances", plot=True, axis_title="Features"):
-    """Return a figure with barplots of the feature importances."""
-    feature_names = node_feature_names + edge_feature_names
-    importances = np.concatenate((node_importances, edge_importances))
-    print(title)
-    for i in range(len(feature_names)):
-        print(feature_names[i], ": ", '%.3f'%(importances[i]))
-    x_pos = (np.arange(len(feature_names)))
-    if plot:
-        fig = plt.figure(figsize=(15,6))
-        plt.bar(x_pos, importances, align='center')
-        plt.xticks(x_pos, feature_names, wrap=True)
-        plt.xlabel(axis_title)
-        plt.title(title)
-        fig.tight_layout()
-        plt.show()
-        plt.close()
 
-def show_importances_distribution(node_features, node_attributions, edge_features, edge_attributions, cols=4):
-    """Return a figures with the distribution of the feature importances of all tested samples."""
-    i = 1
-    nr_plots = len(node_features + edge_features)
-    rows = nr_plots // cols + (nr_plots / cols > 0)
-    plt.figure(figsize=(cols*5,rows*4))
-    for n in range(len(node_features)):
-        plt.subplot(rows,cols,i)
-        plt.hist(node_attributions[:,n], 100);
-        plt.title(f"Attribution of {node_features[n]}");
-        #plt.show()
-        i += 1
-    for n in range(len(edge_features)):
-        plt.subplot(rows,cols,i)
-        plt.hist(edge_attributions[:,n], 100);
-        plt.title(f"Attribution of {edge_features[n]}");
-        #plt.show()
-        i += 1
-    plt.show()
+from scipy import stats
+import numpy as np
+import pandas as pd
+
+def test_model(model, loader, dataset_name):
+    """Calculate the prediction values of all the sample in a given DataLoader object
+    and return them together with the real values in a Dataframe
+    """
+    model.eval()
+    i = 0
+    for data in loader:  # Iterate in batches over the training dataset.
+        y_pred = model(x=data.x, x2=data.x2,edge_attr=data.edge_attr, edge_attr2=data.edge_attr2, data=data).reshape(-1)
+        y_true = data.y
+        if i == 0:
+            Y_pred = y_pred 
+            Y_true = y_true
+        else:
+            Y_true=torch.hstack((Y_true,y_true))
+            Y_pred=torch.hstack((Y_pred,y_pred))
+        i+=1
+    return pd.DataFrame({'Dataset':dataset_name,'pKa_experimental':Y_true.detach().numpy(), 'pKa_predicted':Y_pred.detach().numpy()})
