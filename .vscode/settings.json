@@ -4,5 +4,7 @@
     "python.testing.nosetestsEnabled": false,
     "python.testing.pytestEnabled": true,
     "python.formatting.provider": "black",
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "restructuredtext.languageServer.disabled": true,
+    "python.pythonPath": "/home/mwieder/anaconda3/envs/pkasolver/bin/python"
 }
