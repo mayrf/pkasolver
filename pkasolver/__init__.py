@@ -4,7 +4,7 @@ toolset for predicting the pka values of small molecules
 """
 
 # Add imports here
-from .pkasolver import *
+from pkasolver import *
 
 # Handle versioneer
 from ._version import get_versions
