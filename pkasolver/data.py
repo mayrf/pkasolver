@@ -2,7 +2,6 @@
 from rdkit.Chem import PandasTools
 from rdkit import Chem
 import pandas as pd
-import pickle
 from pkasolver.chemistry import create_conjugate
 from torch_geometric.data import Data
 from pkasolver.constants import NODE_FEATURES, EDGE_FEATURES
@@ -24,7 +23,6 @@ def conjugates_to_dataframe(df: pd.DataFrame):
     for i in range(len(df.index)):
         mol = df.ROMol[i]
         index = int(df.marvin_atom[i])
-        pKa_type = df.marvin_pKa_type[i]
         pka = float(df.marvin_pKa[i])
         conjugates.append(create_conjugate(mol, index, pka))
     df["Conjugates"] = conjugates
@@ -32,7 +30,8 @@ def conjugates_to_dataframe(df: pd.DataFrame):
 
 
 def sort_conjugates(df):
-    """Take DataFrame, check and correct the protonated and deprotonated molecules columns and return the new Dataframe."""
+    """Take DataFrame, check and correct the protonated and deprotonated molecules columns and
+    return the new Dataframe."""
     prot = []
     deprot = []
     for i in range(len(df.index)):
@@ -51,6 +50,7 @@ def sort_conjugates(df):
             deprot.append(conj)
     df["protonated"] = prot
     df["deprotonated"] = deprot
+
     df = df.drop(columns=["ROMol", "Conjugates"])
     return df
 
@@ -78,7 +78,7 @@ def preprocess_all(datasets) -> dict:
 #############################################
 
 
-class PairData(object):
+class PairData(Data):
     """not really, but essentially a Dataclass"""
 
     def __init__(self, m1, m2):
@@ -93,13 +93,11 @@ def make_nodes(mol, marvin_atom, n_features):
     Return a torch.tensor with dimensions num_nodes(atoms) x num_node_features.
     """
     x = []
-    i = 0
-    for atom in mol.GetAtoms():
+    for i, atom in enumerate(mol.GetAtoms()):
         node = []
         for feat in n_features.values():
             node.append(feat(atom, i, marvin_atom))
         x.append(node)
-        i += 1
     return torch.tensor(np.array([np.array(xi) for xi in x]), dtype=torch.float)
 
 
@@ -154,11 +152,16 @@ def mol_to_data(row, n_features, e_features, protonation_state: str = "protonate
     if protonation_state == "protonated":
         x = make_nodes(row.protonated, row.marvin_atom, n_features)
         edge_index, edge_attr = make_edges_and_attr(row.protonated, e_features)
-        return Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
+
+        data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
+        data.charge = np.sum([a.GetFormalCharge() for a in row.protonated.GetAtoms()])
+        return data
     else:
         x = make_nodes(row.deprotonated, row.marvin_atom, n_features)
         edge_index, edge_attr = make_edges_and_attr(row.deprotonated, e_features)
-        return Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
+        data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
+        data.charge = np.sum([a.GetFormalCharge() for a in row.protonated.GetAtoms()])
+        return data
 
 
 def make_features_dicts(all_features, feat_list):
@@ -203,6 +206,6 @@ def make_pyg_dataset(df, node_features, edge_features, paired=False):
         )
 
         dataset.append(PairData(m_prot, m_deprot))
-        dataset[-1].y = torch.tensor([float(df.pKa[i])], dtype=torch.float32)
-        dataset[-1].ID = df.ID[i]
+        dataset[i].y = torch.tensor([float(df.pKa[i])], dtype=torch.float32)
+        dataset[i].ID = df.ID[i]
     return dataset

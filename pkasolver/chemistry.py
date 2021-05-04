@@ -1,6 +1,8 @@
 from rdkit import Chem
+import numpy as np
 
-def create_conjugate(mol, id, pka, pH=7.4):
+
+def create_conjugate(mol, id, pka, pH=7.4) -> Chem.rdchem.Mol:
     """Create a new molecule that is the conjugated base/acid to the input molecule."""
     mol = Chem.RWMol(mol)
     atom = mol.GetAtomWithIdx(id)
@@ -24,4 +26,5 @@ def create_conjugate(mol, id, pka, pH=7.4):
             atom.SetNumExplicitHs(Ex_Hs + 1)
 
     atom.UpdatePropertyCache()
+
     return mol

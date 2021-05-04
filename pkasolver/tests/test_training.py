@@ -73,14 +73,40 @@ def test_initialize_gcn():
 def test_setup_data_loader():
     train_loader, test_loader = setup_data_loader()
     print(train_loader)
+    for batch in train_loader:
+        print(batch)
 
 
-def evaluate_train_set(loader, net, criterion, optimizer):
-    net.train()
+def evaluate_train_set(
+    loader, negative_net, neutral_net, positive_net, criterion, optimizer
+):
+    negative_net.train()
+    neutral_net.train()
+    positive_net.train()
+
     for data in loader:  # Iterate in batches over the training dataset.
-        out = net(
-            data.x, data.edge_attr, data.edge_index, data.x_batch
-        )  # Perform a single forward pass.
+        data_m1 = data.m1
+        data_m2 = data.m2
+        out_neutral = torch.Tensor([0.0], device=device)
+        out_negative = torch.Tensor([0.0], device=device)
+        out_positive = torch.Tensor([0.0], device=device)
+
+        if data_m1.charge == 0:
+            out_neutral = neutral_net(
+                data.x, data.edge_attr, data.edge_index, data.x_batch
+            )  # Perform a single forward pass.
+        elif data_m1.charge == 1:
+            out_positive = neutral_net(
+                data.x, data.edge_attr, data.edge_index, data.x_batch
+            )  # Perform a single forward pass.
+        elif data_m1.charge == -1:
+            out_negative = neutral_net(
+                data.x, data.edge_attr, data.edge_index, data.x_batch
+            )  # Perform a single forward pass.
+        else:
+            raise RuntimeError()
+
+        out = out_negative + out_positive + out_neutral
         loss = criterion(out.flatten(), data.y)  # Compute the loss.
         loss.backward()  # Derive gradients.
         optimizer.step()  # Update parameters based on gradients.
@@ -107,14 +133,20 @@ def test_training():
 
     train_loader, test_loader = setup_data_loader()
     negative_net, neutral_net, positive_net = initialize_gcn(device=device)
+    n_parameters = len(list(negative_net.parameters()))
     params = (
         list(negative_net.parameters())
         + list(neutral_net.parameters())
         + list(positive_net.parameters())
     )
+
+    assert len(params) == 3 * n_parameters
+
     optimizer = torch.optim.Adam(params, lr=learning_rate)
     criterion = torch.nn.MSELoss()
     criterion_v = torch.nn.L1Loss()  # that's the MAE Loss
-    # for epoch in range(10):
-    #     train_acc = evaluate_train_set(train_loader, net, criterion, optimizer)
-    #     # test_acc = evaluate_test_set(test_loader)
+    for epoch in range(10):
+        train_acc = evaluate_train_set(
+            train_loader, negative_net, neutral_net, positive_net, criterion, optimizer
+        )
+        # test_acc = evaluate_test_set(test_loader)
