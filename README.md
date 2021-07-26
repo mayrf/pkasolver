@@ -6,11 +6,6 @@
 
 pKasolver is a package that enables prediction of pKa values of small molecules via graph convolutional networks. 
 
-
-##
-
-# Machine learning meets p*K*<sub>a</sub>
-
 ## Prerequisites
 
 The Python dependencies are:
