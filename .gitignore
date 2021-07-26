@@ -1,7 +1,6 @@
 examples/misc_and_old
-examples/tesis_run/run_data
-examples/tesis_run/models
-examples/tesis_run/cv_models
+examples/thesis_run/run_data/fp_data.pkl
+examples/thesis_run/cv_models/gcn
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
