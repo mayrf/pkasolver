@@ -1,20 +1,14 @@
 name: test
 channels:
-
-  - conda-forge
-
   - defaults
+  - rdkit
+  - conda-forge
 dependencies:
-    # Base depends
+  - seaborn
+  - rdkit
+  - matplotlib
+  - scikit-learn
   - python
+  - jupyterlab
   - pip
-
-    # Testing
-  - pytest
-  - pytest-cov
-  - codecov
-
-    # Pip-only installs
-  #- pip:
-  #  - codecov
-
+  - 

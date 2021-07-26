@@ -1,95 +1,10 @@
 import numpy as np
 import pandas as pd
+from pkasolver import ml
 
-# taken from here:
-# https://medium.com/datalab-log/measuring-the-statistical-similarity-between-two-samples-using-jensen-shannon-and-kullback-leibler-8d05af514b15
-def compute_probs(data, n=10):
-    h, e = np.histogram(data, n)
-    p = h / data.shape[0]
-    return e, p
-
-
-def support_intersection(p, q):
-    return list(filter(lambda x: (x[0] != 0) & (x[1] != 0), list(zip(p, q))))
-
-
-def get_probs(list_of_tuples):
-    p = np.array([p[0] for p in list_of_tuples])
-    q = np.array([p[1] for p in list_of_tuples])
-    return p, q
-
-
-def kl_divergence(p, q):
-    return np.sum(p * np.log(p / q))
-
-
-def js_divergence(p, q):
-    m = (1.0 / 2.0) * (p + q)
-    return (1.0 / 2.0) * kl_divergence(p, m) + (1.0 / 2.0) * kl_divergence(q, m)
-
-
-def compute_kl_divergence(train_sample, test_sample, n_bins=10):
-    """Compute the KL Divergence using the support
-    intersection between two different samples.
-    """
-    e, p = compute_probs(train_sample, n=n_bins)
-    _, q = compute_probs(test_sample, n=e)
-
-    list_of_tuples = support_intersection(p, q)
-    p, q = get_probs(list_of_tuples)
-    return kl_divergence(p, q)
-
-
-def compute_js_divergence(train_sample, test_sample, n_bins=10):
-    """
-    Computes the JS Divergence using the support
-    intersection between two different samples.
-    """
-    e, p = compute_probs(train_sample, n=n_bins)
-    _, q = compute_probs(test_sample, n=e)
-
-    list_of_tuples = support_intersection(p, q)
-    p, q = get_probs(list_of_tuples)
-    return js_divergence(p, q)
-
-
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import (
-    GridSearchCV,
-    train_test_split,
-    cross_val_score,
-    KFold,
-)
-from sklearn.metrics import make_scorer
-
-import time
-
-
-def hyperparameter_tuning(X, y, parameters: dict, test_df):
-    """Take Regression variables and parameters, conduct a hyperparameter tuning and return a GridSearchCV object."""
-    reg = RandomForestRegressor()
-
-    def kl_divergence_score(y_true, y_pred):
-        return compute_kl_divergence(y_pred, y_true)
-
-    def js_divergence_score(y_true, y_pred):
-        return compute_js_divergence(y_pred, y_true)
-
-    score = {
-        "r2": "r2",
-        "kl-divergence": make_scorer(kl_divergence_score, greater_is_better=False),
-        "js-divergence": make_scorer(js_divergence_score, greater_is_better=False),
-    }
-
-    kf = KFold(n_splits=5, shuffle=True, random_state=0)
-    clf = GridSearchCV(reg, parameters, cv=kf, scoring=score, refit="r2")
-    clf.fit(X, y)
-    df = pd.DataFrame(clf.cv_results_)
-    df.to_csv("results_hyperparameter_fitting.csv")
-    return clf
-
-
-
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
 
 ###############################
 
@@ -105,17 +20,17 @@ import pandas as pd
 from scipy.linalg import block_diag
 import copy
 
-def calc_importances(ig, dataset, sample_size, node_feature_names, edge_feature_names=None, PAIRED=None, device='cpu'):
+def calc_importances(ig, dataset, sample_size, node_feature_names, edge_feature_names=[], device='cpu'):
     """Return a DataFrame with the Attributions of all Features, 
     calculated for a number of random samples of a given dataset. 
     """
-    dataset = copy.deepcopy(dataset)
-    if edge_feature_names == None:
-        edge_feature_names=[]    
+    dataset = copy.deepcopy(dataset)    
+    PAIRED = 'x2' in str(ig.forward_func)
+    if 'NNConv' not in str(ig.forward_func):
+        edge_feature_names=[]
     feature_names= node_feature_names + edge_feature_names 
     if PAIRED:
         feature_names = feature_names + ['2_' + s for s in feature_names]
-        print(feature_names)
     attr = np.empty((0,len(feature_names)))
     ids = []
     
@@ -153,10 +68,9 @@ def calc_importances(ig, dataset, sample_size, node_feature_names, edge_feature_
 
         attr = np.vstack((attr, attr_row))
         
-        if i%5==0:
+        if i%10==0:
             print(f'{i+1} of {sample_size}')
         i += 1
-    print(len(ids))
     df =pd.DataFrame(attr,columns=feature_names)
     df.insert(0, 'ID', ids)
     return df
@@ -166,20 +80,73 @@ from scipy import stats
 import numpy as np
 import pandas as pd
 
-def test_model(model, loader, dataset_name):
-    """Calculate the prediction values of all the sample in a given DataLoader object
-    and return them together with the real values in a Dataframe
-    """
-    model.eval()
-    i = 0
-    for data in loader:  # Iterate in batches over the training dataset.
-        y_pred = model(x=data.x, x2=data.x2,edge_attr=data.edge_attr, edge_attr2=data.edge_attr2, data=data).reshape(-1)
-        y_true = data.y
-        if i == 0:
-            Y_pred = y_pred 
-            Y_true = y_true
-        else:
-            Y_true=torch.hstack((Y_true,y_true))
-            Y_pred=torch.hstack((Y_pred,y_pred))
-        i+=1
-    return pd.DataFrame({'Dataset':dataset_name,'pKa_experimental':Y_true.detach().numpy(), 'pKa_predicted':Y_pred.detach().numpy()})
+def calc_rmse(pred, true):
+    return np.sqrt(mean_squared_error(pred, true))
+
+functions = {
+    'R^2':r2_score,
+    'RMSE':calc_rmse,
+    'MAE':mean_absolute_error
+}
+
+def compute_stats(df, selection_col, true_col,col_exclude=[]):
+    result ={}
+    
+    for dataset in df[selection_col].unique():
+        x = df.loc[df[selection_col]== dataset]
+        index = []
+        for i, model in enumerate([a for a in x.columns if a not in [selection_col, true_col]+col_exclude]):
+            index.append(model)
+            true = x[true_col]
+            pred = x[model]
+            for name,func in functions.items():
+                if i == 0:
+                    result[(dataset,name)]=[func(true,pred).round(3)]
+                else:
+                    result[(dataset,name)].append(func(true,pred).round(3))
+    return pd.DataFrame(result, index=index)
+
+def cv_graph_model(graph_models, loaders):
+    res ={'R^2 (mean + std)':[],
+          'RMSE (mean + std)':[],
+          'MAE (mean + std)':[]
+         }
+    index=[]
+    for mode, edge_modes in graph_models.items():
+        for edge, nums in edge_modes.items():
+            r2=[]
+            rmse=[]
+            mae=[]
+            for num, model in nums.items():
+                true, pred = ml.graph_predict(model, loaders[num], device='cpu')
+                r2.append(r2_score(true,pred))
+                rmse.append(calc_rmse(true,pred))
+                mae.append(mean_absolute_error(true,pred))
+            index.append(f'GCN_{mode}_{edge}')
+            res[f'R^2 (mean + std)'].append(f'{np.average(r2):.3f} \u00B1 {np.std(r2):.3f}')
+            res[f'RMSE (mean + std)'].append(f'{np.average(rmse):.3f} \u00B1 {np.std(rmse):.3f}')
+            res[f'MAE (mean + std)'].append(f'{np.average(mae):.3f} \u00B1 {np.std(mae):.3f}')
+
+    return pd.DataFrame(res, index=index)
+
+def cv_ml_model(baseline_models, data):
+    res ={'R^2 (mean + std)':[],
+          'RMSE (mean + std)':[],
+          'MAE (mean + std)':[]
+         }
+    index=[]
+    for name, modes in baseline_models.items():
+        for mode, nums in modes.items():
+            r2=[]
+            rmse=[]
+            mae=[]
+            for num, model in nums.items():
+                true, pred = data[num]['y'], model.predict(data[num][mode]).flatten()
+                r2.append(r2_score(true,pred))
+                rmse.append(calc_rmse(true,pred))
+                mae.append(mean_absolute_error(true,pred))
+            index.append(f'{name.upper()}_{mode}')
+            res[f'R^2 (mean + std)'].append(f'{np.average(r2):.3f} \u00B1 {np.std(r2):.3f}')
+            res[f'RMSE (mean + std)'].append(f'{np.average(rmse):.3f} \u00B1 {np.std(rmse):.3f}')
+            res[f'MAE (mean + std)'].append(f'{np.average(mae):.3f} \u00B1 {np.std(mae):.3f}')
+    return pd.DataFrame(res, index=index)

@@ -1,5 +1,6 @@
 #Imports
 from rdkit.Chem import PandasTools
+PandasTools.RenderImagesInAllDataFrames(images=True)
 from rdkit import Chem
 import pandas as pd
 import pickle
@@ -8,13 +9,28 @@ from torch_geometric.data import Data
 from pkasolver import constants as c
 import torch
 import numpy as np
+import random
 
-#Functions
+#splits a Dataframes rows randomly into two new Dataframes with a defined size ratio
+def train_test_split_df(df, ratio, seed=42):
+    random.seed(seed)
+    length = len(df)
+    split = round(length * ratio)
+    ids = list(range(length))
+    random.shuffle(ids)
+    train_ids = ids[:split]
+    val_ids = ids[split:]
+    train_df = df.iloc[train_ids,:] 
+    val_df = df.iloc[val_ids,:] 
+    return train_df, val_df
+
+#data preprocessing functions - helpers
 def import_sdf(sdf):
     """Import an sdf file and return a Dataframe with an additional Smiles column."""
 
     df = PandasTools.LoadSDF(sdf)
     df["smiles"] = [Chem.MolToSmiles(m) for m in df["ROMol"]]
+#     df = df.apply(pd.to_numeric, errors='ignore')
     return df
 
 
@@ -54,15 +70,23 @@ def sort_conjugates(df):
     df = df.drop(columns=["ROMol", "Conjugates"])
     return df
 
-#################################################
+#data preprocessing functions - main
+def preprocess(name, sdf):
+    """Take name string and sdf path, process to Dataframe and save it as a pickle file."""
+    df = import_sdf(sdf)
+    df = conjugates_to_dataframe(df)
+    df = sort_conjugates(df)
+    df['pKa'] = df['pKa'].astype(float)
+    return df
+        
+def preprocess_all(datasets, title='pd_all_datasets'):
+    """Take dict of sdf paths, process to Dataframes and save it as a pickle file."""
+    pd_datasets = {}
+    for name, path in datasets.items(): 
+        pd_datasets[name]=preprocess(name,path)
+    return pd_datasets
 
-def make_fp_array(df, column_name):
-    """Take Pandas DataFrame and return a Numpy Array
-    with size "Number of Molecules" x "Bits of Morgan Fingerprint."
-    """
-    return np.array([np.array(row) for row in df[column_name]])
-
-
+#Random Forrest/ML preparation functions
 def make_stat_variables(df, X_list: list, y_name: list):
     """Take Pandas DataFrame and and return a Numpy Array of any other specified descriptors
     with size "Number of Molecules" x "Number of specified descriptors in X_list."
@@ -72,34 +96,8 @@ def make_stat_variables(df, X_list: list, y_name: list):
     return X, y
 
 
-def cat_variables(X_feat, X_fp):
-    """Take to Numpy Arrays and return an Array with the input Arrays concatinated along the columns."""
-    return np.concatenate((X_feat, X_fp), axis=1)
 
-##############################################
-
-#Run Function
-
-def preprocess(name, sdf):
-    """Take name string and sdf path, process to Dataframe and save it as a pickle file."""
-    df = import_sdf(sdf)
-    df = conjugates_to_dataframe(df)
-    df = sort_conjugates(df)
-    return df
-        
-def preprocess_all(datasets, title='pd_all_datasets'):
-    """Take dict of sdf paths, process to Dataframes and save it as a pickle file."""
-    pd_datasets = {}
-    for name, path in datasets.items(): 
-        pd_datasets[name]=preprocess(name,path)
-    return pd_datasets
-    
-        
-        
-#############################################
-
-
-#define PairData Class
+#Neural net data functions - helpers
 class PairData(Data):
     """Externsion of the Pytorch Geometric Data Class, which additionally takes a conjugated molecules in form of the edge_index2 and x2 input"""
     def __init__(self, edge_index, x, edge_index2, x2):
@@ -117,7 +115,6 @@ class PairData(Data):
         else:
             return super().__inc__(key, value)
 
-# Functions for converting Dataframe object to PyG Dataset
 def make_nodes(mol, marvin_atom, n_features):
     """Take a rdkit.Mol, the atom index of the reaction center and a dict of node feature functions. 
     
@@ -167,6 +164,14 @@ def make_edges_and_attr(mol, e_features):
     edge_attr = torch.tensor(np.array(edge_attr), dtype=torch.float)
     return edge_index, edge_attr
 
+
+def make_features_dicts(all_features, feat_list):
+    """Take a dict of all features and a list of strings with all disered features
+    and return a dict with these features
+    """
+    return {x:all_features[x] for x in feat_list}
+
+#Neural net data functions - main
 def mol_to_pairdata(row, n_features, e_features):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
@@ -190,42 +195,28 @@ def mol_to_singledata(row, n_features, e_features):
     edge_index, edge_attr = make_edges_and_attr(row.protonated, e_features)
     return Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
 
-def make_features_dicts(all_features, feat_list):
-    """Take a dict of all features and a list of strings with all disered features
-    and return a dict with these features
-    """
-    return {x:all_features[x] for x in feat_list}
 
-def load_data(dataset, id_list):
-    """Take a list of PyG Data objects and a list of molecule ids 
-    and return a list of only the PyG Data objects that are in the list of ids. 
-    """
-    load_data =[]
-    for data in dataset:
-        if data.ID in id_list:
-            load_data.append(data)
-    return load_data
-
-def make_pyg_dataset(df, list_n, list_e, paired=True):
+def make_pyg_dataset(df, list_n, list_e, pair=True):
     """Take a Dataframe, a list of strings of node features, a list of strings of edge features
     and return a List of PyG Data objects.
     
-    Optional PairData by setting Paired=True.
+    Optional PairData by setting pair=True.
     """
     n_feat = make_features_dicts(c.NODE_FEATURES, list_n)
     e_feat = make_features_dicts(c.EDGE_FEATURES, list_e)
     dataset = []
-    if paired:
+    if pair:
         func = mol_to_pairdata
     else:
         func = mol_to_singledata
     for i in range(len(df.index)):
         dataset.append(func(df.iloc[i], n_feat, e_feat))
-        dataset[i].y = torch.tensor([float(df.pKa[i])], dtype=torch.float32)
-        dataset[i].ID = df.ID[i]
+        dataset[i].y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
+        dataset[i].ID = df.ID.iloc[i]
     return dataset
 
 def slice_list(input_list, size):
+    'take a list and devide its items'
     input_size = len(input_list)
     slice_size = input_size // size
     remain = input_size % size
@@ -245,7 +236,3 @@ def cross_val_lists(sliced_lists, num):
     train_list = [item for subl in not_flattend for item in subl]
     val_list = sliced_lists[num]
     return train_list, val_list
-
-
-
-
