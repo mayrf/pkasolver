@@ -1,4 +1,7 @@
-examples
+examples/misc_and_old
+examples/tesis_run/run_data
+examples/tesis_run/models
+examples/tesis_run/cv_models
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
