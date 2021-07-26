@@ -1,4 +1,4 @@
-name: pka38
+name: test
 channels:
   - pytorch
   - conda-forge
