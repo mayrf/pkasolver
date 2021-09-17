@@ -2,14 +2,17 @@
 from rdkit.Chem import PandasTools
 
 PandasTools.RenderImagesInAllDataFrames(images=True)
-from rdkit import Chem
-import pandas as pd
-from pkasolver.chem import create_conjugate
-from torch_geometric.data import Data
-from pkasolver.constants import NODE_FEATURES, EDGE_FEATURES
-import torch
-import numpy as np
 import random
+
+import numpy as np
+import pandas as pd
+import torch
+from rdkit import Chem
+from torch_geometric.data import Data
+
+from pkasolver.chem import create_conjugate
+from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
+
 
 # splits a Dataframes rows randomly into two new Dataframes with a defined size ratio
 def train_test_split_df(df, ratio, seed=42):
@@ -194,7 +197,11 @@ def mol_to_features(row, n_features: dict, e_features: dict, protonation_state: 
 
 
 # Neural net data functions - main
-def mol_to_paired_mol_data(row, n_features, e_features,):
+def mol_to_paired_mol_data(
+    row,
+    n_features,
+    e_features,
+):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
     """

@@ -17,6 +17,32 @@ def test_features_dicts():
     assert len(e_feat.keys()) == len(list_e)
 
 
+def test_dataset():
+    """what charges are present in the dataset"""
+    from pkasolver.data import preprocess
+    import numpy as np
+
+    sdf_filepaths = load_data()
+    df = preprocess(sdf_filepaths["Training"])
+    charges = []
+    for i in range(len(df.index)):
+        charge_prot = np.sum(
+            [a.GetFormalCharge() for a in df.iloc[i].protonated.GetAtoms()]
+        )
+        charge_deprot = np.sum(
+            [a.GetFormalCharge() for a in df.iloc[i].deprotonated.GetAtoms()]
+        )
+
+        # the difference needs to be 1
+        assert abs(charge_prot - charge_deprot) == 1
+        charges.append(charge_prot)
+        charges.append(charge_deprot)
+
+    # NOTE: quite a lot of negative charges
+    assert max(charges) == 2
+    assert min(charges) == -4
+
+
 def test_nodes():
     """Test the conversion of mol to nodes with feature subset"""
     list_n = ["atomic_number", "formal_charge"]
