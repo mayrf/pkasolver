@@ -2,14 +2,36 @@
 from rdkit.Chem import PandasTools
 
 PandasTools.RenderImagesInAllDataFrames(images=True)
-from rdkit import Chem
-import pandas as pd
-from pkasolver.chem import create_conjugate
-from torch_geometric.data import Data
-from pkasolver.constants import NODE_FEATURES, EDGE_FEATURES
-import torch
-import numpy as np
 import random
+
+import numpy as np
+import pandas as pd
+import torch
+from rdkit import Chem
+from torch_geometric.data import Data
+
+from pkasolver.chem import create_conjugate
+from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
+
+# NOTE: set device to cuda if available
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def load_data(base: str = "data/Baltruschat") -> dict:
+
+    """Helper function loading the raw dataset"""
+
+    sdf_filepath_training = f"{base}/combined_training_datasets_unique.sdf"
+    sdf_filepath_novartis = f"{base}/novartis_cleaned_mono_unique_notraindata.sdf"
+    sdf_filepath_AvLiLuMoVe = f"{base}/AvLiLuMoVe_cleaned_mono_unique_notraindata.sdf"
+
+    datasets = {
+        "Training": sdf_filepath_training,
+        "Novartis": sdf_filepath_novartis,
+        "AvLiLuMoVe": sdf_filepath_AvLiLuMoVe,
+    }
+    return datasets
+
 
 # splits a Dataframes rows randomly into two new Dataframes with a defined size ratio
 def train_test_split_df(df, ratio, seed=42):
@@ -83,8 +105,8 @@ def preprocess(sdf_filename: str):
 def preprocess_all(datasets, title="pd_all_datasets"):
     """Take dict of sdf paths, process to Dataframes and save it as a pickle file."""
     pd_datasets = {}
-    for name, path in datasets.items():
-        pd_datasets[name] = preprocess(name, path)
+    for name, sdf_filename in datasets.items():
+        pd_datasets[name] = preprocess(sdf_filename)
     return pd_datasets
 
 
@@ -102,7 +124,19 @@ def make_stat_variables(df, X_list: list, y_name: list):
 class PairData(Data):
     """Externsion of the Pytorch Geometric Data Class, which additionally takes a conjugated molecules in form of the edge_index2 and x2 input"""
 
-    def __init__(self, edge_index_p, edge_attr_p, x_p, edge_index_d, edge_attr_d, x_d):
+    def __init__(
+        self,
+        # NOTE: everything for protonated
+        edge_index_p,
+        edge_attr_p,
+        x_p,
+        charge_p,
+        # everhtying for deprotonated
+        edge_index_d,
+        edge_attr_d,
+        x_d,
+        charge_d,
+    ):
         super(PairData, self).__init__()
         self.edge_index_p = edge_index_p
         self.edge_index_d = edge_index_d
@@ -113,13 +147,16 @@ class PairData(Data):
         self.edge_attr_p = edge_attr_p
         self.edge_attr_d = edge_attr_d
 
-    def __inc__(self, key, value):
+        self.charge_prot = charge_p
+        self.charge_deprot = charge_d
+
+    def __inc__(self, key, value, *args, **kwargs):
         if key == "edge_index_p":
             return self.x_p.size(0)
         if key == "edge_index_d":
             return self.x_d.size(0)
         else:
-            return super().__inc__(key, value)
+            return super().__inc__(key, value, *args, **kwargs)
 
 
 def make_nodes(mol, marvin_atom: int, n_features: dict):
@@ -184,29 +221,42 @@ def mol_to_features(row, n_features: dict, e_features: dict, protonation_state: 
     if protonation_state == "protonated":
         node = make_nodes(row.protonated, row.marvin_atom, n_features)
         edge_index, edge_attr = make_edges_and_attr(row.protonated, e_features)
-        return node, edge_index, edge_attr
+        charge = np.sum([a.GetFormalCharge() for a in row.protonated.GetAtoms()])
+        return node, edge_index, edge_attr, charge
     elif protonation_state == "deprotonated":
         node = make_nodes(row.deprotonated, row.marvin_atom, n_features)
         edge_index, edge_attr = make_edges_and_attr(row.deprotonated, e_features)
-        return node, edge_index, edge_attr
+        charge = np.sum([a.GetFormalCharge() for a in row.deprotonated.GetAtoms()])
+        return node, edge_index, edge_attr, charge
     else:
         raise RuntimeError()
 
 
 # Neural net data functions - main
-def mol_to_paired_mol_data(row, n_features, e_features,):
+def mol_to_paired_mol_data(
+    row,
+    n_features,
+    e_features,
+):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
     """
-    node_p, edge_index_p, edge_attr_p = mol_to_features(
+    node_p, edge_index_p, edge_attr_p, charge_p = mol_to_features(
         row, n_features, e_features, "protonated"
     )
-    node_d, edge_index_d, edge_attr_d = mol_to_features(
+    node_d, edge_index_d, edge_attr_d, charge_d = mol_to_features(
         row, n_features, e_features, "deprotonated"
     )
 
     data = PairData(
-        edge_index_p, edge_attr_p, node_p, edge_index_d, edge_attr_d, node_d
+        edge_index_p=edge_index_p,
+        edge_attr_p=edge_attr_p,
+        x_p=node_p,
+        charge_p=charge_p,
+        edge_index_d=edge_index_d,
+        edge_attr_d=edge_attr_d,
+        x_d=node_d,
+        charge_d=charge_d,
     )
     return data
 
@@ -217,24 +267,116 @@ def mol_to_single_mol_data(
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch Data object.
     """
-    node_p, edge_index_p, edge_attr_p = mol_to_features(
+    node_p, edge_index_p, edge_attr_p, charge = mol_to_features(
         row, n_features, e_features, protonation_state
     )
-    return Data(x=node_p, edge_index=edge_index_p, edge_attr=edge_attr_p)
+    return Data(x=node_p, edge_index=edge_index_p, edge_attr=edge_attr_p), charge
 
 
-def make_pyg_dataset(df, list_n: list, list_e: list, data_generation_fn):
+def make_pyg_dataset_based_on_charge(df, list_n: list, list_e: list, paired=False):
     """Take a Dataframe, a list of strings of node features, a list of strings of edge features
     and return a List of PyG Data objects.
     """
-    n_feat = make_features_dicts(NODE_FEATURES, list_n)
-    e_feat = make_features_dicts(EDGE_FEATURES, list_e)
-    dataset = []
-    for i in range(len(df.index)):
-        dataset.append(data_generation_fn(df.iloc[i], n_feat, e_feat))
-        dataset[i].y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
-        dataset[i].ID = df.ID.iloc[i]
-    return dataset
+    print(f"Generating data with paired boolean set to: {paired}")
+    selected_node_features = make_features_dicts(NODE_FEATURES, list_n)
+    selected_edge_features = make_features_dicts(EDGE_FEATURES, list_e)
+    if paired:
+        dataset = []
+        for i in range(len(df.index)):
+            m = mol_to_paired_mol_data(
+                df.iloc[i],
+                selected_node_features,
+                selected_edge_features,
+            )
+            m.y = torch.tensor([float(df.pKa[i])], dtype=torch.float32)
+            m.ID = df.ID[i]
+            m.to(device=device)  # NOTE: put everything on the GPU
+            dataset.append(m)
+        return dataset
+    else:
+        dataset = []
+        for i in range(len(df.index)):
+            charge_prot = np.sum(
+                [a.GetFormalCharge() for a in df.iloc[i].protonated.GetAtoms()]
+            )
+            charge_deprot = np.sum(
+                [a.GetFormalCharge() for a in df.iloc[i].deprotonated.GetAtoms()]
+            )
+
+            if (
+                charge_prot + charge_deprot == 1
+                or charge_prot + charge_deprot == 3
+                or charge_prot + charge_deprot == 5
+            ):
+                m, molecular_charge = mol_to_single_mol_data(
+                    df.iloc[i],
+                    selected_node_features,
+                    selected_edge_features,
+                    protonation_state="protonated",
+                )
+            elif (
+                charge_prot + charge_deprot == -1
+                or charge_prot + charge_deprot == -3
+                or charge_prot + charge_deprot == -5
+                or charge_prot + charge_deprot == -7
+            ):
+                m, molecular_charge = mol_to_single_mol_data(
+                    df.iloc[i],
+                    selected_node_features,
+                    selected_edge_features,
+                    protonation_state="deprotonated",
+                )
+            else:
+                raise RuntimeError(charge_prot, charge_deprot)
+
+            m.y = torch.tensor([float(df.pKa[i])], dtype=torch.float32, device=device)
+            m.ID = df.ID[i]
+            m.charge = molecular_charge
+            m.to(device=device)  # NOTE: put everything on the GPU
+            dataset.append(m)
+        return dataset
+
+
+def make_pyg_dataset_based_on_number_of_hydrogens(
+    df, list_n: list, list_e: list, paired=False, mode: str = "all"
+):
+    """Take a Dataframe, a list of strings of node features, a list of strings of edge features
+    and return a List of PyG Data objects.
+    """
+    print(f"Generating data with paired boolean set to: {paired}")
+
+    if paired is False and mode not in ["protonated", "deprotonated"]:
+        raise RuntimeError(f"Wrong combination of {mode} and {paired}")
+
+    selected_node_features = make_features_dicts(NODE_FEATURES, list_n)
+    selected_edge_features = make_features_dicts(EDGE_FEATURES, list_e)
+    if paired:
+        dataset = []
+        for i in range(len(df.index)):
+            m = mol_to_paired_mol_data(
+                df.iloc[i], selected_node_features, selected_edge_features
+            )
+
+            m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
+            m.ID = df.ID.iloc[i]
+            m.to(device=device)  # NOTE: put everything on the GPU
+            dataset.append(m)
+        return dataset
+    else:
+        print(f"Generating data with {mode} form")
+        dataset = []
+        for i in range(len(df.index)):
+            m, molecular_charge = mol_to_single_mol_data(
+                df.iloc[i],
+                selected_node_features,
+                selected_edge_features,
+                protonation_state=mode,
+            )
+            m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
+            m.ID = df.ID.iloc[i]
+            m.to(device=device)  # NOTE: put everything on the GPU
+            dataset.append(m)
+        return dataset
 
 
 def slice_list(input_list, size):
