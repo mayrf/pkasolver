@@ -150,13 +150,13 @@ class PairData(Data):
         self.charge_prot = charge_p
         self.charge_deprot = charge_d
 
-    def __inc__(self, key, value):
+    def __inc__(self, key, value, *args, **kwargs):
         if key == "edge_index_p":
             return self.x_p.size(0)
         if key == "edge_index_d":
             return self.x_d.size(0)
         else:
-            return super().__inc__(key, value)
+            return super().__inc__(key, value, *args, **kwargs)
 
 
 def make_nodes(mol, marvin_atom: int, n_features: dict):
