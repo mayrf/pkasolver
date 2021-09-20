@@ -218,6 +218,8 @@ def test_generate_dataset():
     assert hasattr(dataset[0], "x_d")
     assert hasattr(dataset[0], "charge_prot")
     assert hasattr(dataset[0], "charge_deprot")
+
+    assert dataset[0].num_nodes == len(dataset[0].x_p)
     # generated single Data set
     dataset = make_pyg_dataset_based_on_charge(df, list_n, list_e, paired=False)
     print(dataset[0])

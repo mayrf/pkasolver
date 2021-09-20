@@ -149,6 +149,7 @@ class PairData(Data):
 
         self.charge_prot = charge_p
         self.charge_deprot = charge_d
+        self.num_nodes = len(x_p)
 
     def __inc__(self, key, value, *args, **kwargs):
         if key == "edge_index_p":
