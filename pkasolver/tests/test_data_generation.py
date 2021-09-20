@@ -1,7 +1,7 @@
 from rdkit import Chem
 from pkasolver.data import make_features_dicts, make_nodes
 from pkasolver.constants import NODE_FEATURES, EDGE_FEATURES
-from pkasolver.data import make_edges_and_attr, make_nodes
+from pkasolver.data import make_edges_and_attr, make_nodes,load_data
 
 
 def test_features_dicts():
@@ -103,21 +103,7 @@ def test_edges_generation():
     )
 
 
-def load_data() -> dict:
 
-    """Helper function loading the raw dataset"""
-
-    base = "data/Baltruschat"
-    sdf_filepath_training = f"{base}/combined_training_datasets_unique.sdf"
-    sdf_filepath_novartis = f"{base}/novartis_cleaned_mono_unique_notraindata.sdf"
-    sdf_filepath_AvLiLuMoVe = f"{base}/AvLiLuMoVe_cleaned_mono_unique_notraindata.sdf"
-
-    datasets = {
-        "Training": sdf_filepath_training,
-        "Novartis": sdf_filepath_novartis,
-        "AvLiLuMoVe": sdf_filepath_AvLiLuMoVe,
-    }
-    return datasets
 
 
 def test_use_dataset_for_node_generation():
@@ -217,8 +203,6 @@ def test_generate_dataset():
     """Test that data classes instances are created correctly"""
     from pkasolver.data import (
         preprocess,
-        mol_to_single_mol_data,
-        mol_to_paired_mol_data,
         make_pyg_dataset_based_on_charge,
         make_pyg_dataset_based_on_number_of_hydrogens,
     )
@@ -233,13 +217,21 @@ def test_generate_dataset():
     # start with generating datasets based on charge
 
     # generated PairedData set
-    make_pyg_dataset_based_on_charge(df, list_n, list_e, paired=True)
+    dataset = make_pyg_dataset_based_on_charge(df, list_n, list_e, paired=True)
+    print(dataset[0])
     # generated single Data set
-    make_pyg_dataset_based_on_charge(df, list_n, list_e, paired=False)
+    dataset = make_pyg_dataset_based_on_charge(df, list_n, list_e, paired=False)
+    print(dataset[0])
 
     # start with generating datasets based on hydrogen count
 
     # generated PairedData set
-    make_pyg_dataset_based_on_number_of_hydrogens(df, list_n, list_e, paired=True)
+    dataset = make_pyg_dataset_based_on_number_of_hydrogens(
+        df, list_n, list_e, paired=True
+    )
+    print(dataset[0])
     # generated single Data set
-    make_pyg_dataset_based_on_number_of_hydrogens(df, list_n, list_e, paired=False)
+    dataset = make_pyg_dataset_based_on_number_of_hydrogens(
+        df, list_n, list_e, paired=False
+    )
+    print(dataset[0])

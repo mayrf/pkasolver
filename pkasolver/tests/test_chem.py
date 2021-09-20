@@ -1,6 +1,5 @@
 from pkasolver.chem import create_conjugate
-import numpy as np
-from .test_data_generation import load_data
+from pkasolver.data import load_data
 from rdkit import Chem
 
 

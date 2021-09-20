@@ -17,6 +17,22 @@ from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+def load_data(base: str = "data/Baltruschat") -> dict:
+
+    """Helper function loading the raw dataset"""
+
+    sdf_filepath_training = f"{base}/combined_training_datasets_unique.sdf"
+    sdf_filepath_novartis = f"{base}/novartis_cleaned_mono_unique_notraindata.sdf"
+    sdf_filepath_AvLiLuMoVe = f"{base}/AvLiLuMoVe_cleaned_mono_unique_notraindata.sdf"
+
+    datasets = {
+        "Training": sdf_filepath_training,
+        "Novartis": sdf_filepath_novartis,
+        "AvLiLuMoVe": sdf_filepath_AvLiLuMoVe,
+    }
+    return datasets
+
+
 # splits a Dataframes rows randomly into two new Dataframes with a defined size ratio
 def train_test_split_df(df, ratio, seed=42):
     random.seed(seed)
