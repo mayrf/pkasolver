@@ -283,7 +283,7 @@ def make_pyg_dataset_based_on_charge(df, list_n: list, list_e: list, paired=Fals
     if paired:
         dataset = []
         for i in range(len(df.index)):
-            m, charge = mol_to_single_mol_data(
+            m = mol_to_paired_mol_data(
                 df.iloc[i],
                 selected_node_features,
                 selected_edge_features,
@@ -338,12 +338,15 @@ def make_pyg_dataset_based_on_charge(df, list_n: list, list_e: list, paired=Fals
 
 
 def make_pyg_dataset_based_on_number_of_hydrogens(
-    df, list_n: list, list_e: list, paired=False, mode: str = "protonated"
+    df, list_n: list, list_e: list, paired=False, mode: str = "all"
 ):
     """Take a Dataframe, a list of strings of node features, a list of strings of edge features
     and return a List of PyG Data objects.
     """
     print(f"Generating data with paired boolean set to: {paired}")
+
+    if paired is False and mode not in ["protonated", "deprotonated"]:
+        raise RuntimeError(f"Wrong combination of {mode} and {paired}")
 
     selected_node_features = make_features_dicts(NODE_FEATURES, list_n)
     selected_edge_features = make_features_dicts(EDGE_FEATURES, list_e)

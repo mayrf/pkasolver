@@ -1,7 +1,7 @@
 from rdkit import Chem
 from pkasolver.data import make_features_dicts, make_nodes
 from pkasolver.constants import NODE_FEATURES, EDGE_FEATURES
-from pkasolver.data import make_edges_and_attr, make_nodes,load_data
+from pkasolver.data import make_edges_and_attr, make_nodes, load_data
 
 
 def test_features_dicts():
@@ -101,9 +101,6 @@ def test_edges_generation():
             ]
         ),
     )
-
-
-
 
 
 def test_use_dataset_for_node_generation():
@@ -211,14 +208,16 @@ def test_generate_dataset():
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Training"])
     list_n = ["atomic_number", "formal_charge"]
-    n_feat = make_features_dicts(NODE_FEATURES, list_n)
     list_e = ["bond_type", "is_conjugated"]
-    e_feat = make_features_dicts(EDGE_FEATURES, list_e)
     # start with generating datasets based on charge
 
     # generated PairedData set
     dataset = make_pyg_dataset_based_on_charge(df, list_n, list_e, paired=True)
     print(dataset[0])
+    assert hasattr(dataset[0], "x_p")
+    assert hasattr(dataset[0], "x_d")
+    assert hasattr(dataset[0], "charge_prot")
+    assert hasattr(dataset[0], "charge_deprot")
     # generated single Data set
     dataset = make_pyg_dataset_based_on_charge(df, list_n, list_e, paired=False)
     print(dataset[0])
@@ -232,6 +231,6 @@ def test_generate_dataset():
     print(dataset[0])
     # generated single Data set
     dataset = make_pyg_dataset_based_on_number_of_hydrogens(
-        df, list_n, list_e, paired=False
+        df, list_n, list_e, paired=False, mode="protonated"
     )
     print(dataset[0])
