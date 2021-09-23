@@ -9,7 +9,7 @@ def dataset_to_dataloader(data, batch_size, shuffle=False):
     batch_size must be defined.
     Optional shuffle can be enabled.
     """
-    return DataLoader(data, batch_size=batch_size, shuffle=shuffle, follow_batch=['x2'])
+    return DataLoader(data, batch_size=batch_size, shuffle=shuffle, follow_batch=['x_p','x_d'])
 
 def test_ml_model(baseline_models, X_data, y_data, dataset_name):
     res ={'Dataset':dataset_name,
