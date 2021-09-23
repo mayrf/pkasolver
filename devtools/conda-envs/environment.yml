@@ -1,8 +1,11 @@
-name: test
+name: testenv
 channels:
   - defaults
   - rdkit
   - conda-forge
+  - pyg
+  - pytorch
+  - nvidia 
 dependencies:
   - seaborn
   - rdkit
@@ -11,4 +14,8 @@ dependencies:
   - python
   - jupyterlab
   - pip
-  - 
+  - pytorch 
+  - torchvision 
+  - torchaudio 
+  - cudatoolkit=11.1
+  - pyg
