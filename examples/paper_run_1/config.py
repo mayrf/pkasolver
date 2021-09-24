@@ -3,16 +3,6 @@
 # raw data paths
 
 raw_data_dir = "../../data/Baltruschat/"
-SDF_TRAIN = raw_data_dir + "combined_training_datasets_unique.sdf"
-TRAIN_NAME = "Baltruschat"
-
-SDF_TEST = [
-    raw_data_dir + "novartis_cleaned_mono_unique_notraindata.sdf",
-    raw_data_dir + "AvLiLuMoVe_cleaned_mono_unique_notraindata.sdf",
-]
-TEST_NAMES = ["Novartis", "Literature"]
-
-# PAIRED = False
 TRAIN_SIZE = 0.8
 
 # Morgan fingerprints
