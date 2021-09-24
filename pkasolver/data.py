@@ -34,7 +34,10 @@ def load_data(base: str = "data/Baltruschat") -> dict:
 
 
 # splits a Dataframes rows randomly into two new Dataframes with a defined size ratio
-def train_test_split_df(df, ratio, seed=42):
+def train_validation_set_split(df: pd.DataFrame, ratio: float, seed=42):
+
+    assert ratio > 0.0 and ratio < 1.0
+
     random.seed(seed)
     length = len(df)
     split = round(length * ratio)
@@ -102,12 +105,14 @@ def preprocess(sdf_filename: str):
     return df
 
 
-def preprocess_all(datasets, title="pd_all_datasets"):
+def preprocess_all(sdf_files) -> dict:
     """Take dict of sdf paths, process to Dataframes and save it as a pickle file."""
-    pd_datasets = {}
-    for name, sdf_filename in datasets.items():
-        pd_datasets[name] = preprocess(sdf_filename)
-    return pd_datasets
+    datasets = {}
+    for name, sdf_filename in sdf_files.items():
+        print(f"{name} : {sdf_filename}")
+        print("###############")
+        datasets[name] = preprocess(sdf_filename)
+    return datasets
 
 
 # Random Forrest/ML preparation functions
@@ -149,7 +154,8 @@ class PairData(Data):
 
         self.charge_prot = charge_p
         self.charge_deprot = charge_d
-        self.num_nodes = len(x_p)
+        if x_p is not None:
+            self.num_nodes = len(x_p)
 
     def __inc__(self, key, value, *args, **kwargs):
         if key == "edge_index_p":
@@ -185,22 +191,8 @@ def make_edges_and_attr(mol, e_features):
     edges = []
     edge_attr = []
     for bond in mol.GetBonds():
-        edges.append(
-            np.array(
-                [
-                    [bond.GetBeginAtomIdx()],
-                    [bond.GetEndAtomIdx()],
-                ]
-            )
-        )
-        edges.append(
-            np.array(
-                [
-                    [bond.GetEndAtomIdx()],
-                    [bond.GetBeginAtomIdx()],
-                ]
-            )
-        )
+        edges.append(np.array([[bond.GetBeginAtomIdx()], [bond.GetEndAtomIdx()],]))
+        edges.append(np.array([[bond.GetEndAtomIdx()], [bond.GetBeginAtomIdx()],]))
         edge = []
         for feat in e_features.values():
             edge.append(feat(bond))
@@ -233,11 +225,8 @@ def mol_to_features(row, n_features: dict, e_features: dict, protonation_state: 
         raise RuntimeError()
 
 
-# Neural net data functions - main
 def mol_to_paired_mol_data(
-    row,
-    n_features,
-    e_features,
+    row, n_features, e_features,
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
@@ -285,9 +274,7 @@ def make_pyg_dataset_based_on_charge(df, list_n: list, list_e: list, paired=Fals
         dataset = []
         for i in range(len(df.index)):
             m = mol_to_paired_mol_data(
-                df.iloc[i],
-                selected_node_features,
-                selected_edge_features,
+                df.iloc[i], selected_node_features, selected_edge_features,
             )
             m.y = torch.tensor([float(df.pKa[i])], dtype=torch.float32)
             m.ID = df.ID[i]
