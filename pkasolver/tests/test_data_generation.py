@@ -154,11 +154,7 @@ def test_generate_data_intances():
     assert charge1 == 1
     assert charge2 == 0
 
-    d3 = mol_to_paired_mol_data(
-        df.iloc[mol_idx],
-        n_feat,
-        e_feat,
-    )
+    d3 = mol_to_paired_mol_data(df.iloc[mol_idx], n_feat, e_feat,)
     # all of them have the same number of nodes
     assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
     # but different node features
@@ -177,11 +173,7 @@ def test_generate_data_intances():
     d2, charge2 = mol_to_single_mol_data(
         df.iloc[mol_idx], n_feat, e_feat, "deprotonated"
     )
-    d3 = mol_to_paired_mol_data(
-        df.iloc[mol_idx],
-        n_feat,
-        e_feat,
-    )
+    d3 = mol_to_paired_mol_data(df.iloc[mol_idx], n_feat, e_feat,)
     print(df.iloc[mol_idx].smiles)
     assert charge1 == 1
     assert charge2 == 0
@@ -236,3 +228,26 @@ def test_generate_dataset():
         df, list_n, list_e, paired=False, mode="protonated"
     )
     print(dataset[0])
+
+
+def test_generate_dataloader():
+    """Test that data classes instances are created correctly"""
+    from pkasolver.data import (
+        preprocess,
+        make_pyg_dataset_based_on_number_of_hydrogens,
+    )
+    from pkasolver.ml import dataset_to_dataloader
+
+    # setupt dataframe and features
+    sdf_filepaths = load_data()
+    df = preprocess(sdf_filepaths["Novartis"])
+    list_n = ["atomic_number", "formal_charge"]
+    list_e = ["bond_type", "is_conjugated"]
+    # start with generating datasets based on charge
+
+    # generated PairedData set
+    dataset = make_pyg_dataset_based_on_number_of_hydrogens(
+        df, list_n, list_e, paired=True
+    )
+    l = dataset_to_dataloader(dataset, batch_size=64, shuffle=False)
+    next(iter(l))
