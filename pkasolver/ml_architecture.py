@@ -14,8 +14,8 @@ from pkasolver.constants import DEVICE, SEED
 def nnconv_block(
     embedding_size: int,
     num_graph_layer: int,
-    num_edge_features: int,
     num_node_features: int,
+    num_edge_features: int,
 ):
     nn = Sequential(
         Linear(num_edge_features, 16),
@@ -69,8 +69,8 @@ class GCN(torch.nn.Module):
 class GCN_single:
     def _forward(self, x, edge_index, x_batch):
 
-        for i in range(len(self.convs_x)):
-            x = self.convs_x[i](x, edge_index)
+        for i in range(len(self.convs)):
+            x = self.convs[i](x, edge_index)
             x = x.relu()
 
         x = global_max_pool(
@@ -85,10 +85,15 @@ class GCN_single:
 
 class GCN_prot(GCN, GCN_single):
     def __init__(
-        self, embedding_size, num_graph_layer, num_linear_layer, num_node_features
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features,
+        num_edge_features,
     ):
         super().__init__()
-        self.convs_x = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
+        self.convs = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
         self.lin = lin_block(embedding_size, num_linear_layer)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -97,10 +102,15 @@ class GCN_prot(GCN, GCN_single):
 
 class GCN_deprot(GCN, GCN_single):
     def __init__(
-        self, embedding_size, num_graph_layer, num_linear_layer, num_node_features
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features,
+        num_edge_features,
     ):
         super().__init__()
-        self.convs_x = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
+        self.convs = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
         self.lin = lin_block(embedding_size, num_linear_layer)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -109,20 +119,25 @@ class GCN_deprot(GCN, GCN_single):
 
 class GCN_pair(GCN):
     def __init__(
-        self, embedding_size, num_graph_layer, num_linear_layer, num_node_features
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features: int,
+        num_edge_features: int,
     ):
         super().__init__()
-        self.convs_x = gcnconv_block(embedding_size, num_graph_layer)
-        self.convs_x2 = gcnconv_block(embedding_size, num_graph_layer)
+        self.convs_p = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
+        self.convs_d = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
         self.lin = lin_block(embedding_size * 2, num_linear_layer)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
 
-        for i in range(len(self.convs_x)):
-            x_p = self.convs_x[i](x_p, data.edge_index_p)
+        for i in range(len(self.convs_p)):
+            x_p = self.convs_p[i](x_p, data.edge_index_p)
             x_p = x_p.relu()
-        for i in range(len(self.convs_x2)):
-            x_d = self.convs_x2[i](x_d, data.edge_index_d)
+        for i in range(len(self.convs_d)):
+            x_d = self.convs_d[i](x_d, data.edge_index_d)
             x_d = x_d.relu()
 
         x_p = global_max_pool(
@@ -139,34 +154,52 @@ class GCN_pair(GCN):
 
 class NNConv_single:
     def _forward(self, x, x_batch, edge_attr, edge_index):
-        for i in range(len(self.convs_x)):
-            x_p = self.convs_x[i](x, edge_index, edge_attr)
-            x_p = x_p.relu()
+        for i in range(len(self.convs)):
+            x = self.convs[i](x, edge_index, edge_attr)
+            x = x.relu()
 
-        x_p = global_max_pool(
-            x_p, x_batch.to(device=DEVICE)
+        x = global_max_pool(
+            x, x_batch.to(device=DEVICE)
         )  # [batch_size, hidden_channels]
-        x_p = F.dropout(x_p, p=0.5, training=self.training)
+        x = F.dropout(x, p=0.5, training=self.training)
 
         for i in range(len(self.lin)):
-            x_p = self.lin[i](x_p)
-        return x_p
+            x = self.lin[i](x)
+        return x
 
 
 class NNConv_prot(GCN, NNConv_single):
-    def __init__(self, embedding_size, num_graph_layer, num_linear_layer):
+    def __init__(
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features,
+        num_edge_features,
+    ):
         super().__init__()
-        self.convs_x = nnconv_block(embedding_size, num_graph_layer)
+        self.convs = nnconv_block(
+            embedding_size, num_graph_layer, num_node_features, num_edge_features
+        )
         self.lin = lin_block(embedding_size, num_linear_layer)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
         return self._forward(x_p, data.x_p_batch, edge_attr_p, data.edge_index_p)
 
 
-class NNConv_deprot(GCN):
-    def __init__(self, embedding_size, num_graph_layer, num_linear_layer):
+class NNConv_deprot(GCN, NNConv_single):
+    def __init__(
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features,
+        num_edge_features,
+    ):
         super().__init__()
-        self.convs_x = nnconv_block(embedding_size, num_graph_layer)
+        self.convs = nnconv_block(
+            embedding_size, num_graph_layer, num_node_features, num_edge_features
+        )
         self.lin = lin_block(embedding_size, num_linear_layer)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -174,19 +207,30 @@ class NNConv_deprot(GCN):
 
 
 class NNConv_pair(GCN):
-    def __init__(self, embedding_size, num_graph_layer, num_linear_layer):
+    def __init__(
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features,
+        num_edge_features,
+    ):
         super().__init__()
-        self.convs_x = nnconv_block(embedding_size, num_graph_layer)
-        self.convs_x2 = nnconv_block(embedding_size, num_graph_layer)
+        self.convs_d = nnconv_block(
+            embedding_size, num_graph_layer, num_node_features, num_edge_features
+        )
+        self.convs_p = nnconv_block(
+            embedding_size, num_graph_layer, num_node_features, num_edge_features
+        )
         self.lin = lin_block(embedding_size * 2, num_linear_layer)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
-        for i in range(len(self.convs_x)):
-            x_p = self.convs_x[i](x_p, data.edge_index_p, edge_attr_p)
+        for i in range(len(self.convs_d)):
+            x_p = self.convs_d[i](x_p, data.edge_index_p, edge_attr_p)
             x_p = x_p.relu()
 
-        for i in range(len(self.convs_x2)):
-            x_d = self.convs_x2[i](x_d, data.edge_index_d, edge_attr_d)
+        for i in range(len(self.convs_p)):
+            x_d = self.convs_p[i](x_d, data.edge_index_d, edge_attr_d)
             x_d = x_d.relu()
 
         x_p = global_max_pool(
