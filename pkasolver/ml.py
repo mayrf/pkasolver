@@ -1,6 +1,7 @@
 from torch_geometric.loader import DataLoader
 import torch
 import pandas as pd
+from pkasolver.constants import DEVICE
 
 # PyG Dataset to Dataloader
 def dataset_to_dataloader(data, batch_size, shuffle=True):
@@ -25,7 +26,7 @@ def test_ml_model(baseline_models, X_data, y_data, dataset_name):
 def graph_predict(model, loader, device="cpu"):
     model.eval()
     for i, data in enumerate(loader):  # Iterate in batches over the training dataset.
-        data.to(device=device)
+        data.to(device=DEVICE)
         y_pred = model(
             x=data.x,
             x2=data.x2,
