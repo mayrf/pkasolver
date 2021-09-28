@@ -56,7 +56,7 @@ def test_train_gcn_models():
     from pkasolver.data import (
         load_data,
         preprocess,
-        make_pyg_dataset_based_on_number_of_hydrogens,
+        make_pyg_dataset_from_dataframe,
     )
     from pkasolver.ml import dataset_to_dataloader
 
@@ -67,9 +67,7 @@ def test_train_gcn_models():
     # start with generating datasets based on charge
 
     # generated PairedData set
-    dataset = make_pyg_dataset_based_on_number_of_hydrogens(
-        df, list_n, list_e, paired=True
-    )
+    dataset = make_pyg_dataset_from_dataframe(df, list_n, list_e, paired=True)
     l = dataset_to_dataloader(dataset, batch_size=64, shuffle=False)
 
     for model_raw in [

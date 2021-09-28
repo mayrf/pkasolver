@@ -260,70 +260,8 @@ def mol_to_single_mol_data(
     return Data(x=node_p, edge_index=edge_index_p, edge_attr=edge_attr_p), charge
 
 
-def make_pyg_dataset_based_on_charge(df, list_n: list, list_e: list, paired=False):
-    """Take a Dataframe, a list of strings of node features, a list of strings of edge features
-    and return a List of PyG Data objects.
-    """
-    print(f"Generating data with paired boolean set to: {paired}")
-    selected_node_features = make_features_dicts(NODE_FEATURES, list_n)
-    selected_edge_features = make_features_dicts(EDGE_FEATURES, list_e)
-    if paired:
-        dataset = []
-        for i in range(len(df.index)):
-            m = mol_to_paired_mol_data(
-                df.iloc[i], selected_node_features, selected_edge_features,
-            )
-            m.y = torch.tensor([float(df.pKa[i])], dtype=torch.float32)
-            m.ID = df.ID[i]
-            m.to(device=DEVICE)  # NOTE: put everything on the GPU
-            dataset.append(m)
-        return dataset
-    else:
-        dataset = []
-        for i in range(len(df.index)):
-            charge_prot = np.sum(
-                [a.GetFormalCharge() for a in df.iloc[i].protonated.GetAtoms()]
-            )
-            charge_deprot = np.sum(
-                [a.GetFormalCharge() for a in df.iloc[i].deprotonated.GetAtoms()]
-            )
-
-            if (
-                charge_prot + charge_deprot == 1
-                or charge_prot + charge_deprot == 3
-                or charge_prot + charge_deprot == 5
-            ):
-                m, molecular_charge = mol_to_single_mol_data(
-                    df.iloc[i],
-                    selected_node_features,
-                    selected_edge_features,
-                    protonation_state="protonated",
-                )
-            elif (
-                charge_prot + charge_deprot == -1
-                or charge_prot + charge_deprot == -3
-                or charge_prot + charge_deprot == -5
-                or charge_prot + charge_deprot == -7
-            ):
-                m, molecular_charge = mol_to_single_mol_data(
-                    df.iloc[i],
-                    selected_node_features,
-                    selected_edge_features,
-                    protonation_state="deprotonated",
-                )
-            else:
-                raise RuntimeError(charge_prot, charge_deprot)
-
-            m.y = torch.tensor([float(df.pKa[i])], dtype=torch.float32, device=DEVICE)
-            m.ID = df.ID[i]
-            m.charge = molecular_charge
-            m.to(device=DEVICE)  # NOTE: put everything on the GPU
-            dataset.append(m)
-        return dataset
-
-
-def make_pyg_dataset_based_on_number_of_hydrogens(
-    df, list_n: list, list_e: list, paired=False, mode: str = "all"
+def make_pyg_dataset_from_dataframe(
+    df: pd.DataFrame, list_n: list, list_e: list, paired=False, mode: str = "all"
 ):
     """Take a Dataframe, a list of strings of node features, a list of strings of edge features
     and return a List of PyG Data objects.
@@ -341,7 +279,6 @@ def make_pyg_dataset_based_on_number_of_hydrogens(
             m = mol_to_paired_mol_data(
                 df.iloc[i], selected_node_features, selected_edge_features
             )
-
             m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
             m.ID = df.ID.iloc[i]
             m.to(device=DEVICE)  # NOTE: put everything on the GPU
