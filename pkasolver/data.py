@@ -11,10 +11,7 @@ from rdkit import Chem
 from torch_geometric.data import Data
 
 from pkasolver.chem import create_conjugate
-from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
-
-# NOTE: set device to cuda if available
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES, DEVICE
 
 
 def load_data(base: str = "data/Baltruschat") -> dict:
@@ -278,7 +275,7 @@ def make_pyg_dataset_based_on_charge(df, list_n: list, list_e: list, paired=Fals
             )
             m.y = torch.tensor([float(df.pKa[i])], dtype=torch.float32)
             m.ID = df.ID[i]
-            m.to(device=device)  # NOTE: put everything on the GPU
+            m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
         return dataset
     else:
@@ -317,10 +314,10 @@ def make_pyg_dataset_based_on_charge(df, list_n: list, list_e: list, paired=Fals
             else:
                 raise RuntimeError(charge_prot, charge_deprot)
 
-            m.y = torch.tensor([float(df.pKa[i])], dtype=torch.float32, device=device)
+            m.y = torch.tensor([float(df.pKa[i])], dtype=torch.float32, device=DEVICE)
             m.ID = df.ID[i]
             m.charge = molecular_charge
-            m.to(device=device)  # NOTE: put everything on the GPU
+            m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
         return dataset
 
@@ -347,7 +344,7 @@ def make_pyg_dataset_based_on_number_of_hydrogens(
 
             m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
             m.ID = df.ID.iloc[i]
-            m.to(device=device)  # NOTE: put everything on the GPU
+            m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
         return dataset
     else:
@@ -362,7 +359,7 @@ def make_pyg_dataset_based_on_number_of_hydrogens(
             )
             m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
             m.ID = df.ID.iloc[i]
-            m.to(device=device)  # NOTE: put everything on the GPU
+            m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
         return dataset
 
