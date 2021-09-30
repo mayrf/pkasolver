@@ -15,7 +15,7 @@ NUM_ESTIMATORS = 100  # 1000 Baltruschat
 # GCN
 BATCH_SIZE = 64
 LEARNING_RATE = 0.001
-NUM_EPOCHS = 100  # 3000
+NUM_EPOCHS = 2000  # 3000
 
 NUM_GRAPH_LAYERS = 4
 NUM_LINEAR_LAYERS = 2
@@ -38,4 +38,3 @@ list_edge_features = ["bond_type", "is_conjugated", "rotatable"]
 
 num_node_features = len(list_node_features)
 num_edge_features = len(list_edge_features)
-
