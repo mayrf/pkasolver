@@ -4,7 +4,7 @@ import pickle
 import torch
 import torch.nn.functional as F
 from torch.nn import Linear, ModuleList, ReLU, Sequential
-from torch_geometric.nn import GCNConv, NNConv, global_max_pool
+from torch_geometric.nn import GCNConv, NNConv, global_max_pool, GlobalAttention
 
 from pkasolver.constants import DEVICE, SEED
 
@@ -274,6 +274,81 @@ class NNConv_pair(GCN):
         )  # [batch_size, hidden_channels]
         x_d = global_max_pool(x_d, data.x_d_batch.to(device=DEVICE))
         x = torch.cat((x_p, x_d), 1)
+        x = F.dropout(x, p=0.5, training=self.training)
+
+        for i in range(len(self.lin)):
+            x = self.lin[i](x)
+        return x
+
+
+class Conv_prot_attpooling(GCN):
+    def __init__(
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features,
+        num_edge_features,
+    ):
+        super().__init__()
+        self.convs = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
+        self.lin = lin_block(embedding_size, num_linear_layer)
+        self.pool = GlobalAttention(
+            Sequential(
+                Linear(embedding_size, embedding_size),
+                ReLU(),
+                Linear(embedding_size, 1),
+            )
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        x, edge_index, x_batch = x_p, data.edge_index_p, data.x_p_batch
+
+        for i in range(len(self.convs)):
+            x = self.convs[i](x, edge_index)
+            x = x.relu()
+
+        x = self.pool(x, x_batch.to(device=DEVICE))  # [batch_size, hidden_channels]
+        x = F.dropout(x, p=0.5, training=self.training)
+
+        for i in range(len(self.lin)):
+            x = self.lin[i](x)
+        return x
+
+
+class Conv_prot_attpooling_additional(GCN):
+    def __init__(
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features,
+        num_edge_features,
+    ):
+        super().__init__()
+        self.convs = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
+        self.lin = lin_block(embedding_size + num_node_features, num_linear_layer)
+        self.pool = GlobalAttention(
+            Sequential(
+                Linear(num_node_features, num_node_features),
+                ReLU(),
+                Linear(num_node_features, 1),
+            )
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        x, edge_index, x_batch = (
+            x_p,
+            data.edge_index_p,
+            data.x_p_batch.to(device=DEVICE),
+        )
+        x_att = self.pool(x, x_batch)
+        for i in range(len(self.convs)):
+            x = self.convs[i](x, edge_index)
+            x = x.relu()
+
+        x = global_max_pool(x, x_batch)  # [batch_size, hidden_channels]
+        x = torch.cat((x, x_att), 1)
         x = F.dropout(x, p=0.5, training=self.training)
 
         for i in range(len(self.lin)):

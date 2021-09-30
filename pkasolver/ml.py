@@ -46,7 +46,7 @@ def graph_predict(model, loader):
         else:
             Y_true = torch.hstack((Y_true, y_true))
             Y_pred = torch.hstack((Y_pred, y_pred))
-    return Y_true.numpy(), Y_pred.numpy()
+    return Y_true.cpu().numpy(), Y_pred.cpu().numpy()
 
 
 def test_graph_model(graph_models, loader, dataset_name):
@@ -55,5 +55,7 @@ def test_graph_model(graph_models, loader, dataset_name):
     }
     for mode, models in graph_models.items():
         for edge, model in models.items():
+            model.to(device=DEVICE)
             res["pKa_true"], res[f"GCN_{mode}_{edge}"] = graph_predict(model, loader)
+            model.to(device='cpu')
     return pd.DataFrame(res)
