@@ -23,17 +23,22 @@ def test_ml_model(baseline_models, X_data, y_data, dataset_name):
     return pd.DataFrame(res)
 
 
-def graph_predict(model, loader, device="cpu"):
+def graph_predict(model, loader):
     model.eval()
     for i, data in enumerate(loader):  # Iterate in batches over the training dataset.
         data.to(device=DEVICE)
-        y_pred = model(
-            x=data.x,
-            x2=data.x2,
-            edge_attr=data.edge_attr,
-            edge_attr2=data.edge_attr2,
-            data=data,
-        ).reshape(-1)
+        y_pred = (
+            model(
+                x_p=data.x_p,
+                x_d=data.x_d,
+                edge_attr_p=data.edge_attr_p,
+                edge_attr_d=data.edge_attr_d,
+                data=data,
+            )
+            .reshape(-1)
+            .detach()
+        )
+
         y_true = data.y
         if i == 0:
             Y_pred = y_pred
@@ -41,7 +46,7 @@ def graph_predict(model, loader, device="cpu"):
         else:
             Y_true = torch.hstack((Y_true, y_true))
             Y_pred = torch.hstack((Y_pred, y_pred))
-    return Y_true.detach().numpy(), Y_pred.detach().numpy()
+    return Y_true.numpy(), Y_pred.numpy()
 
 
 def test_graph_model(graph_models, loader, dataset_name):
