@@ -152,6 +152,42 @@ class GCN_pair(GCN):
         return x
 
 
+class GCN_pair_charge_based(GCN):
+    def __init__(
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features: int,
+        num_edge_features: int,
+    ):
+        super().__init__()
+        self.convs = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
+        self.lin_pos = lin_block(embedding_size * 2, num_linear_layer)
+        self.lin_neu = lin_block(embedding_size * 2, num_linear_layer)
+        self.lin_neg = lin_block(embedding_size * 2, num_linear_layer)
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+
+        for i in range(len(self.convs_p)):
+            x_p = self.convs[i](x_p, data.edge_index_p)
+            x_p = x_p.relu()
+        for i in range(len(self.convs_d)):
+            x_d = self.convs[i](x_d, data.edge_index_d)
+            x_d = x_d.relu()
+
+        x_p = global_max_pool(
+            x_p, data.x_p_batch.to(device=DEVICE)
+        )  # [batch_size, hidden_channels]
+        x_d = global_max_pool(x_d, data.x_d_batch.to(device=DEVICE))
+        x = torch.cat((x_p, x_d), 1)
+        x = F.dropout(x, p=0.5, training=self.training)
+
+        for i in range(len(self.lin)):
+            x = self.lin[i](x)
+        return x
+
+
 class NNConv_single:
     def _forward(self, x, x_batch, edge_attr, edge_index):
         for i in range(len(self.convs)):

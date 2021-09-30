@@ -20,12 +20,12 @@ def load_data(base: str = "data/Baltruschat") -> dict:
 
     sdf_filepath_training = f"{base}/combined_training_datasets_unique.sdf"
     sdf_filepath_novartis = f"{base}/novartis_cleaned_mono_unique_notraindata.sdf"
-    sdf_filepath_AvLiLuMoVe = f"{base}/AvLiLuMoVe_cleaned_mono_unique_notraindata.sdf"
+    sdf_filepath_Literture = f"{base}/AvLiLuMoVe_cleaned_mono_unique_notraindata.sdf"
 
     datasets = {
         "Training": sdf_filepath_training,
         "Novartis": sdf_filepath_novartis,
-        "AvLiLuMoVe": sdf_filepath_AvLiLuMoVe,
+        "Literature": sdf_filepath_Literture,
     }
     return datasets
 
