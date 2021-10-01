@@ -11,11 +11,6 @@ from sklearn.metrics import mean_squared_error
 # Attribution visualisation
 import random
 import torch
-from captum.attr import IntegratedGradients
-from captum.attr import LayerConductance
-from captum.attr import NeuronConductance
-import matplotlib.pyplot as plt
-import seaborn as sns
 import pandas as pd
 from scipy.linalg import block_diag
 import copy
