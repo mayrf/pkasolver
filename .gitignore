@@ -7,6 +7,10 @@ examples/paper_run_1/models
 examples/paper_run_1/images_and_tables
 examples/paper_run_1/testing.ipynb
 
+# custom ignores
+*.json
+*.pkl
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
