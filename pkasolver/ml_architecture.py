@@ -2,6 +2,7 @@ import copy
 import pickle
 
 import torch
+from tqdm import tqdm
 import torch.nn.functional as F
 from torch.nn import Linear, ModuleList, ReLU, Sequential
 from torch_geometric.nn import GCNConv, NNConv, global_max_pool, GlobalAttention
@@ -410,14 +411,20 @@ def save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path):
 
 
 def gcn_full_training(model, train_loader, val_loader, optimizer, path, NUM_EPOCHS):
-    for epoch in range(model.checkpoint["epoch"], NUM_EPOCHS + 1):
+    pbar = tqdm(range(model.checkpoint["epoch"], NUM_EPOCHS + 1), desc="Epoch: ")
+    for epoch in pbar:
         if epoch != 0:
             gcn_train(model, train_loader, optimizer)
         if epoch % 20 == 0:
             train_loss = gcn_test(model, train_loader)
             test_loss = gcn_test(model, val_loader)
-            print(
-                f"Epoch: {epoch:03d}, Train MAE: {train_loss:.4f}, Test MAE: {test_loss:.4f}"
+            pbar.set_description(
+                f"Train MAE: {train_loss:.4f}, Test MAE: {test_loss:.4f}"
             )
-            if epoch % 40 == 0:
-                save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path)
+
+            # print(
+            #    f"Epoch: {epoch:03d}, Train MAE: {train_loss:.4f}, Test MAE: {test_loss:.4f}"
+            # )
+            # is there a reason why we want to save this?
+            # if epoch % 40 == 0:
+            #    save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path)
