@@ -410,8 +410,13 @@ def save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path):
         pickle.dump(model, pickle_file)
 
 
-def gcn_full_training(model, train_loader, val_loader, optimizer, path, NUM_EPOCHS):
+def gcn_full_training(
+    model, train_loader, val_loader, optimizer, path, NUM_EPOCHS
+) -> dict:
     pbar = tqdm(range(model.checkpoint["epoch"], NUM_EPOCHS + 1), desc="Epoch: ")
+    results = {}
+    results["training-set"] = []
+    results["test-set"] = []
     for epoch in pbar:
         if epoch != 0:
             gcn_train(model, train_loader, optimizer)
@@ -421,10 +426,13 @@ def gcn_full_training(model, train_loader, val_loader, optimizer, path, NUM_EPOC
             pbar.set_description(
                 f"Train MAE: {train_loss:.4f}, Test MAE: {test_loss:.4f}"
             )
+            results["training-set"].append(train_loss)
+            results["test-set"].append(test_loss)
+    return results
+    # print(
+    #    f"Epoch: {epoch:03d}, Train MAE: {train_loss:.4f}, Test MAE: {test_loss:.4f}"
+    # )
+    # is there a reason why we want to save this?
+    # if epoch % 40 == 0:
+    #    save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path)
 
-            # print(
-            #    f"Epoch: {epoch:03d}, Train MAE: {train_loss:.4f}, Test MAE: {test_loss:.4f}"
-            # )
-            # is there a reason why we want to save this?
-            # if epoch % 40 == 0:
-            #    save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path)
