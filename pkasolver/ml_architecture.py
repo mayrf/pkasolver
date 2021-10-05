@@ -67,7 +67,7 @@ class GCN(torch.nn.Module):
         }
 
 
-class GCN_single:
+class GCNSingle:
     def _forward(self, x, edge_index, x_batch):
 
         for i in range(len(self.convs)):
@@ -84,7 +84,7 @@ class GCN_single:
         return x
 
 
-class GCN_prot(GCN, GCN_single):
+class GCNProt(GCN, GCNSingle):
     def __init__(
         self,
         embedding_size,
@@ -101,7 +101,7 @@ class GCN_prot(GCN, GCN_single):
         return self._forward(x_p, data.edge_index_p, data.x_p_batch)
 
 
-class GCN_deprot(GCN, GCN_single):
+class GCNDeprot(GCN, GCNSingle):
     def __init__(
         self,
         embedding_size,
@@ -118,7 +118,7 @@ class GCN_deprot(GCN, GCN_single):
         return self._forward(x_d, data.edge_index_d, data.x_d_batch)
 
 
-class GCN_pair(GCN):
+class GCNPair(GCN):
     def __init__(
         self,
         embedding_size,
@@ -189,7 +189,7 @@ class GCN_pair_charge_based(GCN):
         return x
 
 
-class NNConv_single:
+class NNConvSingle:
     def _forward(self, x, x_batch, edge_attr, edge_index):
         for i in range(len(self.convs)):
             x = self.convs[i](x, edge_index, edge_attr)
@@ -205,7 +205,7 @@ class NNConv_single:
         return x
 
 
-class NNConv_prot(GCN, NNConv_single):
+class NNConvProt(GCN, NNConvSingle):
     def __init__(
         self,
         embedding_size,
@@ -224,7 +224,7 @@ class NNConv_prot(GCN, NNConv_single):
         return self._forward(x_p, data.x_p_batch, edge_attr_p, data.edge_index_p)
 
 
-class NNConv_deprot(GCN, NNConv_single):
+class NNConvDeprot(GCN, NNConvSingle):
     def __init__(
         self,
         embedding_size,
@@ -243,7 +243,7 @@ class NNConv_deprot(GCN, NNConv_single):
         return self._forward(x_d, data.x_d_batch, edge_attr_d, data.edge_index_d)
 
 
-class NNConv_pair(GCN):
+class NNConvPair(GCN):
     def __init__(
         self,
         embedding_size,
@@ -282,34 +282,16 @@ class NNConv_pair(GCN):
         return x
 
 
-class Conv_prot_attpooling(GCN):
-    def __init__(
-        self,
-        embedding_size,
-        num_graph_layer,
-        num_linear_layer,
-        num_node_features,
-        num_edge_features,
-    ):
-        super().__init__()
-        self.convs = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
-        self.lin = lin_block(embedding_size, num_linear_layer)
-        self.pool = GlobalAttention(
-            Sequential(
-                Linear(embedding_size, embedding_size),
-                ReLU(),
-                Linear(embedding_size, 1),
-            )
-        )
-
-    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
-        x, edge_index, x_batch = x_p, data.edge_index_p, data.x_p_batch
-
+class GCNAttpoolSingle:
+    def _forward(self, x, edge_index, x_batch):
+        x_batch.to(device=DEVICE)
+        x_att = self.pool(x, x_batch)
         for i in range(len(self.convs)):
             x = self.convs[i](x, edge_index)
             x = x.relu()
 
-        x = self.pool(x, x_batch.to(device=DEVICE))  # [batch_size, hidden_channels]
+        x = global_max_pool(x, x_batch)  # [batch_size, hidden_channels]
+        x = torch.cat((x, x_att), 1)
         x = F.dropout(x, p=0.5, training=self.training)
 
         for i in range(len(self.lin)):
@@ -317,7 +299,7 @@ class Conv_prot_attpooling(GCN):
         return x
 
 
-class Conv_prot_attpooling_additional(GCN):
+class GCNAttpoolProt(GCN):
     def __init__(
         self,
         embedding_size,
@@ -350,6 +332,300 @@ class Conv_prot_attpooling_additional(GCN):
 
         x = global_max_pool(x, x_batch)  # [batch_size, hidden_channels]
         x = torch.cat((x, x_att), 1)
+        x = F.dropout(x, p=0.5, training=self.training)
+
+        for i in range(len(self.lin)):
+            x = self.lin[i](x)
+        return x
+
+
+class GCNAttpoolDeprot(GCN):
+    def __init__(
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features,
+        num_edge_features,
+    ):
+        super().__init__()
+        self.convs = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
+        self.lin = lin_block(embedding_size + num_node_features, num_linear_layer)
+        self.pool = GlobalAttention(
+            Sequential(
+                Linear(num_node_features, num_node_features),
+                ReLU(),
+                Linear(num_node_features, 1),
+            )
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        x, edge_index, x_batch = (
+            x_d,
+            data.edge_index_d,
+            data.x_d_batch.to(device=DEVICE),
+        )
+        x_att = self.pool(x, x_batch)
+        for i in range(len(self.convs)):
+            x = self.convs[i](x, edge_index)
+            x = x.relu()
+
+        x = global_max_pool(x, x_batch)  # [batch_size, hidden_channels]
+        x = torch.cat((x, x_att), 1)
+        x = F.dropout(x, p=0.5, training=self.training)
+
+        for i in range(len(self.lin)):
+            x = self.lin[i](x)
+        return x
+
+
+class GCNAttpoolPair(GCN):
+    def __init__(
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features: int,
+        num_edge_features: int,
+    ):
+        super().__init__()
+        self.convs_p = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
+        self.convs_d = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
+        self.lin = lin_block(
+            embedding_size * 2 + 2 * num_node_features, num_linear_layer
+        )
+        self.pool_p = GlobalAttention(
+            Sequential(
+                Linear(num_node_features, num_node_features),
+                ReLU(),
+                Linear(num_node_features, 1),
+            )
+        )
+        self.pool_d = GlobalAttention(
+            Sequential(
+                Linear(num_node_features, num_node_features),
+                ReLU(),
+                Linear(num_node_features, 1),
+            )
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+        x_d_batch = data.x_d_batch.to(device=DEVICE)
+
+        x_p_att = self.pool_p(x_p, x_p_batch)
+        x_d_att = self.pool_d(x_d, x_d_batch)
+
+        for i in range(len(self.convs_p)):
+            x_p = self.convs_p[i](x_p, data.edge_index_p)
+            x_p = x_p.relu()
+        for i in range(len(self.convs_d)):
+            x_d = self.convs_d[i](x_d, data.edge_index_d)
+            x_d = x_d.relu()
+
+        x_p = global_max_pool(
+            x_p, data.x_p_batch.to(device=DEVICE)
+        )  # [batch_size, hidden_channels]
+        x_d = global_max_pool(x_d, data.x_d_batch.to(device=DEVICE))
+        x = torch.cat((x_p, x_d, x_p_att, x_d_att), 1)
+        x = F.dropout(x, p=0.5, training=self.training)
+
+        for i in range(len(self.lin)):
+            x = self.lin[i](x)
+        return x
+
+
+class NNConvAttpoolSingle:
+    def _forward(self, x, edge_index, x_batch):
+
+        x_att = self.pool(x, x_batch)
+        for i in range(len(self.convs)):
+            x = self.convs[i](x, edge_index, edge_attr)
+            x = x.relu()
+
+        x = global_max_pool(
+            x, x_batch.to(device=DEVICE)
+        )  # [batch_size, hidden_channels]
+        x = torch.cat((x, x_att), 1)
+        x = F.dropout(x, p=0.5, training=self.training)
+
+        for i in range(len(self.lin)):
+            x = self.lin[i](x)
+        return x
+
+
+class NNConvAttpoolProt(GCN):
+    def __init__(
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features,
+        num_edge_features,
+    ):
+        super().__init__()
+        self.convs = nnconv_block(
+            embedding_size, num_graph_layer, num_node_features, num_edge_features
+        )
+        self.lin = lin_block(embedding_size + num_node_features, num_linear_layer)
+        self.pool = GlobalAttention(
+            Sequential(
+                Linear(num_node_features, num_node_features),
+                ReLU(),
+                Linear(num_node_features, 1),
+            )
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        x, edge_index, x_batch, edge_attr = (
+            x_p,
+            data.edge_index_p,
+            data.x_p_batch.to(device=DEVICE),
+            edge_attr_p,
+        )
+
+        x_att = self.pool(x, x_batch)
+        for i in range(len(self.convs)):
+            x = self.convs[i](x, edge_index, edge_attr)
+            x = x.relu()
+
+        x = global_max_pool(
+            x, x_batch.to(device=DEVICE)
+        )  # [batch_size, hidden_channels]
+        x = torch.cat((x, x_att), 1)
+        x = F.dropout(x, p=0.5, training=self.training)
+
+        for i in range(len(self.lin)):
+            x = self.lin[i](x)
+        return x
+
+
+class NNConvAttpoolDeprot(GCN):
+    def __init__(
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features,
+        num_edge_features,
+    ):
+        super().__init__()
+        self.convs = nnconv_block(
+            embedding_size, num_graph_layer, num_node_features, num_edge_features
+        )
+        self.lin = lin_block(embedding_size + num_node_features, num_linear_layer)
+        self.pool = GlobalAttention(
+            Sequential(
+                Linear(num_node_features, num_node_features),
+                ReLU(),
+                Linear(num_node_features, 1),
+            )
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        x, edge_index, x_batch, edge_attr = (
+            x_d,
+            data.edge_index_d,
+            data.x_d_batch.to(device=DEVICE),
+            edge_attr_d,
+        )
+
+        x_att = self.pool(x, x_batch)
+        for i in range(len(self.convs)):
+            x = self.convs[i](x, edge_index, edge_attr)
+            x = x.relu()
+
+        x = global_max_pool(
+            x, x_batch.to(device=DEVICE)
+        )  # [batch_size, hidden_channels]
+        x = torch.cat((x, x_att), 1)
+        x = F.dropout(x, p=0.5, training=self.training)
+
+        for i in range(len(self.lin)):
+            x = self.lin[i](x)
+        return x
+
+
+# class NNConvAttpoolDeprot(GCN, NNConvAttpoolSingle):
+#     def __init__(
+#         self,
+#         embedding_size,
+#         num_graph_layer,
+#         num_linear_layer,
+#         num_node_features,
+#         num_edge_features,
+#     ):
+#         super().__init__()
+#         self.convs = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
+#         self.lin = lin_block(embedding_size + num_node_features, num_linear_layer)
+#         self.pool = GlobalAttention(
+#             Sequential(
+#                 Linear(num_node_features, num_node_features),
+#                 ReLU(),
+#                 Linear(num_node_features, 1),
+#             )
+#         )
+
+#     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+#         return self._forward(x_d, data.edge_index_d, data.x_d_batch)
+
+
+class NNConvAttpoolPair(GCN):
+    def __init__(
+        self,
+        embedding_size,
+        num_graph_layer,
+        num_linear_layer,
+        num_node_features,
+        num_edge_features,
+    ):
+        super().__init__()
+        self.convs_d = nnconv_block(
+            embedding_size, num_graph_layer, num_node_features, num_edge_features
+        )
+        self.convs_p = nnconv_block(
+            embedding_size, num_graph_layer, num_node_features, num_edge_features
+        )
+        self.lin = lin_block(
+            embedding_size * 2 + 2 * num_node_features, num_linear_layer
+        )
+        self.pool_p = GlobalAttention(
+            Sequential(
+                Linear(num_node_features, num_node_features),
+                ReLU(),
+                Linear(num_node_features, 1),
+            )
+        )
+        self.pool_d = GlobalAttention(
+            Sequential(
+                Linear(num_node_features, num_node_features),
+                ReLU(),
+                Linear(num_node_features, 1),
+            )
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+
+        x_p_batch, x_d_batch = data.x_p_batch.to(device=DEVICE), data.x_d_batch.to(
+            device=DEVICE
+        )
+        x_p_att = self.pool_p(x_p, x_p_batch)
+        x_d_att = self.pool_d(x_d, x_d_batch)
+
+        for i in range(len(self.convs_d)):
+            x_p = self.convs_d[i](x_p, data.edge_index_p, edge_attr_p)
+            x_p = x_p.relu()
+
+        for i in range(len(self.convs_p)):
+            x_d = self.convs_p[i](x_d, data.edge_index_d, edge_attr_d)
+            x_d = x_d.relu()
+
+        x_p = global_max_pool(
+            x_p, data.x_p_batch.to(device=DEVICE)
+        )  # [batch_size, hidden_channels]
+        x_d = global_max_pool(x_d, data.x_d_batch.to(device=DEVICE))
+        x = torch.cat((x_p, x_d, x_p_att, x_d_att), 1)
         x = F.dropout(x, p=0.5, training=self.training)
 
         for i in range(len(self.lin)):
@@ -423,8 +699,8 @@ def gcn_full_training(model, train_loader, val_loader, optimizer, path, NUM_EPOC
             )
 
             # print(
-            #    f"Epoch: {epoch:03d}, Train MAE: {train_loss:.4f}, Test MAE: {test_loss:.4f}"
+            #     f"Epoch: {epoch:03d}, Train MAE: {train_loss:.4f}, Test MAE: {test_loss:.4f}"
             # )
-            # is there a reason why we want to save this?
-            # if epoch % 40 == 0:
-            #    save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path)
+            # # is there a reason why we want to save this?
+            if epoch % 40 == 0:
+                save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path)
