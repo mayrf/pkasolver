@@ -23,9 +23,9 @@ def create_conjugate(mol, id, pka, pH=7.4):
         atom.SetFormalCharge(charge + 1)
         if Tot_Hs == 0 or Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs + 1)
-    
-    # make protonated conjugate as pKa > pH and there are no proton at the reaction center 
-    elif pka > pH and Tot_Hs = 0:
+
+    # make protonated conjugate as pKa > pH and there are no proton at the reaction center
+    elif pka > pH and Tot_Hs == 0:
         atom.SetFormalCharge(charge + 1)
         if Tot_Hs == 0 or Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs + 1)
