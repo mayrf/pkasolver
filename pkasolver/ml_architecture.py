@@ -709,15 +709,5 @@ def gcn_full_training(
     #    f"Epoch: {epoch:03d}, Train MAE: {train_loss:.4f}, Test MAE: {test_loss:.4f}"
     # )
     # is there a reason why we want to save this?
-    # if epoch % 40 == 0:
-    #    save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path)
-
-<<<<<<< HEAD
-=======
-            # print(
-            #     f"Epoch: {epoch:03d}, Train MAE: {train_loss:.4f}, Test MAE: {test_loss:.4f}"
-            # )
-            # # is there a reason why we want to save this?
-            if epoch % 40 == 0:
-                save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path)
->>>>>>> dev_fm_ml_architecture
+    if epoch % 40 == 0:
+        save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path)
