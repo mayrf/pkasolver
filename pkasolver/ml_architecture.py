@@ -20,47 +20,6 @@ from pkasolver.constants import DEVICE, SEED
 #####################################
 
 
-def nnconv_block(
-    embedding_size: int,
-    num_graph_layer: int,
-    num_node_features: int,
-    num_edge_features: int,
-):
-    nn = Sequential(
-        Linear(num_edge_features, 16),
-        ReLU(),
-        Linear(16, num_node_features * embedding_size),
-    )
-    nn1 = Sequential(
-        Linear(num_edge_features, 16),
-        ReLU(),
-        Linear(16, embedding_size * embedding_size),
-    )
-    convs = ModuleList([NNConv(num_node_features, embedding_size, nn=nn)])
-    convs.extend(
-        [
-            NNConv(embedding_size, embedding_size, nn=nn1)
-            for i in range(num_graph_layer - 1)
-        ]
-    )
-    return convs
-
-
-def gcnconv_block(embedding_size: int, num_graph_layer: int, num_node_features: int):
-    convs = ModuleList([GCNConv(num_node_features, embedding_size)])
-    for i in range(num_graph_layer - 1):
-        convs.append(GCNConv(embedding_size_from, embedding_size_to))
-    return convs
-
-
-def lin_block(embedding_size, num_linear_layer):
-    lins = ModuleList(
-        [Linear(embedding_size, embedding_size) for i in range(num_linear_layer - 1)]
-    )
-    lins.extend([Linear(embedding_size, 1)])
-    return lins
-
-
 def attention_pooling(num_node_features):
     return GlobalAttention(
         Sequential(
@@ -124,11 +83,41 @@ class GCNSingle:
         return x
 
 
+class GCNPair:
+    def _forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+        x_d_batch = data.x_d_batch.to(device=DEVICE)
+
+        if self.attention:
+            x_p_att = self.pool(x_p, x_p_batch)
+            x_d_att = self.pool(x_d, x_d_batch)
+
+        for i in range(len(self.convs_p)):
+            x_p = self.convs_p[i](x_p, data.edge_index_p)
+            x_p = x_p.relu()
+        for i in range(len(self.convs_d)):
+            x_d = self.convs_d[i](x_d, data.edge_index_d)
+            x_d = x_d.relu()
+
+        x_p = global_mean_pool(x_p, x_p_batch)  # [batch_size, hidden_channels]
+        x_d = global_mean_pool(x_d_batch)
+        if attention:
+            x = torch.cat((x_p, x_d, x_p_att, x_d_att), 1)
+        else:
+            x = torch.cat(x_p, x_d)
+
+        x = F.dropout(x, p=0.5, training=self.training)
+
+        for i in range(len(self.lin)):
+            x = self.lin[i](x)
+        return x
+
+
 class NNConvSingle:
-    def _forward(self, x, x_batch, edge_attr, edge_index, attention):
+    def _forward(self, x, x_batch, edge_attr, edge_index):
 
         x_batch = x_batch.to(device=DEVICE)
-        if attention:
+        if self.attention:
             x_att = self.pool(x, x_batch)
 
         for i in range(len(self.convs)):
@@ -137,7 +126,7 @@ class NNConvSingle:
 
         x = global_mean_pool(x, x_batch)  # [batch_size, hidden_channels]
 
-        if attention:
+        if self.attention:
             x = torch.cat((x, x_att), 1)
 
         x = F.dropout(x, p=0.5, training=self.training)
@@ -147,37 +136,71 @@ class NNConvSingle:
         return x
 
 
+class NNConvPair:
+    def _forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+
+        x_p_batch, x_d_batch = (
+            data.x_p_batch.to(device=DEVICE),
+            data.x_d_batch.to(device=DEVICE),
+        )
+        x_p_att = self.pool_p(x_p, x_p_batch)
+        x_d_att = self.pool_d(x_d, x_d_batch)
+
+        for i in range(len(self.convs_d)):
+            x_p = self.convs_d[i](x_p, data.edge_index_p, edge_attr_p)
+            x_p = x_p.relu()
+
+        for i in range(len(self.convs_p)):
+            x_d = self.convs_p[i](x_d, data.edge_index_d, edge_attr_d)
+            x_d = x_d.relu()
+
+        x_p = global_mean_pool(x_p, x_p_batch)  # [batch_size, hidden_channels]
+        x_d = global_mean_pool(x_d, x_d_batch)
+
+        if self.attention:
+            x = torch.cat((x_p, x_d, x_p_att, x_d_att), 1)
+        else:
+            x = torch.cat((x_p, x_d), 1)
+
+        x = F.dropout(x, p=0.5, training=self.training)
+        for i in range(len(self.lin)):
+            x = self.lin[i](x)
+        return x
+
+
 class NNConvSingleArchtiecture(GCN):
     def __init__(self, num_node_features, num_edge_features):
         super().__init__()
+        self.pool = attention_pooling(num_node_features)
+
+        self.convs = self._return_nnconv(num_node_features, num_edge_features)
+
+        if attention:
+            lin1 = Linear(16 + 16, 8)
+            lin2 = Linear(8, 1)
+        else:
+            lin1 = Linear(16, 8)
+            lin2 = Linear(8, 1)
+
+        self.lins = ModuleList([lin1, lin2])
+
+    @staticmethod
+    def _return_nnconv(num_node_features, num_edge_features):
         nn1 = Sequential(
             Linear(num_edge_features, 16), ReLU(), Linear(16, num_node_features * 8),
         )
         nn2 = Sequential(Linear(num_edge_features, 16), ReLU(), Linear(16, 8 * 8),)
         conv1 = NNConv(num_node_features, 32, nn=nn1)
         conv2 = NNConv(32, 16, nn=nn2)
-
-        self.convs = ModuleList([conv1, conv2])
-
-        if attention:
-            lin1 = Linear(16 + 16, 8)
-            lin2 = Linear(8, 1)
-        else:
-            lin1 = Linear(16, 8)
-            lin2 = Linear(8, 1)
-
-        self.lins = ModuleList([lin1, lin2])
+        return ModuleList([conv1, conv2])
 
 
 class GCNSingleArchitecture(GCN):
     def __init__(self, num_node_features):
         super().__init__()
+        self.pool = attention_pooling(num_node_features)
 
-        convs1 = GCNConv(num_node_features, 32)
-        convs2 = GCNConv(32, 16)
-        convs3 = GCNConv(16, 16)
-        self.convs = ModuleList([convs1, convs2, convs3])
-
+        self.convs = self._return_conv(num_node_features)
         if attention:
             lin1 = Linear(16 + 16, 8)
             lin2 = Linear(8, 1)
@@ -186,6 +209,68 @@ class GCNSingleArchitecture(GCN):
             lin2 = Linear(8, 1)
 
         self.lins = ModuleList([lin1, lin2])
+
+    @staticmethod
+    def _return_conv(num_node_features):
+        convs1 = GCNConv(num_node_features, 32)
+        convs2 = GCNConv(32, 16)
+        convs3 = GCNConv(16, 16)
+        return ModuleList([convs1, convs2, convs3])
+
+
+class GCNPairArchitecture(GCN):
+    def __init__(self, num_node_features):
+        super().__init__()
+
+        self.pool = attention_pooling(num_node_features)
+
+        self.convs_p = self._return_conv(num_node_features)
+        self.convs_d = self._return_conv(num_node_features)
+
+        if attention:
+            lin1 = Linear(16 * 2 + 2 * num_node_features, 16)
+            lin2 = Linear(16, 1)
+        else:
+            lin1 = Linear(16 * 2, 16)
+            lin2 = Linear(16, 1)
+
+        self.lins = ModuleList([lin1, lin2])
+        self.pool_p = attention_pooling(num_node_features)
+
+    @staticmethod
+    def _return_conv(num_node_features):
+        convs1 = GCNConv(num_node_features, 32)
+        convs2 = GCNConv(32, 16)
+        convs3 = GCNConv(16, 16)
+        return ModuleList([convs1, convs2, convs3])
+
+
+class NNConvPairArchitecture(GCN):
+    def __init__(self, num_node_features, num_edge_features):
+        super().__init__()
+
+        self.pool = attention_pooling(num_node_features)
+
+        self.convs_d = self._return_nnconv(num_node_features, num_edge_features)
+        self.convs_d = self._return_nnconv(num_node_features, num_edge_features)
+
+        if attention:
+            lin1 = Linear(16 + 16, 8)
+            lin2 = Linear(8, 1)
+        else:
+            lin1 = Linear(16, 8)
+            lin2 = Linear(8, 1)
+        self.lins = ModuleList([lin1, lin2])
+
+    @staticmethod
+    def _return_nnconv(num_node_features, num_edge_features):
+        nn1 = Sequential(
+            Linear(num_edge_features, 16), ReLU(), Linear(16, num_node_features * 8),
+        )
+        nn2 = Sequential(Linear(num_edge_features, 16), ReLU(), Linear(16, 8 * 8),)
+        conv1 = NNConv(num_node_features, 32, nn=nn1)
+        conv2 = NNConv(32, 16, nn=nn2)
+        return ModuleList([conv1, conv2])
 
 
 #####################################
@@ -196,7 +281,6 @@ class GCNProt(GCNSingleArchitecture, GCNSingle):
     ):
         self.attention = attention
         super().__init__(num_node_features)
-        self.pool = attention_pooling(num_node_features)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
         return self._forward(x_p, data.edge_index_p, data.x_p_batch, self.attention)
@@ -249,148 +333,26 @@ class NNConvDeprot(NNConvSingleArchtiecture, NNConvSingle):
 #####################################
 
 
-class GCNPair(GCN):
+class GCNPair(GCNPairArchitecture, GCNPair):
     def __init__(
-        self,
-        embedding_size: int,
-        num_graph_layer: int,
-        num_linear_layer: int,
-        num_node_features: int,
-        num_edge_features: int,
-        attention: bool = False,
+        self, num_node_features: int, num_edge_features: int, attention: bool = False,
     ):
-        super().__init__()
         self.attention = attention
-        self.convs_p = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
-        self.convs_d = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
-        if attention:
-            self.lin = lin_block(
-                embedding_size * 2 + 2 * num_node_features, num_linear_layer
-            )
-        else:
-            self.lin = lin_block(embedding_size * 2, num_linear_layer)
-        self.pool_p = attention_pooling(num_node_features)
-        self.pool_d = attention_pooling(num_node_features)
+        super().__init__(num_node_features)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
-        x_p_batch = data.x_p_batch.to(device=DEVICE)
-        x_d_batch = data.x_d_batch.to(device=DEVICE)
-
-        if self.attention:
-            x_p_att = self.pool_p(x_p, x_p_batch)
-            x_d_att = self.pool_d(x_d, x_d_batch)
-
-        for i in range(len(self.convs_p)):
-            x_p = self.convs_p[i](x_p, data.edge_index_p)
-            x_p = x_p.relu()
-        for i in range(len(self.convs_d)):
-            x_d = self.convs_d[i](x_d, data.edge_index_d)
-            x_d = x_d.relu()
-
-        x_p = global_max_pool(x_p, x_p_batch)  # [batch_size, hidden_channels]
-        x_d = global_max_pool(x_d, x_d_batch)
-        if self.attention:
-            x = torch.cat((x_p, x_d, x_p_att, x_d_att), 1)
-        else:
-            x = torch.cat((x_p, x_d), 1)
-        x = F.dropout(x, p=0.5, training=self.training)
-
-        for i in range(len(self.lin)):
-            x = self.lin[i](x)
-        return x
+        return self._forward(x_p, x_d, edge_attr_p, edge_attr_d, data)
 
 
-# class GCN_pair_charge_based(GCN):
-#     def __init__(
-#         self,
-#         embedding_size,
-#         num_graph_layer,
-#         num_linear_layer,
-#         num_node_features: int,
-#         num_edge_features: int,
-#     ):
-#         super().__init__()
-#         self.convs = gcnconv_block(embedding_size, num_graph_layer, num_node_features)
-#         self.lin_pos = lin_block(embedding_size * 2, num_linear_layer)
-#         self.lin_neu = lin_block(embedding_size * 2, num_linear_layer)
-#         self.lin_neg = lin_block(embedding_size * 2, num_linear_layer)
-
-#     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
-
-#         for i in range(len(self.convs_p)):
-#             x_p = self.convs[i](x_p, data.edge_index_p)
-#             x_p = x_p.relu()
-#         for i in range(len(self.convs_d)):
-#             x_d = self.convs[i](x_d, data.edge_index_d)
-#             x_d = x_d.relu()
-
-#         x_p = global_max_pool(
-#             x_p, data.x_p_batch.to(device=DEVICE)
-#         )  # [batch_size, hidden_channels]
-#         x_d = global_max_pool(x_d, data.x_d_batch.to(device=DEVICE))
-#         x = torch.cat((x_p, x_d), 1)
-#         x = F.dropout(x, p=0.5, training=self.training)
-
-#         for i in range(len(self.lin)):
-#             x = self.lin[i](x)
-#         return x
-
-
-class NNConvPair(GCN):
+class NNConvPair(NNConvPairArchitecture, NNConvPair):
     def __init__(
-        self,
-        embedding_size: int,
-        num_graph_layer: int,
-        num_linear_layer: int,
-        num_node_features: int,
-        num_edge_features: int,
-        attention: bool = False,
+        self, num_node_features: int, num_edge_features: int, attention: bool = False,
     ):
-        super().__init__()
         self.attention = attention
-        self.convs_d = nnconv_block(
-            embedding_size, num_graph_layer, num_node_features, num_edge_features
-        )
-        self.convs_p = nnconv_block(
-            embedding_size, num_graph_layer, num_node_features, num_edge_features
-        )
-        if attention:
-            self.lin = lin_block(
-                embedding_size * 2 + 2 * num_node_features, num_linear_layer
-            )
-        else:
-            self.lin = lin_block(embedding_size * 2, num_linear_layer)
-
-        self.pool_p = attention_pooling(num_node_features)
-        self.pool_d = attention_pooling(num_node_features)
+        super().__init__(num_node_features, num_edge_features)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
-        x_p_batch = data.x_p_batch.to(device=DEVICE)
-        x_d_batch = data.x_d_batch.to(device=DEVICE)
-
-        if self.attention:
-            x_p_att = self.pool_p(x_p, x_p_batch)
-            x_d_att = self.pool_d(x_d, x_d_batch)
-
-        for i in range(len(self.convs_d)):
-            x_p = self.convs_d[i](x_p, data.edge_index_p, edge_attr_p)
-            x_p = x_p.relu()
-
-        for i in range(len(self.convs_p)):
-            x_d = self.convs_p[i](x_d, data.edge_index_d, edge_attr_d)
-            x_d = x_d.relu()
-
-        x_p = global_max_pool(x_p, x_p_batch)  # [batch_size, hidden_channels]
-        x_d = global_max_pool(x_d, x_d_batch)
-        if self.attention:
-            x = torch.cat((x_p, x_d, x_p_att, x_d_att), 1)
-        else:
-            x = torch.cat((x_p, x_d), 1)
-        x = F.dropout(x, p=0.5, training=self.training)
-
-        for i in range(len(self.lin)):
-            x = self.lin[i](x)
-        return x
+        return self._forward(x_p, x_d, edge_attr_p, edge_attr_d, data)
 
 
 # Functions for training and testing of GCN models
