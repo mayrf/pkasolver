@@ -54,7 +54,7 @@ class GCN(torch.nn.Module):
 # tie in classes
 # forward function
 #####################################
-class GCNSingle:
+class GCNSingleForward:
     def _forward(self, x, edge_index, x_batch):
         # move batch to device
         x_batch = x_batch.to(device=DEVICE)
@@ -84,7 +84,35 @@ class GCNSingle:
         return x
 
 
-class GCNPair:
+class GCNPairOneConvForward:
+    def _forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+        x_d_batch = data.x_d_batch.to(device=DEVICE)
+
+        # using only a single conv
+
+        for i in range(len(self.convs)):
+            x_p = x_p.relu()
+            x_p = self.convs[i](x_p, data.edge_index_p)
+        for i in range(len(self.convs)):
+            x_d = x_d.relu()
+            x_d = self.convs[i](x_d, data.edge_index_d)
+
+        x_p = global_mean_pool(x_p, x_p_batch)  # [batch_size, hidden_channels]
+        x_d = global_mean_pool(x_d, x_d_batch)
+
+        x_p = F.dropout(x_p, p=0.5, training=self.training)
+        x_d = F.dropout(x_d, p=0.5, training=self.training)
+
+        for i in range(len(self.lins)):
+            x_p = self.lins[i](x_p)
+        for i in range(len(self.lins)):
+            x_d = self.lins[i](x_d)
+
+        return x_p + x_d
+
+
+class GCNPairTwoConvForward:
     def _forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
         x_p_batch = data.x_p_batch.to(device=DEVICE)
         x_d_batch = data.x_d_batch.to(device=DEVICE)
@@ -116,7 +144,7 @@ class GCNPair:
         return x
 
 
-class NNConvSingle:
+class NNConvSingleForward:
     def _forward(self, x, x_batch, edge_attr, edge_index):
 
         x_batch = x_batch.to(device=DEVICE)
@@ -142,7 +170,7 @@ class NNConvSingle:
         return x
 
 
-class NNConvPair:
+class NNConvPairForward:
     def _forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
 
         x_p_batch, x_d_batch = (
@@ -251,6 +279,28 @@ class GCNPairArchitecture(GCN):
         return ModuleList([convs1, convs2, convs3])
 
 
+class GCNPairArchitectureV2(GCN):
+    def __init__(self, num_node_features):
+        super().__init__()
+
+        self.pool = attention_pooling(num_node_features)
+
+        self.convs = self._return_conv(num_node_features)
+
+        lin1 = Linear(16, 16)
+        lin2 = Linear(16, 1)
+
+        self.lins = ModuleList([lin1, lin2])
+        self.pool = attention_pooling(num_node_features)
+
+    @staticmethod
+    def _return_conv(num_node_features):
+        convs1 = GCNConv(num_node_features, 32)
+        convs2 = GCNConv(32, 16)
+        convs3 = GCNConv(16, 16)
+        return ModuleList([convs1, convs2, convs3])
+
+
 class NNConvPairArchitecture(GCN):
     def __init__(self, num_node_features, num_edge_features):
         super().__init__()
@@ -286,7 +336,7 @@ class NNConvPairArchitecture(GCN):
 #####################################
 
 
-class GCNProt(GCNSingleArchitecture, GCNSingle):
+class GCNProt(GCNSingleArchitecture, GCNSingleForward):
     def __init__(
         self, num_node_features, num_edge_features, attention=False,
     ):
@@ -298,7 +348,7 @@ class GCNProt(GCNSingleArchitecture, GCNSingle):
         return self._forward(x_p, data.edge_index_p, data.x_p_batch)
 
 
-class GCNDeprot(GCNSingleArchitecture, GCNSingle):
+class GCNDeprot(GCNSingleArchitecture, GCNSingleForward):
     def __init__(
         self, num_node_features, num_edge_features, attention=False,
     ):
@@ -311,7 +361,7 @@ class GCNDeprot(GCNSingleArchitecture, GCNSingle):
         return self._forward(x_d, data.edge_index_d, data.x_d_batch)
 
 
-class NNConvProt(NNConvSingleArchitecture, NNConvSingle):
+class NNConvProt(NNConvSingleArchitecture, NNConvSingleForward):
     def __init__(
         self, num_node_features, num_edge_features, attention=False,
     ):
@@ -325,7 +375,7 @@ class NNConvProt(NNConvSingleArchitecture, NNConvSingle):
         return self._forward(x_p, data.x_p_batch, edge_attr_p, data.edge_index_p)
 
 
-class NNConvDeprot(NNConvSingleArchitecture, NNConvSingle):
+class NNConvDeprot(NNConvSingleArchitecture, NNConvSingleForward):
     def __init__(
         self, num_node_features, num_edge_features, attention=False,
     ):
@@ -343,7 +393,7 @@ class NNConvDeprot(NNConvSingleArchitecture, NNConvSingle):
 #####################################
 
 
-class GCNPair(GCNPairArchitecture, GCNPair):
+class GCNPairTwoConv(GCNPairArchitecture, GCNPairTwoConvForward):
     def __init__(
         self, num_node_features: int, num_edge_features: int, attention: bool = False,
     ):
@@ -355,7 +405,19 @@ class GCNPair(GCNPairArchitecture, GCNPair):
         return self._forward(x_p, x_d, edge_attr_p, edge_attr_d, data)
 
 
-class NNConvPair(NNConvPairArchitecture, NNConvPair):
+class GCNPairSingleConv(GCNPairArchitectureV2, GCNPairOneConvForward):
+    def __init__(
+        self, num_node_features: int, num_edge_features: int, attention: bool = False,
+    ):
+        self.attention = attention
+        super().__init__(num_node_features)
+        print(f"Attention pooling: {self.attention}")
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        return self._forward(x_p, x_d, edge_attr_p, edge_attr_d, data)
+
+
+class NNConvPair(NNConvPairArchitecture, NNConvPairForward):
     def __init__(
         self, num_node_features: int, num_edge_features: int, attention: bool = False,
     ):
