@@ -30,8 +30,8 @@ def load_data(base: str = "data/Baltruschat") -> dict:
     return datasets
 
 
-# splits a Dataframes rows randomly into two new Dataframes with a defined size ratio
 def train_validation_set_split(df: pd.DataFrame, ratio: float, seed=42):
+    # splits a Dataframes rows randomly into two new Dataframes with a defined size ratio
 
     assert ratio > 0.0 and ratio < 1.0
 
