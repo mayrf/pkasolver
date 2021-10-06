@@ -11,22 +11,26 @@ def create_conjugate(mol, id, pka, pH=7.4):
     Ex_Hs = atom.GetNumExplicitHs()
     Tot_Hs = atom.GetTotalNumHs()
 
-    # with correction for +2 charges
+    # make deprotonated conjugate as pKa > pH with at least one proton or
+    # mol charge is positive (otherwise conjugate reaction center would have charge +2 --> highly unlikely)
     if (pka > pH and Tot_Hs > 0) or charge > 0:
         atom.SetFormalCharge(charge - 1)
         if Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs - 1)
 
+    # make protonated conjugate as pKa < pH and charge is neutral or negative
     elif pka < pH and charge <= 0:
         atom.SetFormalCharge(charge + 1)
         if Tot_Hs == 0 or Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs + 1)
-
-    else:
-        # pka > pH and Tot_Hs = 0
+    
+    # make protonated conjugate as pKa > pH and there are no proton at the reaction center 
+    elif pka > pH and Tot_Hs = 0:
         atom.SetFormalCharge(charge + 1)
         if Tot_Hs == 0 or Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs + 1)
+    else:
+        raise RuntimeError()
 
     atom.UpdatePropertyCache()
     return mol
@@ -77,4 +81,3 @@ def calculate_tanimoto_coefficient(fp1, fp2):
     set1 = set(fp1.nonzero()[0].tolist())
     set2 = set(fp2.nonzero()[0].tolist())
     return len(set1 & set2) / len(set1 | set2)
-

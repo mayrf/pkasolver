@@ -50,7 +50,6 @@ def train_validation_set_split(df: pd.DataFrame, ratio: float, seed=42):
 # data preprocessing functions - helpers
 def import_sdf(sdf_filename: str):
     """Import an sdf file and return a Dataframe with an additional Smiles column."""
-
     df = PandasTools.LoadSDF(sdf_filename)
     df["smiles"] = [Chem.MolToSmiles(m) for m in df["ROMol"]]
     return df
@@ -73,7 +72,9 @@ def sort_conjugates(df):
     prot = []
     deprot = []
     for i in range(len(df.index)):
-        indx = int(df.marvin_atom[i])
+        indx = int(
+            df.marvin_atom[i]
+        )  # mark reaction center where (de)protonation takes place
         mol = df.ROMol[i]
         conj = df.Conjugates[i]
 
@@ -83,6 +84,7 @@ def sort_conjugates(df):
         if charge_mol < charge_conj:
             prot.append(conj)
             deprot.append(mol)
+
         elif charge_mol > charge_conj:
             prot.append(mol)
             deprot.append(conj)
@@ -188,8 +190,22 @@ def make_edges_and_attr(mol, e_features):
     edges = []
     edge_attr = []
     for bond in mol.GetBonds():
-        edges.append(np.array([[bond.GetBeginAtomIdx()], [bond.GetEndAtomIdx()],]))
-        edges.append(np.array([[bond.GetEndAtomIdx()], [bond.GetBeginAtomIdx()],]))
+        edges.append(
+            np.array(
+                [
+                    [bond.GetBeginAtomIdx()],
+                    [bond.GetEndAtomIdx()],
+                ]
+            )
+        )
+        edges.append(
+            np.array(
+                [
+                    [bond.GetEndAtomIdx()],
+                    [bond.GetBeginAtomIdx()],
+                ]
+            )
+        )
         edge = []
         for feat in e_features.values():
             edge.append(feat(bond))
@@ -223,7 +239,9 @@ def mol_to_features(row, n_features: dict, e_features: dict, protonation_state: 
 
 
 def mol_to_paired_mol_data(
-    row, n_features, e_features,
+    row,
+    n_features,
+    e_features,
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
