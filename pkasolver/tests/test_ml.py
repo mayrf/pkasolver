@@ -37,10 +37,10 @@ def test_init_gcn_models():
     #  test pair models
     model = gcn_dict["pair"]["edge"]
     print(model)
-    model(96, 4, 2, num_node_features=6, num_edge_features=2)
+    model(num_node_features=6, num_edge_features=2)
     model = gcn_dict["pair"]["no-edge"]
     print(model)
-    model(96, 4, 2, num_node_features=6, num_edge_features=2)
+    model(num_node_features=6, num_edge_features=2)
 
 
 def test_train_gcn_models():
@@ -85,9 +85,6 @@ def test_train_gcn_models():
         for attention_mode in [False, True]:
             print(attention_mode)
             model = model_raw(
-                96,
-                4,
-                2,
                 num_node_features=len(list_n),
                 num_edge_features=len(list_e),
                 attention=attention_mode,
