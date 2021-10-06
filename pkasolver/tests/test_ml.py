@@ -1,5 +1,6 @@
 from pkasolver.ml_architecture import (
-    GCNPair,
+    GCNPairSingleConv,
+    GCNPairTwoConv,
     GCNProt,
     GCNDeprot,
     NNConvPair,
@@ -16,7 +17,7 @@ def test_init_gcn_models():
     gcn_dict = {
         "prot": {"no-edge": GCNProt, "edge": NNConvProt},
         "deprot": {"no-edge": GCNDeprot, "edge": NNConvDeprot},
-        "pair": {"no-edge": GCNPair, "edge": NNConvPair},
+        "pair": {"no-edge": [GCNPairSingleConv, GCNPairTwoConv], "edge": NNConvPair,},
     }
 
     #################
@@ -38,17 +39,19 @@ def test_init_gcn_models():
     model = gcn_dict["pair"]["edge"]
     print(model)
     model(num_node_features=6, num_edge_features=2)
-    model = gcn_dict["pair"]["no-edge"]
-    print(model)
-    model(num_node_features=6, num_edge_features=2)
+    model1, model2 = gcn_dict["pair"]["no-edge"]
+    print(model1)
+    model1(num_node_features=6, num_edge_features=2)
+    print(model2)
+    model1(num_node_features=6, num_edge_features=2)
 
 
 def test_train_gcn_models():
 
     gcn_dict = {
-        "prot": {"no-edge": GCNProt, "edge": NNConvProt},
-        "deprot": {"no-edge": GCNDeprot, "edge": NNConvDeprot},
-        "pair": {"no-edge": GCNPair, "edge": NNConvPair},
+        "prot": {"no-edge": [GCNProt], "edge": [NNConvProt]},
+        "deprot": {"no-edge": [GCNDeprot], "edge": [NNConvDeprot]},
+        "pair": {"no-edge": [GCNPairSingleConv, GCNPairTwoConv], "edge": [NNConvPair],},
     }
 
     print(gcn_dict.values())
@@ -70,7 +73,7 @@ def test_train_gcn_models():
     dataset = make_pyg_dataset_from_dataframe(df, list_n, list_e, paired=True)
     l = dataset_to_dataloader(dataset, batch_size=64, shuffle=False)
 
-    for model_raw in [
+    for model_raws in [
         gcn_dict["deprot"]["edge"],
         gcn_dict["prot"]["edge"],
         gcn_dict["deprot"]["no-edge"],
@@ -80,16 +83,17 @@ def test_train_gcn_models():
     ]:
         #################
         # test single models
-        print(model_raw)
+        for model_raw in model_raws:
+            print(model_raw)
 
-        for attention_mode in [False, True]:
-            print(attention_mode)
-            model = model_raw(
-                num_node_features=len(list_n),
-                num_edge_features=len(list_e),
-                attention=attention_mode,
-            ).to(device=DEVICE)
-            print(model)
-            optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
+            for attention_mode in [False, True]:
+                print(attention_mode)
+                model = model_raw(
+                    num_node_features=len(list_n),
+                    num_edge_features=len(list_e),
+                    attention=attention_mode,
+                ).to(device=DEVICE)
+                print(model)
+                optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
 
-            gcn_train(model, l, optimizer)
+                gcn_train(model, l, optimizer)
