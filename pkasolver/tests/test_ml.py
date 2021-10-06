@@ -1,10 +1,10 @@
 from pkasolver.ml_architecture import (
-    GCN_pair,
-    GCN_prot,
-    GCN_deprot,
-    NNConv_pair,
-    NNConv_deprot,
-    NNConv_prot,
+    GCNPair,
+    GCNProt,
+    GCNDeprot,
+    NNConvPair,
+    NNConvDeprot,
+    NNConvProt,
     gcn_full_training,
 )
 import torch
@@ -14,25 +14,25 @@ from pkasolver.constants import DEVICE
 def test_init_gcn_models():
 
     gcn_dict = {
-        "prot": {"no-edge": GCN_prot, "edge": NNConv_prot},
-        "deprot": {"no-edge": GCN_deprot, "edge": NNConv_deprot},
-        "pair": {"no-edge": GCN_pair, "edge": NNConv_pair},
+        "prot": {"no-edge": GCNProt, "edge": NNConvProt},
+        "deprot": {"no-edge": GCNDeprot, "edge": NNConvDeprot},
+        "pair": {"no-edge": GCNPair, "edge": NNConvPair},
     }
 
     #################
     # test single models
     model = gcn_dict["prot"]["edge"]
     print(model)
-    model(96, 4, 2, num_node_features=6, num_edge_features=2)
+    model(num_node_features=6, num_edge_features=2)
     model = gcn_dict["prot"]["no-edge"]
     print(model)
-    model(96, 4, 2, num_node_features=6, num_edge_features=2)
+    model(num_node_features=6, num_edge_features=2)
     model = gcn_dict["deprot"]["edge"]
     print(model)
-    model(96, 4, 2, num_node_features=6, num_edge_features=2)
+    model(num_node_features=6, num_edge_features=2)
     model = gcn_dict["deprot"]["no-edge"]
     print(model)
-    model(96, 4, 2, num_node_features=6, num_edge_features=2)
+    model(num_node_features=6, num_edge_features=2)
     #################
     #  test pair models
     model = gcn_dict["pair"]["edge"]
@@ -46,9 +46,9 @@ def test_init_gcn_models():
 def test_train_gcn_models():
 
     gcn_dict = {
-        "prot": {"no-edge": GCN_prot, "edge": NNConv_prot},
-        "deprot": {"no-edge": GCN_deprot, "edge": NNConv_deprot},
-        "pair": {"no-edge": GCN_pair, "edge": NNConv_pair},
+        "prot": {"no-edge": GCNProt, "edge": NNConvProt},
+        "deprot": {"no-edge": GCNDeprot, "edge": NNConvDeprot},
+        "pair": {"no-edge": GCNPair, "edge": NNConvPair},
     }
 
     print(gcn_dict.values())
@@ -81,9 +81,18 @@ def test_train_gcn_models():
         #################
         # test single models
         print(model_raw)
-        model = model_raw(
-            96, 4, 2, num_node_features=len(list_n), num_edge_features=len(list_e)
-        ).to(device=DEVICE)
-        optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
 
-        gcn_train(model, l, optimizer)
+        for attention_mode in [False, True]:
+            print(attention_mode)
+            model = model_raw(
+                96,
+                4,
+                2,
+                num_node_features=len(list_n),
+                num_edge_features=len(list_e),
+                attention=attention_mode,
+            ).to(device=DEVICE)
+            print(model)
+            optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
+
+            gcn_train(model, l, optimizer)
