@@ -130,8 +130,6 @@ class GCNPairTwoConvForward:
 
         x_p = global_mean_pool(x_p, x_p_batch)  # [batch_size, hidden_channels]
         x_d = global_mean_pool(x_d, x_d_batch)
-        print(x_p.size())
-        print(x_d.size())
 
         if self.attention:
             x = torch.cat((x_p, x_d, x_p_att, x_d_att), 1)
@@ -161,11 +159,8 @@ class NNConvSingleForward:
             x = torch.cat((x, x_att), 1)
 
         x = F.dropout(x, p=0.5, training=self.training)
-        print(x.size())
 
         for i in range(len(self.lins)):
-            print(x.size())
-            print(self.lins[i])
             x = self.lins[i](x)
         return x
 
@@ -210,7 +205,9 @@ class NNConvSingleArchitecture(GCN):
         self.convs = self._return_nnconv(num_node_features, num_edge_features)
 
         if self.attention:
-            lin1 = Linear(16 + 2, 8)  # NOTE: ?
+            lin1 = Linear(
+                16 + num_node_features, 8
+            )  # NOTE: adding number of node features
             lin2 = Linear(8, 1)
         else:
             lin1 = Linear(16, 8)
@@ -236,7 +233,7 @@ class GCNSingleArchitecture(GCN):
 
         self.convs = self._return_conv(num_node_features)
         if self.attention:
-            lin1 = Linear(16 + 2, 8)
+            lin1 = Linear(16 + num_node_features, 8)
             lin2 = Linear(8, 1)
         else:
             lin1 = Linear(16, 8)
@@ -311,7 +308,7 @@ class NNConvPairArchitecture(GCN):
         self.convs_p = self._return_nnconv(num_node_features, num_edge_features)
 
         if self.attention:
-            lin1 = Linear(32 + 4, 8)
+            lin1 = Linear(32 + (2 * num_node_features), 8)
             lin2 = Linear(8, 1)
         else:
             lin1 = Linear(32, 8)
@@ -492,21 +489,20 @@ def gcn_full_training(
     pbar = tqdm(range(model.checkpoint["epoch"], NUM_EPOCHS + 1), desc="Epoch: ")
     results = {}
     results["training-set"] = []
-    results["test-set"] = []
+    results["validation-set"] = []
     for epoch in pbar:
         if epoch != 0:
             gcn_train(model, train_loader, optimizer)
         if epoch % 20 == 0:
             train_loss = gcn_test(model, train_loader)
-            test_loss = gcn_test(model, val_loader)
+            val_loss = gcn_test(model, val_loader)
             pbar.set_description(
-                f"Train MAE: {train_loss:.4f}, Test MAE: {test_loss:.4f}"
+                f"Train MAE: {train_loss:.4f}, Test MAE: {val_loss:.4f}"
             )
             results["training-set"].append(train_loss)
-            results["test-set"].append(test_loss)
+            results["validation-set"].append(val_loss)
 
-    print(f"Epoch: {epoch:03d}, Train MAE: {train_loss:.4f}, Test MAE: {test_loss:.4f}")
     if epoch % 40 == 0:
-        save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path)
+        save_checkpoint(model, optimizer, epoch, train_loss, val_loss, path)
 
     return results
