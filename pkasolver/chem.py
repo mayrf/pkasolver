@@ -17,9 +17,9 @@ def create_conjugate(mol, id, pka, pH=7.4):
         atom.SetFormalCharge(charge - 1)
         if Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs - 1)
-
+         
     # make protonated conjugate as pKa < pH and charge is neutral or negative
-    elif pka < pH and charge <= 0:
+    elif pka <= pH and charge <= 0:
         atom.SetFormalCharge(charge + 1)
         if Tot_Hs == 0 or Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs + 1)
@@ -30,7 +30,7 @@ def create_conjugate(mol, id, pka, pH=7.4):
         if Tot_Hs == 0 or Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs + 1)
     else:
-        raise RuntimeError()
+            raise RuntimeError()
 
     atom.UpdatePropertyCache()
     return mol
