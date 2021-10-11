@@ -484,7 +484,7 @@ def save_checkpoint(model, optimizer, epoch, train_loss, test_loss, path):
 
 
 def gcn_full_training(
-    model, train_loader, val_loader, optimizer, path, NUM_EPOCHS
+    model, train_loader, val_loader, optimizer, path:str='', NUM_EPOCHS:int = 1_000
 ) -> dict:
     pbar = tqdm(range(model.checkpoint["epoch"], NUM_EPOCHS + 1), desc="Epoch: ")
     results = {}
@@ -497,12 +497,11 @@ def gcn_full_training(
             train_loss = gcn_test(model, train_loader)
             val_loss = gcn_test(model, val_loader)
             pbar.set_description(
-                f"Train MAE: {train_loss:.4f}, Test MAE: {val_loss:.4f}"
+                f"Train MAE: {train_loss:.4f}, Validation MAE: {val_loss:.4f}"
             )
             results["training-set"].append(train_loss)
             results["validation-set"].append(val_loss)
-
-    if epoch % 40 == 0:
+    if path and epoch % 40 == 0:
         save_checkpoint(model, optimizer, epoch, train_loss, val_loss, path)
 
     return results
