@@ -6,7 +6,7 @@ from pkasolver.data import make_edges_and_attr, make_nodes, load_data
 
 def test_features_dicts():
     """Test the generation of the features dict"""
-    list_n = ["atomic_number", "formal_charge"]
+    list_n = ["element_onehot", "formal_charge"]
     list_e = ["bond_type", "is_conjugated"]
 
     n_feat = make_features_dicts(NODE_FEATURES, list_n)
@@ -45,20 +45,51 @@ def test_dataset():
 
 def test_nodes():
     """Test the conversion of mol to nodes with feature subset"""
-    list_n = ["atomic_number", "formal_charge"]
+    list_n = ["element_onehot", "formal_charge"]
 
     n_feat = make_features_dicts(NODE_FEATURES, list_n)
 
     mol = Chem.MolFromSmiles("Cc1ccccc1")
     nodes = make_nodes(mol, 1, n_feat)
     for xi in nodes:
-        assert tuple(xi.numpy()) == (6.0, 0.0)
+        assert tuple(xi.numpy()) == (
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+        )
 
-    list_n = ["atomic_number", "formal_charge", "marvin_atom"]
+    list_n = ["element_onehot", "formal_charge", "reaction_center"]
 
     n_feat = make_features_dicts(NODE_FEATURES, list_n)
     nodes = make_nodes(mol, 1, n_feat)
-    assert tuple(nodes[1].numpy()) == (6.0, 0.0, 1.0)
+    assert tuple(nodes[1].numpy()) == (
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+    )
 
 
 def test_edges_generation():
@@ -114,7 +145,7 @@ def test_use_dataset_for_node_generation():
     assert int(df.iloc[0].marvin_atom) == 10
     assert df.iloc[0].smiles == "Brc1c(NC2CC2)nc(C2CC2)nc1N1CCCCCC1"
 
-    list_n = ["atomic_number", "formal_charge"]
+    list_n = ["element_onehot", "formal_charge"]
     n_feat = make_features_dicts(NODE_FEATURES, list_n)
 
     n_prot = make_nodes(df.iloc[0].protonated, df.iloc[0].marvin_atom, n_feat)
@@ -142,7 +173,7 @@ def test_generate_data_intances():
     assert int(df.iloc[mol_idx].marvin_atom) == 10
     assert df.iloc[mol_idx].smiles == "Brc1c(NC2CC2)nc(C2CC2)nc1N1CCCCCC1"
 
-    list_n = ["atomic_number", "formal_charge"]
+    list_n = ["element_onehot", "formal_charge"]
     n_feat = make_features_dicts(NODE_FEATURES, list_n)
     list_e = ["bond_type", "is_conjugated"]
     e_feat = make_features_dicts(EDGE_FEATURES, list_e)
@@ -154,7 +185,11 @@ def test_generate_data_intances():
     assert charge1 == 1
     assert charge2 == 0
 
-    d3 = mol_to_paired_mol_data(df.iloc[mol_idx], n_feat, e_feat,)
+    d3 = mol_to_paired_mol_data(
+        df.iloc[mol_idx],
+        n_feat,
+        e_feat,
+    )
     # all of them have the same number of nodes
     assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
     # but different node features
@@ -173,7 +208,11 @@ def test_generate_data_intances():
     d2, charge2 = mol_to_single_mol_data(
         df.iloc[mol_idx], n_feat, e_feat, "deprotonated"
     )
-    d3 = mol_to_paired_mol_data(df.iloc[mol_idx], n_feat, e_feat,)
+    d3 = mol_to_paired_mol_data(
+        df.iloc[mol_idx],
+        n_feat,
+        e_feat,
+    )
     print(df.iloc[mol_idx].smiles)
     assert charge1 == 1
     assert charge2 == 0
@@ -198,7 +237,7 @@ def test_generate_dataset():
     # setupt dataframe and features
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Training"])
-    list_n = ["atomic_number", "formal_charge"]
+    list_n = ["element_onehot", "formal_charge"]
     list_e = ["bond_type", "is_conjugated"]
 
     # generated PairedData set
@@ -234,7 +273,7 @@ def test_generate_dataloader():
     # setupt dataframe and features
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Novartis"])
-    list_n = ["atomic_number", "formal_charge"]
+    list_n = ["element_onehot", "formal_charge"]
     list_e = ["bond_type", "is_conjugated"]
     # start with generating datasets based on charge
 
