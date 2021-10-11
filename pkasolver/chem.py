@@ -19,20 +19,27 @@ def create_conjugate(mol, id, pka, pH=7.4):
             atom.SetNumExplicitHs(Ex_Hs - 1)
 
     # make protonated conjugate as pKa < pH and charge is neutral or negative
-    elif pka < pH and charge <= 0:
+    elif pka <= pH and charge <= 0:
         atom.SetFormalCharge(charge + 1)
         if Tot_Hs == 0 or Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs + 1)
-    
-    # make protonated conjugate as pKa > pH and there are no proton at the reaction center 
-    elif pka > pH and Tot_Hs = 0:
+
+    # make protonated conjugate as pKa >= pH and there are no proton at the reaction center pka > pH and
+    elif pka > pH and Tot_Hs == 0:
+        # elif Tot_Hs == 0:
         atom.SetFormalCharge(charge + 1)
         if Tot_Hs == 0 or Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs + 1)
     else:
+        print(
+            f"pka: {pka},charge:{charge},Explicit Hs:{Ex_Hs}, Total Hs:{Tot_Hs}, reaction center atomic number: {atom.GetAtomicNum()}"
+        )
         raise RuntimeError()
 
     atom.UpdatePropertyCache()
+    Tot_Hs_after = atom.GetTotalNumHs()
+    assert Tot_Hs != Tot_Hs_after
+
     return mol
 
 
