@@ -11,10 +11,7 @@ from rdkit import Chem
 from torch_geometric.data import Data
 
 from pkasolver.chem import create_conjugate
-from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
-
-# NOTE: set device to cuda if available
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES, DEVICE
 
 
 def load_data(base: str = "data/Baltruschat") -> dict:
@@ -23,18 +20,21 @@ def load_data(base: str = "data/Baltruschat") -> dict:
 
     sdf_filepath_training = f"{base}/combined_training_datasets_unique.sdf"
     sdf_filepath_novartis = f"{base}/novartis_cleaned_mono_unique_notraindata.sdf"
-    sdf_filepath_AvLiLuMoVe = f"{base}/AvLiLuMoVe_cleaned_mono_unique_notraindata.sdf"
+    sdf_filepath_Literture = f"{base}/AvLiLuMoVe_cleaned_mono_unique_notraindata.sdf"
 
     datasets = {
         "Training": sdf_filepath_training,
         "Novartis": sdf_filepath_novartis,
-        "AvLiLuMoVe": sdf_filepath_AvLiLuMoVe,
+        "Literature": sdf_filepath_Literture,
     }
     return datasets
 
 
-# splits a Dataframes rows randomly into two new Dataframes with a defined size ratio
-def train_test_split_df(df, ratio, seed=42):
+def train_validation_set_split(df: pd.DataFrame, ratio: float, seed=42):
+    # splits a Dataframes rows randomly into two new Dataframes with a defined size ratio
+
+    assert ratio > 0.0 and ratio < 1.0
+
     random.seed(seed)
     length = len(df)
     split = round(length * ratio)
@@ -50,7 +50,6 @@ def train_test_split_df(df, ratio, seed=42):
 # data preprocessing functions - helpers
 def import_sdf(sdf_filename: str):
     """Import an sdf file and return a Dataframe with an additional Smiles column."""
-
     df = PandasTools.LoadSDF(sdf_filename)
     df["smiles"] = [Chem.MolToSmiles(m) for m in df["ROMol"]]
     return df
@@ -73,7 +72,9 @@ def sort_conjugates(df):
     prot = []
     deprot = []
     for i in range(len(df.index)):
-        indx = int(df.marvin_atom[i])
+        indx = int(
+            df.marvin_atom[i]
+        )  # mark reaction center where (de)protonation takes place
         mol = df.ROMol[i]
         conj = df.Conjugates[i]
 
@@ -83,6 +84,7 @@ def sort_conjugates(df):
         if charge_mol < charge_conj:
             prot.append(conj)
             deprot.append(mol)
+
         elif charge_mol > charge_conj:
             prot.append(mol)
             deprot.append(conj)
@@ -102,12 +104,14 @@ def preprocess(sdf_filename: str):
     return df
 
 
-def preprocess_all(datasets, title="pd_all_datasets"):
+def preprocess_all(sdf_files) -> dict:
     """Take dict of sdf paths, process to Dataframes and save it as a pickle file."""
-    pd_datasets = {}
-    for name, sdf_filename in datasets.items():
-        pd_datasets[name] = preprocess(sdf_filename)
-    return pd_datasets
+    datasets = {}
+    for name, sdf_filename in sdf_files.items():
+        print(f"{name} : {sdf_filename}")
+        print("###############")
+        datasets[name] = preprocess(sdf_filename)
+    return datasets
 
 
 # Random Forrest/ML preparation functions
@@ -149,6 +153,8 @@ class PairData(Data):
 
         self.charge_prot = charge_p
         self.charge_deprot = charge_d
+        if x_p is not None:
+            self.num_nodes = len(x_p)
 
     def __inc__(self, key, value, *args, **kwargs):
         if key == "edge_index_p":
@@ -232,7 +238,6 @@ def mol_to_features(row, n_features: dict, e_features: dict, protonation_state: 
         raise RuntimeError()
 
 
-# Neural net data functions - main
 def mol_to_paired_mol_data(
     row,
     n_features,
@@ -273,72 +278,8 @@ def mol_to_single_mol_data(
     return Data(x=node_p, edge_index=edge_index_p, edge_attr=edge_attr_p), charge
 
 
-def make_pyg_dataset_based_on_charge(df, list_n: list, list_e: list, paired=False):
-    """Take a Dataframe, a list of strings of node features, a list of strings of edge features
-    and return a List of PyG Data objects.
-    """
-    print(f"Generating data with paired boolean set to: {paired}")
-    selected_node_features = make_features_dicts(NODE_FEATURES, list_n)
-    selected_edge_features = make_features_dicts(EDGE_FEATURES, list_e)
-    if paired:
-        dataset = []
-        for i in range(len(df.index)):
-            m = mol_to_paired_mol_data(
-                df.iloc[i],
-                selected_node_features,
-                selected_edge_features,
-            )
-            m.y = torch.tensor([float(df.pKa[i])], dtype=torch.float32)
-            m.ID = df.ID[i]
-            m.to(device=device)  # NOTE: put everything on the GPU
-            dataset.append(m)
-        return dataset
-    else:
-        dataset = []
-        for i in range(len(df.index)):
-            charge_prot = np.sum(
-                [a.GetFormalCharge() for a in df.iloc[i].protonated.GetAtoms()]
-            )
-            charge_deprot = np.sum(
-                [a.GetFormalCharge() for a in df.iloc[i].deprotonated.GetAtoms()]
-            )
-
-            if (
-                charge_prot + charge_deprot == 1
-                or charge_prot + charge_deprot == 3
-                or charge_prot + charge_deprot == 5
-            ):
-                m, molecular_charge = mol_to_single_mol_data(
-                    df.iloc[i],
-                    selected_node_features,
-                    selected_edge_features,
-                    protonation_state="protonated",
-                )
-            elif (
-                charge_prot + charge_deprot == -1
-                or charge_prot + charge_deprot == -3
-                or charge_prot + charge_deprot == -5
-                or charge_prot + charge_deprot == -7
-            ):
-                m, molecular_charge = mol_to_single_mol_data(
-                    df.iloc[i],
-                    selected_node_features,
-                    selected_edge_features,
-                    protonation_state="deprotonated",
-                )
-            else:
-                raise RuntimeError(charge_prot, charge_deprot)
-
-            m.y = torch.tensor([float(df.pKa[i])], dtype=torch.float32, device=device)
-            m.ID = df.ID[i]
-            m.charge = molecular_charge
-            m.to(device=device)  # NOTE: put everything on the GPU
-            dataset.append(m)
-        return dataset
-
-
-def make_pyg_dataset_based_on_number_of_hydrogens(
-    df, list_n: list, list_e: list, paired=False, mode: str = "all"
+def make_pyg_dataset_from_dataframe(
+    df: pd.DataFrame, list_n: list, list_e: list, paired=False, mode: str = "all"
 ):
     """Take a Dataframe, a list of strings of node features, a list of strings of edge features
     and return a List of PyG Data objects.
@@ -356,10 +297,9 @@ def make_pyg_dataset_based_on_number_of_hydrogens(
             m = mol_to_paired_mol_data(
                 df.iloc[i], selected_node_features, selected_edge_features
             )
-
             m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
             m.ID = df.ID.iloc[i]
-            m.to(device=device)  # NOTE: put everything on the GPU
+            m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
         return dataset
     else:
@@ -374,7 +314,7 @@ def make_pyg_dataset_based_on_number_of_hydrogens(
             )
             m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
             m.ID = df.ID.iloc[i]
-            m.to(device=device)  # NOTE: put everything on the GPU
+            m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
         return dataset
 
