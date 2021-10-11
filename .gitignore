@@ -1,6 +1,4 @@
 examples/misc_and_old
-examples/thesis_run/run_data/fp_data.pkl
-examples/thesis_run/cv_models/gcn
 examples/paper_run_1/run_data/
 examples/paper_run_1/cv_models/
 examples/paper_run_1/models/    
