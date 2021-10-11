@@ -22,7 +22,8 @@ NUM_LINEAR_LAYERS = 2
 HIDDEN_CHANNELS = 96
 
 list_node_features = [
-    "atomic_number",
+    # "atomic_number",
+    "element_onehot",
     "formal_charge",
     #     'chiral_tag',
     "hybridization",
@@ -33,6 +34,7 @@ list_node_features = [
     "total_degree",
     "is_in_ring",
     #     'amide_center_atom'
+    "reaction_center",
 ]
 list_edge_features = ["bond_type", "is_conjugated", "rotatable"]
 

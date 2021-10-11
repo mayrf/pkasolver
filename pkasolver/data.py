@@ -165,6 +165,9 @@ class PairData(Data):
             return super().__inc__(key, value, *args, **kwargs)
 
 
+from pandas.core.common import flatten
+
+
 def make_nodes(mol, marvin_atom: int, n_features: dict):
     """Take a rdkit.Mol, the atom index of the reaction center and a dict of node feature functions.
 
@@ -176,6 +179,8 @@ def make_nodes(mol, marvin_atom: int, n_features: dict):
         node = []
         for feat in n_features.values():
             node.append(feat(atom, i, marvin_atom))
+        node = list(flatten(node))
+        # node = [int(x) for x in node]
         x.append(node)
         i += 1
     return torch.tensor(np.array([np.array(xi) for xi in x]), dtype=torch.float)
