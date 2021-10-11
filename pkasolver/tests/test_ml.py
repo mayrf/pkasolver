@@ -20,7 +20,7 @@ models = [
     ("NNConvPair", NNConvPair),
     ("NNConvDeprot", NNConvDeprot),
     ("NNConvProt", NNConvProt),
-    ("GINProt", GINProt),
+    #("GINProt", GINProt),
 ]
 
 
