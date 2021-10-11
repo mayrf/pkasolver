@@ -1,0 +1,21 @@
+name: testenv
+channels:
+  - defaults
+  - rdkit
+  - conda-forge
+  - pyg
+  - pytorch
+  - nvidia 
+dependencies:
+  - seaborn
+  - rdkit
+  - matplotlib
+  - scikit-learn
+  - python
+  - jupyterlab
+  - pip
+  - pytorch 
+  - torchvision 
+  - torchaudio 
+  - cudatoolkit=11.1
+  - pyg

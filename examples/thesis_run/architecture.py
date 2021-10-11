@@ -105,7 +105,7 @@ class GCN_deprot(GCN):
         mod = copy.deepcopy(data)
         mod.batch, mod.x2_batch = mod.x2_batch, mod.batch
         mod.edge_index, mod.edge_index2 = mod.edge_index2, mod.edge_index
-        return self.forward_helper(x2, x, edge_attr2, edge_attr, data)
+        return self.forward_helper(x2, x, edge_attr2, edge_attr, mod)
     
 class GCN_paired(GCN):
     def __init__(self, edge_conv):
