@@ -1,5 +1,5 @@
 from torch_geometric.loader import DataLoader
-import torch
+import numpy as np
 import pandas as pd
 from pkasolver.constants import DEVICE
 
@@ -23,9 +23,11 @@ def test_ml_model(baseline_models, X_data, y_data, dataset_name):
     return pd.DataFrame(res)
 
 
-def graph_predict(model, loader):
+def calculate_performance_of_model_on_data(model, loader):
     model.eval()
-    for i, data in enumerate(loader):  # Iterate in batches over the training dataset.
+    y_dataset, x_dataset = [], []
+    for data in loader:  # Iterate in batches over the training dataset.
+
         data.to(device=DEVICE)
         y_pred = (
             model(
@@ -39,23 +41,27 @@ def graph_predict(model, loader):
             .detach()
         )
 
-        y_true = data.y
-        if i == 0:
-            Y_pred = y_pred
-            Y_true = y_true
-        else:
-            Y_true = torch.hstack((Y_true, y_true))
-            Y_pred = torch.hstack((Y_pred, y_pred))
-    return Y_true.detach().cpu().numpy(), Y_pred.detach().cpu().numpy()
+        y_dataset.extend(y_pred.tolist())
+        x_dataset.extend(data.y.tolist())
+
+    return np.array(x_dataset), np.array(y_dataset)
+
+
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
 
 
 def test_graph_model(graph_models, loader, dataset_name):
     res = {
         "Dataset": dataset_name,
     }
-    for mode, models in graph_models.items():
-        for edge, model in models.items():
-            model.to(device=DEVICE)
-            res["pKa_true"], res[f"GCN_{mode}_{edge}"] = graph_predict(model, loader)
-            del model
+
+    for model_name in graph_models:
+        model = graph_models[model_name]
+        model.to(device=DEVICE)
+        x, y = calculate_performance_of_model_on_data(model, loader)
+        res["pKa_true"], res[f"{model_name}"] = x, y
+        MAE = mean_absolute_error(x, y)
+        RMSE = np.sqrt(mean_squared_error(x, y))
+        print(f"{dataset_name} - {model_name}: MAE {MAE}, RMSE {RMSE}")
     return pd.DataFrame(res)
