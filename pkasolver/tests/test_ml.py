@@ -68,16 +68,9 @@ def test_train_gcn_models():
     dataset = make_pyg_dataset_from_dataframe(df, list_n, list_e, paired=True)
     dataloader = dataset_to_dataloader(dataset, batch_size=64, shuffle=False)
 
-    # calculate node features
-    i_n = 0
-    for feat in list_n:
-        i_n += len(node_feature_values[feat])
-    num_node_features = i_n
-
-    i_e = 0
-    for feat in list_e:
-        i_e += len(edge_feature_values[feat])
-    num_edge_features = i_e
+    # calculate node/edge features
+    num_node_features = calculate_nr_of_features(list_n)
+    num_edge_features = calculate_nr_of_features(list_e)
 
     for model_name, model_class in models:
         print(model_name)
@@ -166,9 +159,22 @@ def test_train_new_models():
     df = preprocess(sdf_filepaths["Novartis"])
 
     # number of node/edge features
-    list_n = ["element", "formal_charge"]
-    list_e = ["bond_type", "is_conjugated"]
-    # start with generating datasets based on charge
+    list_n = [
+        "element",
+        "formal_charge",
+        "hybridization",
+        "total_num_Hs",
+        "aromatic_tag",
+        "total_valence",
+        "total_degree",
+        "is_in_ring",
+        "reaction_center",
+    ]
+    list_e = [
+        "bond_type",
+        "is_conjugated",
+        "rotatable",
+    ]  # start with generating datasets based on charge
 
     # generated PairedData set
     dataset = make_pyg_dataset_from_dataframe(df, list_n, list_e, paired=True)
