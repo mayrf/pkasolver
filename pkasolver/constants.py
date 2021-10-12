@@ -41,10 +41,7 @@ node_feature_values = {
 
 NODE_FEATURES = {
     "element": lambda atom, i, marvin_atom: list(
-        map(
-            lambda s: int(atom.GetAtomicNum() == s),
-            node_feature_values["element"],
-        )
+        map(lambda s: int(atom.GetAtomicNum() == s), node_feature_values["element"],)
     ),  # still missing to mark element that's not in the list
     "formal_charge": lambda atom, i, marvin_atom: list(
         map(
@@ -83,6 +80,20 @@ NODE_FEATURES = {
     ),
     "reaction_center": lambda atom, i, marvin_atom: i == int(marvin_atom),
 }
+
+
+def calculate_nr_of_features(feature_list: list):
+    i_n = 0
+    if all(elem in node_feature_values for elem in feature_list):
+        for feat in feature_list:
+            i_n += len(node_feature_values[feat])
+    elif all(elem in edge_feature_values for elem in feature_list):
+        for feat in feature_list:
+            i_n += len(edge_feature_values[feat])
+    else:
+        raise RuntimeError()
+    return i_n
+
 
 edge_feature_values = {
     "bond_type": [1.0, 1.5, 2.0, 3.0],
