@@ -1,4 +1,5 @@
 from pkasolver.constants import node_feature_values
+from pkasolver.constants import edge_feature_values
 
 # General
 
@@ -36,10 +37,16 @@ list_node_features = [
 ]
 list_edge_features = ["bond_type", "is_conjugated", "rotatable"]
 
-i = 0
+i_n = 0
 for feat in list_node_features:
-    i += len(node_feature_values[feat])
-num_node_features = i
+    i_n += len(node_feature_values[feat])
+num_node_features = i_n
 
 # num_node_features = len(list_node_features)
-num_edge_features = len(list_edge_features)
+
+i_e = 0
+for feat in list_edge_features:
+    i_e += len(edge_feature_values[feat])
+num_edge_features = i_e
+
+# num_edge_features = len(list_edge_features)

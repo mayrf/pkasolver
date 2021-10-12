@@ -10,7 +10,7 @@ from pkasolver.ml_architecture import (
     gcn_full_training,
 )
 import torch
-from pkasolver.constants import DEVICE, node_feature_values
+from pkasolver.constants import DEVICE, node_feature_values, edge_feature_values
 
 models = [
     ("GCNPairSingleConv", GCNPairSingleConv),
@@ -57,10 +57,15 @@ def test_train_gcn_models():
     dataloader = dataset_to_dataloader(dataset, batch_size=64, shuffle=False)
 
     # calculate node features
-    i = 0
+    i_n = 0
     for feat in list_n:
-        i += len(node_feature_values[feat])
-    num_node_features = i
+        i_n += len(node_feature_values[feat])
+    num_node_features = i_n
+
+    i_e = 0
+    for feat in list_e:
+        i_e += len(edge_feature_values[feat])
+    num_edge_features = i_e
 
     for model_name, model_class in models:
         print(model_name)
@@ -71,7 +76,7 @@ def test_train_gcn_models():
             print(attention_mode)
             model = model_class(
                 num_node_features=num_node_features,
-                num_edge_features=len(list_e),
+                num_edge_features=num_edge_features,
                 attention=attention_mode,
             ).to(device=DEVICE)
             print(model)
@@ -93,10 +98,15 @@ def test_train_gcn_models():
     dataloader = dataset_to_dataloader(dataset, batch_size=64, shuffle=False)
 
     # calculate node features
-    i = 0
+    i_n = 0
     for feat in list_n:
-        i += len(node_feature_values[feat])
-    num_node_features = i
+        i_n += len(node_feature_values[feat])
+    num_node_features = i_n
+
+    i_e = 0
+    for feat in list_e:
+        i_e += len(edge_feature_values[feat])
+    num_edge_features = i_e
 
     for model_name, model_class in models:
         print(model_name)
@@ -109,7 +119,7 @@ def test_train_gcn_models():
             print(attention_mode)
             model = model_class(
                 num_node_features=num_node_features,
-                num_edge_features=len(list_e),
+                num_edge_features=num_edge_features,
                 attention=attention_mode,
             ).to(device=DEVICE)
             print(model)
