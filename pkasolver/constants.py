@@ -84,35 +84,19 @@ NODE_FEATURES = {
     "reaction_center": lambda atom, i, marvin_atom: i == int(marvin_atom),
 }
 
-
-# NODE_FEATURES = {
-#     "atomic_number": lambda atom, i, marvin_atom: atom.GetAtomicNum(),
-#     "element_onehot": lambda atom, i, marvin_atom: list(
-#         map(
-#             lambda s: float(atom.GetAtomicNum() == s),
-#             [1, 6, 7, 8, 9, 15, 16, 17, 33, 35, 53],
-#         )
-#     ),  # still missing to mark atom that's not in the list
-#     "formal_charge": lambda atom, i, marvin_atom: atom.GetFormalCharge(),
-#     "chiral_tag": lambda atom, i, marvin_atom: atom.GetChiralTag(),
-#     "is_in_ring": lambda atom, i, marvin_atom: atom.IsInRing(),
-#     "amide_center_atom": lambda atom, i, marvin_atom: chem.atom_smarts_query(
-#         atom, amide
-#     ),
-#     # "hybridization": lambda atom, i, marvin_atom: atom.GetHybridization(),
-#     "hybridization": lambda atom, i, marvin_atom: list(
-#         map(lambda s: float(atom.GetHybridization() == s), [1, 2, 3, 4])
-#     ),
-#     "total_num_Hs": lambda atom, i, marvin_atom: atom.GetTotalNumHs(),
-#     "explicit_num_Hs": lambda atom, i, marvin_atom: atom.GetNumExplicitHs(),
-#     "aromatic_tag": lambda atom, i, marvin_atom: atom.GetIsAromatic(),
-#     "total_valence": lambda atom, i, marvin_atom: atom.GetTotalValence(),
-#     "total_degree": lambda atom, i, marvin_atom: atom.GetTotalDegree(),
-#     "reaction_center": lambda atom, i, marvin_atom: i == int(marvin_atom),
-# }
+edge_feature_values = {
+    "bond_type": [1.0, 1.5, 2.0, 3.0],
+    "is_conjugated": [1],
+    "rotatable": [1],
+}
 
 EDGE_FEATURES = {
-    "bond_type": lambda bond: bond.GetBondTypeAsDouble(),
+    "bond_type": lambda bond: list(
+        map(
+            lambda s: float(bond.GetBondTypeAsDouble() == s),
+            edge_feature_values["bond_type"],
+        )
+    ),
     "is_conjugated": lambda bond: bond.GetIsConjugated(),
     "rotatable": lambda bond: chem.bond_smarts_query(bond, rotatable_bond),
 }

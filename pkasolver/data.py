@@ -214,6 +214,7 @@ def make_edges_and_attr(mol, e_features):
         edge = []
         for feat in e_features.values():
             edge.append(feat(bond))
+        edge = list(flatten(edge))
         edge_attr.extend([edge] * 2)
 
     edge_index = torch.tensor(np.hstack(np.array(edges)), dtype=torch.long)
