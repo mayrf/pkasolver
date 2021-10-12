@@ -6,7 +6,7 @@ from pkasolver.data import make_edges_and_attr, make_nodes, load_data
 
 def test_features_dicts():
     """Test the generation of the features dict"""
-    list_n = ["element_onehot", "formal_charge"]
+    list_n = ["element", "formal_charge"]
     list_e = ["bond_type", "is_conjugated"]
 
     n_feat = make_features_dicts(NODE_FEATURES, list_n)
@@ -45,7 +45,7 @@ def test_dataset():
 
 def test_nodes():
     """Test the conversion of mol to nodes with feature subset"""
-    list_n = ["element_onehot", "formal_charge"]
+    list_n = ["element", "formal_charge"]
 
     n_feat = make_features_dicts(NODE_FEATURES, list_n)
 
@@ -69,7 +69,7 @@ def test_nodes():
             0.0,
         )
 
-    list_n = ["element_onehot", "formal_charge", "reaction_center"]
+    list_n = ["element", "formal_charge", "reaction_center"]
 
     n_feat = make_features_dicts(NODE_FEATURES, list_n)
     nodes = make_nodes(mol, 1, n_feat)
@@ -145,7 +145,7 @@ def test_use_dataset_for_node_generation():
     assert int(df.iloc[0].marvin_atom) == 10
     assert df.iloc[0].smiles == "Brc1c(NC2CC2)nc(C2CC2)nc1N1CCCCCC1"
 
-    list_n = ["element_onehot", "formal_charge"]
+    list_n = ["element", "formal_charge"]
     n_feat = make_features_dicts(NODE_FEATURES, list_n)
 
     n_prot = make_nodes(df.iloc[0].protonated, df.iloc[0].marvin_atom, n_feat)
@@ -173,7 +173,7 @@ def test_generate_data_intances():
     assert int(df.iloc[mol_idx].marvin_atom) == 10
     assert df.iloc[mol_idx].smiles == "Brc1c(NC2CC2)nc(C2CC2)nc1N1CCCCCC1"
 
-    list_n = ["element_onehot", "formal_charge"]
+    list_n = ["element", "formal_charge"]
     n_feat = make_features_dicts(NODE_FEATURES, list_n)
     list_e = ["bond_type", "is_conjugated"]
     e_feat = make_features_dicts(EDGE_FEATURES, list_e)
@@ -237,7 +237,7 @@ def test_generate_dataset():
     # setupt dataframe and features
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Training"])
-    list_n = ["element_onehot", "formal_charge"]
+    list_n = ["element", "formal_charge"]
     list_e = ["bond_type", "is_conjugated"]
 
     # generated PairedData set
@@ -273,7 +273,7 @@ def test_generate_dataloader():
     # setupt dataframe and features
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Novartis"])
-    list_n = ["element_onehot", "formal_charge"]
+    list_n = ["element", "formal_charge"]
     list_e = ["bond_type", "is_conjugated"]
     # start with generating datasets based on charge
 

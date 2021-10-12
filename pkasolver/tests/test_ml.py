@@ -48,7 +48,7 @@ def test_train_gcn_models():
     df = preprocess(sdf_filepaths["Novartis"])
 
     # number of node/edge features
-    list_n = ["element_onehot", "formal_charge"]
+    list_n = ["element", "formal_charge"]
     list_e = ["bond_type", "is_conjugated"]
     # start with generating datasets based on charge
 
@@ -89,7 +89,7 @@ def test_train_gcn_models():
     # Repeat with different number of edge/nodde features
     #################################
     # number of node/edge features
-    list_n = ["element_onehot", "formal_charge", "aromatic_tag", "hybridization"]
+    list_n = ["element", "formal_charge", "aromatic_tag", "hybridization"]
     list_e = ["bond_type", "is_conjugated"]
     # start with generating datasets based on charge
 
