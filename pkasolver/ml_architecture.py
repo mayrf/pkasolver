@@ -805,6 +805,142 @@ class GINPairV2(GINpKa):
         return x_p / x_d
 
 
+class AttentivePairV1(AttentivePka):
+    def __init__(
+        self,
+        num_node_features: int,
+        num_edge_features: int,
+        hidden_channels: int = 32,
+        num_layers: int = 3,
+        num_timesteps: int = 10,
+        out_channels=32,
+        dropout=0.5,
+        attention=False,
+    ):
+        super().__init__(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+            edge_dim=num_edge_features,
+            num_timesteps=num_timesteps,
+        )
+
+        self.AttentivePka_p = AttentivePka(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+            edge_dim=num_edge_features,
+            num_timesteps=num_timesteps,
+        )
+        self.AttentivePka_d = AttentivePka(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+            edge_dim=num_edge_features,
+            num_timesteps=num_timesteps,
+        )
+
+        print(f"Attention pooling: {attention}")
+        self.lins = AttentivePka._return_lin(
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        def _forward(x, edge_attr, edge_index, batch, func):
+            x = func(x=x, edge_attr=edge_attr, edge_index=edge_index, batch=batch)
+            # run through linear layer
+            for i in range(len(self.lins)):
+                if i < len(self.lins) - 1:
+                    x = F.relu(self.lins[i](x))
+                else:
+                    x = self.lins[i](x)
+            return x
+
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+        x_d_batch = data.x_d_batch.to(device=DEVICE)
+
+        x_p = _forward(
+            x=x_p,
+            edge_attr=edge_attr_p,
+            edge_index=data.edge_index_p,
+            batch=x_p_batch,
+            func=self.AttentivePka_p,
+        )
+        x_d = _forward(
+            x=x_d,
+            edge_attr=edge_attr_d,
+            edge_index=data.edge_index_d,
+            batch=x_d_batch,
+            func=self.AttentivePka_d,
+        )
+        return x_p + x_d
+
+
+class AttentivePair(AttentivePka):
+    def __init__(
+        self,
+        num_node_features: int,
+        num_edge_features: int,
+        hidden_channels: int = 32,
+        num_layers: int = 3,
+        num_timesteps: int = 10,
+        out_channels=32,
+        dropout=0.5,
+        attention=False,
+    ):
+        super().__init__(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+            edge_dim=num_edge_features,
+            num_timesteps=num_timesteps,
+        )
+
+        print(f"Attention pooling: {attention}")
+        self.lins = AttentivePka._return_lin(
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        def _forward(x, edge_attr, edge_index, batch, func):
+            x = func(x=x, edge_attr=edge_attr, edge_index=edge_index, batch=batch)
+            # run through linear layer
+            for i in range(len(self.lins)):
+                if i < len(self.lins) - 1:
+                    x = F.relu(self.lins[i](x))
+                else:
+                    x = self.lins[i](x)
+            return x
+
+        func = super().forward
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+        x_d_batch = data.x_d_batch.to(device=DEVICE)
+
+        x_p = _forward(
+            x=x_p,
+            edge_attr=edge_attr_p,
+            edge_index=data.edge_index_p,
+            batch=x_p_batch,
+            func=func,
+        )
+        x_d = _forward(
+            x=x_d,
+            edge_attr=edge_attr_d,
+            edge_index=data.edge_index_d,
+            batch=x_d_batch,
+            func=func,
+        )
+        return x_p + x_d
+
+
 class GCNProt(GCNSingleArchitecture, GCNSingleForward):
     def __init__(
         self,

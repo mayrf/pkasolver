@@ -12,6 +12,8 @@ from pkasolver.ml_architecture import (
     AttentiveProt,
     GATProt,
     GATPair,
+    AttentivePair,
+    AttentivePairV1,
     gcn_full_training,
 )
 import torch
@@ -121,6 +123,8 @@ new_models = [
     ("GATProt", GATProt),
     ("GATPair", GATPair),
     ("AttentiveProt", AttentiveProt),
+    ("AttentivePair", AttentivePair),
+    ("AttentivePairV1", AttentivePairV1),
 ]
 
 
