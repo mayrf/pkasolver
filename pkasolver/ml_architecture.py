@@ -603,11 +603,11 @@ class AttentiveProt(AttentivePka):
         # global mean pooling
         # x = global_mean_pool(x, x_p_batch)  # [batch_size, hidden_channels]
         # run through linear layer
-        # for i in range(len(self.lins)):
-        #    if i < len(self.lins) - 1:
-        #        x = F.relu(self.lins[i](x))
-        #    else:
-        #        x = self.lins[i](x)
+        for i in range(len(self.lins)):
+            if i < len(self.lins) - 1:
+                x = F.relu(self.lins[i](x))
+            else:
+                x = self.lins[i](x)
         return x
 
 
