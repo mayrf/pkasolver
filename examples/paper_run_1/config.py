@@ -1,3 +1,6 @@
+from pkasolver.constants import node_feature_values
+from pkasolver.constants import edge_feature_values
+
 # General
 
 # raw data paths
@@ -15,26 +18,35 @@ NUM_ESTIMATORS = 100  # 1000 Baltruschat
 # GCN
 BATCH_SIZE = 64
 LEARNING_RATE = 0.001
-NUM_EPOCHS = 4000  # 3000
+NUM_EPOCHS = 2000  # 3000
 
 NUM_GRAPH_LAYERS = 4
 NUM_LINEAR_LAYERS = 2
 HIDDEN_CHANNELS = 96
 
 list_node_features = [
-    "atomic_number",
+    "element",
     "formal_charge",
-    #     'chiral_tag',
     "hybridization",
     "total_num_Hs",
-    #     'explicit_num_Hs',
     "aromatic_tag",
     "total_valence",
     "total_degree",
     "is_in_ring",
-    #     'amide_center_atom'
+    "reaction_center",
 ]
 list_edge_features = ["bond_type", "is_conjugated", "rotatable"]
 
-num_node_features = len(list_node_features)
-num_edge_features = len(list_edge_features)
+i_n = 0
+for feat in list_node_features:
+    i_n += len(node_feature_values[feat])
+num_node_features = i_n
+
+# num_node_features = len(list_node_features)
+
+i_e = 0
+for feat in list_edge_features:
+    i_e += len(edge_feature_values[feat])
+num_edge_features = i_e
+
+# num_edge_features = len(list_edge_features)
