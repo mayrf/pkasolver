@@ -36,23 +36,33 @@ def attention_pooling(num_node_features):
 #####################################
 #####################################
 from torch_geometric.nn.models import (
-    GraphSAGE,
     GIN,
     GAT,
-    JumpingKnowledge,
-    GAE,
-    VGAE,
-    RENet,
-    GraphUNet,
-    SchNet,
-    DimeNet,
     AttentiveFP,
 )
 
 
-class GraphSAGEpKa(GraphSAGE):
-    def __init__(self, in_channels: int, hidden_channels: int, num_layers: int):
-        super().__init__(in_channels, hidden_channels, num_layers)
+class AttentivePka(AttentiveFP):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        num_layers: int,
+        out_channels: int,
+        dropout: float,
+        edge_dim: int,
+        num_timesteps: int,
+    ):
+
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            num_timesteps=num_timesteps,
+            dropout=dropout,
+            edge_dim=edge_dim,
+        )
         torch.manual_seed(SEED)
         self.checkpoint = {
             "epoch": 0,
@@ -61,6 +71,54 @@ class GraphSAGEpKa(GraphSAGE):
             "best_states": {},
             "progress_table": {"epoch": [], "train_loss": [], "validation_loss": []},
         }
+
+    @staticmethod
+    def _return_lin(
+        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+    ):
+        lins = []
+        lins.append(Linear(input_dim, embeding_size))
+        for _ in range(2, nr_of_lin_layers):
+            lins.append(Linear(embeding_size, embeding_size))
+        lins.append(Linear(embeding_size, 1))
+        return ModuleList(lins)
+
+
+class GATpKa(GAT):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        num_layers: int,
+        out_channels,
+        dropout,
+    ):
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+        torch.manual_seed(SEED)
+        self.checkpoint = {
+            "epoch": 0,
+            "optimizer_state_dict": "",
+            "best_loss": (100, -1, -1),
+            "best_states": {},
+            "progress_table": {"epoch": [], "train_loss": [], "validation_loss": []},
+        }
+
+    @staticmethod
+    def _return_lin(
+        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+    ):
+        lins = []
+        lins.append(Linear(input_dim, embeding_size))
+        for _ in range(2, nr_of_lin_layers):
+            lins.append(Linear(embeding_size, embeding_size))
+        lins.append(Linear(embeding_size, 1))
+        return ModuleList(lins)
 
 
 class GINpKa(GIN):
@@ -88,6 +146,17 @@ class GINpKa(GIN):
             "progress_table": {"epoch": [], "train_loss": [], "validation_loss": []},
         }
 
+    @staticmethod
+    def _return_lin(
+        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+    ):
+        lins = []
+        lins.append(Linear(input_dim, embeding_size))
+        for _ in range(2, nr_of_lin_layers):
+            lins.append(Linear(embeding_size, embeding_size))
+        lins.append(Linear(embeding_size, 1))
+        return ModuleList(lins)
+
 
 class GCN(torch.nn.Module):
     def __init__(self):
@@ -100,6 +169,17 @@ class GCN(torch.nn.Module):
             "best_states": {},
             "progress_table": {"epoch": [], "train_loss": [], "validation_loss": []},
         }
+
+    @staticmethod
+    def _return_lin(
+        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+    ):
+        lins = []
+        lins.append(Linear(input_dim, embeding_size))
+        for _ in range(2, nr_of_lin_layers):
+            lins.append(Linear(embeding_size, embeding_size))
+        lins.append(Linear(embeding_size, 1))
+        return ModuleList(lins)
 
     @staticmethod
     def _return_conv(num_node_features, nr_of_layers, embeding_size):
@@ -115,7 +195,6 @@ class GCN(torch.nn.Module):
     ):
 
         convs = []
-
         nn1 = Sequential(
             Linear(num_edge_features, embeding_size),
             ReLU(),
@@ -151,15 +230,16 @@ class GCNSingleForward:
                 x = F.relu(self.convs[i](x, edge_index))
             else:
                 x = self.convs[i](x, edge_index)
+
+        # set dimensions to zero
+        x = F.dropout(x, p=0.5, training=self.training)
+
         # global max pooling
-        x = global_max_pool(x, x_batch)  # [batch_size, hidden_channels]
+        x = global_mean_pool(x, x_batch)  # [batch_size, hidden_channels]
 
         # if attention=True append attention layer
         if self.attention:
             x = torch.cat((x, x_att), 1)
-
-        # set dimensions to zero
-        x = F.dropout(x, p=0.5, training=self.training)
 
         # run through linear layer
         for i in range(len(self.lins)):
@@ -329,17 +409,14 @@ class NNConvSingleArchitecture(GCN):
             nr_of_layers=nr_of_layers,
             embeding_size=embeding_size,
         )
-
         if self.attention:
-            lin1 = Linear(
-                embeding_size + num_node_features, embeding_size
-            )  # NOTE: adding number of node features
-            lin2 = Linear(embeding_size, 1)
+            input_dim = embeding_size + num_node_features
         else:
-            lin1 = Linear(embeding_size, embeding_size)
-            lin2 = Linear(embeding_size, 1)
+            input_dim = embeding_size
 
-        self.lins = ModuleList([lin1, lin2])
+        self.lins = GCN._return_lin(
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=embeding_size,
+        )
 
 
 class GCNSingleArchitecture(GCN):
@@ -350,14 +427,15 @@ class GCNSingleArchitecture(GCN):
         self.convs = self._return_conv(
             num_node_features, nr_of_layers=nr_of_layers, embeding_size=embeding_size
         )
-        if self.attention:
-            lin1 = Linear(embeding_size + num_node_features, embeding_size)
-            lin2 = Linear(embeding_size, 1)
-        else:
-            lin1 = Linear(embeding_size, embeding_size)
-            lin2 = Linear(embeding_size, 1)
 
-        self.lins = ModuleList([lin1, lin2])
+        if self.attention:
+            input_dim = embeding_size + num_node_features
+        else:
+            input_dim = embeding_size
+
+        self.lins = GCN._return_lin(
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=embeding_size,
+        )
 
 
 class GCNPairArchitecture(GCN):
@@ -374,15 +452,15 @@ class GCNPairArchitecture(GCN):
         self.convs_d = self._return_conv(
             num_node_features, nr_of_layers=nr_of_layers, embeding_size=embeding_size
         )
-
         if self.attention:
-            lin1 = Linear(embeding_size * 2 + 2 * num_node_features, embeding_size)
-            lin2 = Linear(embeding_size, 1)
+            input_dim = embeding_size * 2 + 2 * num_node_features
         else:
-            lin1 = Linear(embeding_size * 2, embeding_size)
-            lin2 = Linear(embeding_size, 1)
+            input_dim = embeding_size * 2
 
-        self.lins = ModuleList([lin1, lin2])
+        self.lins = GCN._return_lin(
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=embeding_size,
+        )
+
         self.pool = attention_pooling(num_node_features)
 
 
@@ -398,14 +476,18 @@ class GCNPairArchitectureV2(GCN):
             num_node_features, nr_of_layers=nr_of_layers, embeding_size=embeding_size
         )
 
-        lin1_d = Linear(embeding_size, embeding_size)
-        lin2_d = Linear(embeding_size, 1)
+        if self.attention:
+            input_dim = embeding_size
+        else:
+            input_dim = embeding_size
 
-        lin1_p = Linear(embeding_size, embeding_size)
-        lin2_p = Linear(embeding_size, 1)
+        self.lins_d = GCN._return_lin(
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=embeding_size,
+        )
+        self.lins_p = GCN._return_lin(
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=embeding_size,
+        )
 
-        self.lins_d = ModuleList([lin1_d, lin2_d])
-        self.lins_p = ModuleList([lin1_p, lin2_p])
         self.pool = attention_pooling(num_node_features)
 
 
@@ -421,31 +503,26 @@ class NNConvPairArchitecture(GCN):
 
         self.pool = attention_pooling(num_node_features)
 
-        self.convs_d = self._return_nnconv(
+        self.convs_d = GCN._return_nnconv(
             num_node_features,
             num_edge_features,
             nr_of_layers=nr_of_layers,
             embeding_size=embeding_size,
         )
-        self.convs_p = self._return_nnconv(
+        self.convs_p = GCN._return_nnconv(
             num_node_features,
             num_edge_features,
             nr_of_layers=nr_of_layers,
             embeding_size=embeding_size,
         )
-
         if self.attention:
-            lin1 = Linear(2 * embeding_size + (2 * num_node_features), embeding_size)
-            lin2 = Linear(embeding_size, 1)
+            input_dim = 2 * embeding_size + (2 * num_node_features)
         else:
-            lin1 = Linear(2 * embeding_size, embeding_size)
-            lin2 = Linear(embeding_size, 1)
-        self.lins = ModuleList([lin1, lin2])
+            input_dim = 2 * embeding_size
 
-
-#####################################
-# some new architecutres
-#####################################
+        self.lins = GCN._return_lin(
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=embeding_size,
+        )
 
 
 #####################################
@@ -453,34 +530,14 @@ class NNConvPairArchitecture(GCN):
 # Combining everything
 #####################################
 #####################################
-class GraphSAGEProt(GraphSAGEpKa):
-    def __init__(
-        self,
-        num_node_features,
-        num_edge_features,
-        nr_of_layers: int = 3,
-        embeding_size: int = 96,
-        attention=False,
-    ):
-        self.attention = attention
-        super().__init__(
-            in_channels=num_node_features,
-            hidden_channels=embeding_size,
-            num_layers=nr_of_layers,
-        )
-
-    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
-        return super().forward(x_p, data.edge_index_p, data.x_p_batch)
-
-
-class GINProt(GINpKa):
+class GATProt(GATpKa):
     def __init__(
         self,
         num_node_features: int,
         num_edge_features: int,
-        hidden_channels: int = 96,
+        hidden_channels: int = 32,
         num_layers: int = 3,
-        out_channels=16,
+        out_channels=32,
         dropout=0.5,
         attention=False,
     ):
@@ -492,9 +549,396 @@ class GINProt(GINpKa):
             dropout=dropout,
         )
         print(f"Attention pooling: {attention}")
+        self.lins = GATpKa._return_lin(
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+        )
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
-        return super().forward(x=x_p, edge_index=data.edge_index_p)
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+
+        x = super().forward(x=x_p, edge_index=data.edge_index_p)
+        # global mean pooling
+        x = global_mean_pool(x, x_p_batch)  # [batch_size, hidden_channels]
+        # run through linear layer
+        for i in range(len(self.lins)):
+            if i < len(self.lins) - 1:
+                x = F.relu(self.lins[i](x))
+            else:
+                x = self.lins[i](x)
+        return x
+
+
+class AttentiveProt(AttentivePka):
+    def __init__(
+        self,
+        num_node_features: int,
+        num_edge_features: int,
+        hidden_channels: int = 32,
+        num_layers: int = 3,
+        num_timesteps: int = 10,
+        out_channels=32,
+        dropout=0.5,
+        attention=False,
+    ):
+        super().__init__(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+            edge_dim=num_edge_features,
+            num_timesteps=num_timesteps,
+        )
+        print(f"Attention pooling: {attention}")
+        self.lins = AttentivePka._return_lin(
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+
+        x = super().forward(
+            x=x_p, edge_attr=edge_attr_p, edge_index=data.edge_index_p, batch=x_p_batch
+        )
+        # global mean pooling
+        # x = global_mean_pool(x, x_p_batch)  # [batch_size, hidden_channels]
+        # run through linear layer
+        for i in range(len(self.lins)):
+            if i < len(self.lins) - 1:
+                x = F.relu(self.lins[i](x))
+            else:
+                x = self.lins[i](x)
+        return x
+
+
+class GINProt(GINpKa):
+    def __init__(
+        self,
+        num_node_features: int,
+        num_edge_features: int,
+        hidden_channels: int = 32,
+        num_layers: int = 3,
+        out_channels=32,
+        dropout=0.5,
+        attention=False,
+    ):
+        super().__init__(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+        print(f"Attention pooling: {attention}")
+        self.lins = GINpKa._return_lin(
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+
+        x = super().forward(x=x_p, edge_index=data.edge_index_p)
+        # global mean pooling
+        x = global_mean_pool(x, x_p_batch)  # [batch_size, hidden_channels]
+        # run through linear layer
+        for i in range(len(self.lins)):
+            if i < len(self.lins) - 1:
+                x = F.relu(self.lins[i](x))
+            else:
+                x = self.lins[i](x)
+        return x
+
+
+class GATPair(GATpKa):
+    def __init__(
+        self,
+        num_node_features: int,
+        num_edge_features: int,
+        hidden_channels: int = 32,
+        num_layers: int = 3,
+        out_channels=32,
+        dropout=0.5,
+        attention=False,
+    ):
+        super().__init__(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+        print(f"Attention pooling: {attention}")
+        self.lins = GATpKa._return_lin(
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        def _forward(x, edge_index, x_batch, func):
+            x = func(x=x, edge_index=edge_index)
+            # global mean pooling
+            x = global_mean_pool(x, x_batch)  # [batch_size, hidden_channels]
+            # run through linear layer
+            for i in range(len(self.lins)):
+                if i < len(self.lins) - 1:
+                    x = F.relu(self.lins[i](x))
+                else:
+                    x = self.lins[i](x)
+            return x
+
+        func = super().forward
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+        x_d_batch = data.x_d_batch.to(device=DEVICE)
+
+        x_p = _forward(x_p, data.edge_index_p, x_p_batch, func)
+        x_d = _forward(x_d, data.edge_index_d, x_d_batch, func)
+        return x_p + x_d
+
+
+class GINPairV1(GINpKa):
+    def __init__(
+        self,
+        num_node_features: int,
+        num_edge_features: int,
+        hidden_channels: int = 32,
+        num_layers: int = 3,
+        out_channels=32,
+        dropout=0.5,
+        attention=False,
+    ):
+
+        super().__init__(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+        GIN_p = GINpKa(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+        GIN_d = GINpKa(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+
+        print(f"Attention pooling: {attention}")
+        self.lins = GINpKa._return_lin(
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+        )
+        self.GIN_p = GIN_p
+        self.GIN_d = GIN_d
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        def _forward(x, edge_index, x_batch, func):
+            x = func(x=x, edge_index=edge_index)
+            # global mean pooling
+            x = global_mean_pool(x, x_batch)  # [batch_size, hidden_channels]
+            # run through linear layer
+            for i in range(len(self.lins)):
+                if i < len(self.lins) - 1:
+                    x = F.relu(self.lins[i](x))
+                else:
+                    x = self.lins[i](x)
+            return x
+
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+        x_d_batch = data.x_d_batch.to(device=DEVICE)
+
+        x_p = _forward(x_p, data.edge_index_p, x_p_batch, self.GIN_p.forward)
+        x_d = _forward(x_d, data.edge_index_d, x_d_batch, self.GIN_d.forward)
+        return x_p + x_d
+
+
+class GINPairV2(GINpKa):
+    def __init__(
+        self,
+        num_node_features: int,
+        num_edge_features: int,
+        hidden_channels: int = 32,
+        num_layers: int = 3,
+        out_channels=32,
+        dropout=0.5,
+        attention=False,
+    ):
+
+        super().__init__(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+
+        print(f"Attention pooling: {attention}")
+        self.lins_d = GINpKa._return_lin(
+            input_dim=out_channels, nr_of_lin_layers=3, embeding_size=64
+        )
+        self.lins_p = GINpKa._return_lin(
+            input_dim=out_channels, nr_of_lin_layers=3, embeding_size=64
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        def _forward(x, edge_index, x_batch, func, lins):
+            x = func(x=x, edge_index=edge_index)
+            # global mean pooling
+            x = global_mean_pool(x, x_batch)  # [batch_size, hidden_channels]
+            # run through linear layer
+            for i in range(len(lins)):
+                if i < len(lins) - 1:
+                    x = F.relu(lins[i](x))
+                else:
+                    x = lins[i](x)
+            return x
+
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+        x_d_batch = data.x_d_batch.to(device=DEVICE)
+
+        x_p = _forward(x_p, data.edge_index_p, x_p_batch, super().forward, self.lins_p)
+        x_d = _forward(x_d, data.edge_index_d, x_d_batch, super().forward, self.lins_d)
+        return x_p / x_d
+
+
+class AttentivePairV1(AttentivePka):
+    def __init__(
+        self,
+        num_node_features: int,
+        num_edge_features: int,
+        hidden_channels: int = 32,
+        num_layers: int = 3,
+        num_timesteps: int = 10,
+        out_channels=32,
+        dropout=0.5,
+        attention=False,
+    ):
+        super().__init__(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+            edge_dim=num_edge_features,
+            num_timesteps=num_timesteps,
+        )
+
+        self.AttentivePka_p = AttentivePka(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+            edge_dim=num_edge_features,
+            num_timesteps=num_timesteps,
+        )
+        self.AttentivePka_d = AttentivePka(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+            edge_dim=num_edge_features,
+            num_timesteps=num_timesteps,
+        )
+
+        print(f"Attention pooling: {attention}")
+        self.lins = AttentivePka._return_lin(
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        def _forward(x, edge_attr, edge_index, batch, func):
+            x = func(x=x, edge_attr=edge_attr, edge_index=edge_index, batch=batch)
+            # run through linear layer
+            for i in range(len(self.lins)):
+                if i < len(self.lins) - 1:
+                    x = F.relu(self.lins[i](x))
+                else:
+                    x = self.lins[i](x)
+            return x
+
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+        x_d_batch = data.x_d_batch.to(device=DEVICE)
+
+        x_p = _forward(
+            x=x_p,
+            edge_attr=edge_attr_p,
+            edge_index=data.edge_index_p,
+            batch=x_p_batch,
+            func=self.AttentivePka_p,
+        )
+        x_d = _forward(
+            x=x_d,
+            edge_attr=edge_attr_d,
+            edge_index=data.edge_index_d,
+            batch=x_d_batch,
+            func=self.AttentivePka_d,
+        )
+        return x_p + x_d
+
+
+class AttentivePair(AttentivePka):
+    def __init__(
+        self,
+        num_node_features: int,
+        num_edge_features: int,
+        hidden_channels: int = 32,
+        num_layers: int = 3,
+        num_timesteps: int = 10,
+        out_channels=32,
+        dropout=0.5,
+        attention=False,
+    ):
+        super().__init__(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+            edge_dim=num_edge_features,
+            num_timesteps=num_timesteps,
+        )
+
+        print(f"Attention pooling: {attention}")
+        self.lins = AttentivePka._return_lin(
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+        )
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        def _forward(x, edge_attr, edge_index, batch, func):
+            x = func(x=x, edge_attr=edge_attr, edge_index=edge_index, batch=batch)
+            # run through linear layer
+            for i in range(len(self.lins)):
+                if i < len(self.lins) - 1:
+                    x = F.relu(self.lins[i](x))
+                else:
+                    x = self.lins[i](x)
+            return x
+
+        func = super().forward
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+        x_d_batch = data.x_d_batch.to(device=DEVICE)
+
+        x_p = _forward(
+            x=x_p,
+            edge_attr=edge_attr_p,
+            edge_index=data.edge_index_p,
+            batch=x_p_batch,
+            func=func,
+        )
+        x_d = _forward(
+            x=x_d,
+            edge_attr=edge_attr_d,
+            edge_index=data.edge_index_d,
+            batch=x_d_batch,
+            func=func,
+        )
+        return x_p + x_d
 
 
 class GCNProt(GCNSingleArchitecture, GCNSingleForward):
