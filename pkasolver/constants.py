@@ -15,7 +15,7 @@ amide = "[NX3][CX3](=[OX1])[#6]"
 keton = "[CX3]=[OX1]"
 
 node_feature_values = {
-    "element_onehot": [
+    "element": [
         1,
         6,
         7,
@@ -40,15 +40,15 @@ node_feature_values = {
 }
 
 NODE_FEATURES = {
-    "element_onehot": lambda atom, i, marvin_atom: list(
+    "element": lambda atom, i, marvin_atom: list(
         map(
-            lambda s: float(atom.GetAtomicNum() == s),
-            node_feature_values["element_onehot"],
+            lambda s: int(atom.GetAtomicNum() == s),
+            node_feature_values["element"],
         )
     ),  # still missing to mark element that's not in the list
     "formal_charge": lambda atom, i, marvin_atom: list(
         map(
-            lambda s: float(atom.GetFormalCharge() == s),
+            lambda s: int(atom.GetFormalCharge() == s),
             node_feature_values["formal_charge"],
         )
     ),
@@ -58,26 +58,26 @@ NODE_FEATURES = {
     ),
     "hybridization": lambda atom, i, marvin_atom: list(
         map(
-            lambda s: float(atom.GetHybridization() == s),
+            lambda s: int(atom.GetHybridization() == s),
             node_feature_values["hybridization"],
         )
     ),
     "total_num_Hs": lambda atom, i, marvin_atom: list(
         map(
-            lambda s: float(atom.GetTotalNumHs() == s),
+            lambda s: int(atom.GetTotalNumHs() == s),
             node_feature_values["total_num_Hs"],
         )
     ),
     "aromatic_tag": lambda atom, i, marvin_atom: atom.GetIsAromatic(),
     "total_valence": lambda atom, i, marvin_atom: list(
         map(
-            lambda s: float(atom.GetTotalValence() == s),
+            lambda s: int(atom.GetTotalValence() == s),
             node_feature_values["total_valence"],
         )
     ),
     "total_degree": lambda atom, i, marvin_atom: list(
         map(
-            lambda s: float(atom.GetTotalDegree() == s),
+            lambda s: int(atom.GetTotalDegree() == s),
             node_feature_values["total_degree"],
         )
     ),
@@ -93,7 +93,7 @@ edge_feature_values = {
 EDGE_FEATURES = {
     "bond_type": lambda bond: list(
         map(
-            lambda s: float(bond.GetBondTypeAsDouble() == s),
+            lambda s: int(bond.GetBondTypeAsDouble() == s),
             edge_feature_values["bond_type"],
         )
     ),

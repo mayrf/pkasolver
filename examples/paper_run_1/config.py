@@ -25,7 +25,7 @@ NUM_LINEAR_LAYERS = 2
 HIDDEN_CHANNELS = 96
 
 list_node_features = [
-    "element_onehot",
+    "element",
     "formal_charge",
     "hybridization",
     "total_num_Hs",
