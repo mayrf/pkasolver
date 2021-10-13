@@ -30,6 +30,33 @@ def attention_pooling(num_node_features):
     )
 
 
+def forward_convs(x, edge_index, l: list):
+    for i in range(len(l)):
+        if i < len(l) - 1:
+            x = F.relu(l[i](x, edge_index))
+        else:
+            x = l[i](x, edge_index)
+    return x
+
+
+def forward_convs_with_edge_attr(x, edge_index, edge_attr, l: list):
+    for i in range(len(l)):
+        if i < len(l) - 1:
+            x = F.relu(l[i](x, edge_index, edge_attr))
+        else:
+            x = l[i](x, edge_index, edge_attr)
+    return x
+
+
+def forward_lins(x, l: list):
+    for i in range(len(l)):
+        if i < len(l) - 1:
+            x = F.relu(l[i](x))
+        else:
+            x = l[i](x)
+    return x
+
+
 #####################################
 #####################################
 # defining GCN for single state
@@ -225,12 +252,7 @@ class GCNSingleForward:
             x_att = self.pool(x, x_batch)
 
         # run through conv layers
-        for i in range(len(self.convs)):
-            if i < len(self.convs) - 1:
-                x = F.relu(self.convs[i](x, edge_index))
-            else:
-                x = self.convs[i](x, edge_index)
-
+        x = forward_convs(x, edge_index, self.convs)
         # set dimensions to zero
         x = F.dropout(x, p=0.5, training=self.training)
 
@@ -242,11 +264,7 @@ class GCNSingleForward:
             x = torch.cat((x, x_att), 1)
 
         # run through linear layer
-        for i in range(len(self.lins)):
-            if i < len(self.lins) - 1:
-                x = F.relu(self.lins[i](x))
-            else:
-                x = self.lins[i](x)
+        x = forward_lins(x, self.lins)
         return x
 
 
@@ -256,18 +274,8 @@ class GCNPairOneConvForward:
         x_d_batch = data.x_d_batch.to(device=DEVICE)
 
         # using only a single conv
-
-        for i in range(len(self.convs)):
-            if i < len(self.lins_p) - 1:
-                x_p = F.relu(self.convs[i](x_p, data.edge_index_p))
-            else:
-                x_p = self.convs[i](x_p, data.edge_index_p)
-
-        for i in range(len(self.convs)):
-            if i < len(self.lins_d) - 1:
-                x_d = F.relu(self.convs[i](x_d, data.edge_index_p))
-            else:
-                x_d = self.convs[i](x_d, data.edge_index_p)
+        x_p = forward_convs(x_p, data.edge_index_p, self.convs)
+        x_d = forward_convs(x_d, data.edge_index_d, self.convs)
 
         x_p = global_mean_pool(x_p, x_p_batch)  # [batch_size, hidden_channels]
         x_d = global_mean_pool(x_d, x_d_batch)
@@ -275,17 +283,8 @@ class GCNPairOneConvForward:
         x_p = F.dropout(x_p, p=0.5, training=self.training)
         x_d = F.dropout(x_d, p=0.5, training=self.training)
 
-        for i in range(len(self.lins_p)):
-            if i < len(self.lins_p) - 1:
-                x_p = F.relu(self.lins_p[i](x_p))
-            else:
-                x_p = self.lins_p[i](x_p)
-
-        for i in range(len(self.lins_d)):
-            if i < len(self.lins_d) - 1:
-                x_d = F.relu(self.lins_d[i](x_d))
-            else:
-                x_d = F.relu(self.lins_d[i](x_d))
+        x_p = forward_lins(x_p, self.lins_p)
+        x_d = forward_lins(x_d, self.lins_d)
 
         return x_p + x_d
 
@@ -299,17 +298,8 @@ class GCNPairTwoConvForward:
             x_p_att = self.pool(x_p, x_p_batch)
             x_d_att = self.pool(x_d, x_d_batch)
 
-        for i in range(len(self.convs_p)):
-            if i < len(self.convs_p) - 1:
-                x_p = F.relu(self.convs_p[i](x_p, data.edge_index_p))
-            else:
-                x_p = self.convs_p[i](x_p, data.edge_index_p)
-
-        for i in range(len(self.convs_d)):
-            if i < len(self.convs_d) - 1:
-                x_d = F.relu(self.convs_d[i](x_d, data.edge_index_d))
-            else:
-                x_d = self.convs_d[i](x_d, data.edge_index_d)
+        x_p = forward_convs(x_p, data.edge_index_p, self.convs_p)
+        x_d = forward_convs(x_d, data.edge_index_d, self.convs_d)
 
         x_p = global_mean_pool(x_p, x_p_batch)  # [batch_size, hidden_channels]
         x_d = global_mean_pool(x_d, x_d_batch)
@@ -320,11 +310,7 @@ class GCNPairTwoConvForward:
             x = torch.cat([x_p, x_d], 1)
 
         x = F.dropout(x, p=0.5, training=self.training)
-        for i in range(len(self.lins)):
-            if i < len(self.lins) - 1:
-                x = F.relu(self.lins[i](x))
-            else:
-                x = self.lins[i](x)
+        x = forward_lins(x, self.lins)
         return x
 
 
@@ -335,11 +321,7 @@ class NNConvSingleForward:
         if self.attention:
             x_att = self.pool(x, x_batch)
 
-        for i in range(len(self.convs)):
-            if i < len(self.convs) - 1:
-                x = F.relu(self.convs[i](x, edge_index, edge_attr))
-            else:
-                x = self.convs[i](x, edge_index, edge_attr)
+        x = forward_convs_with_edge_attr(x, edge_index, edge_attr, self.convs)
 
         x = global_mean_pool(x, x_batch)  # [batch_size, hidden_channels]
 
@@ -348,11 +330,7 @@ class NNConvSingleForward:
 
         x = F.dropout(x, p=0.5, training=self.training)
 
-        for i in range(len(self.lins)):
-            if i < len(self.lins) - 1:
-                x = F.relu(self.lins[i](x))
-            else:
-                x = self.lins[i](x)
+        x = forward_lins(x, self.lins)
         return x
 
 
@@ -366,17 +344,12 @@ class NNConvPairForward:
         x_p_att = self.pool(x_p, x_p_batch)
         x_d_att = self.pool(x_d, x_d_batch)
 
-        for i in range(len(self.convs_d)):
-            if i < len(self.convs_d) - 1:
-                x_d = F.relu(self.convs_d[i](x_d, data.edge_index_d, edge_attr_d))
-            else:
-                x_d = self.convs_d[i](x_d, data.edge_index_d, edge_attr_d)
-
-        for i in range(len(self.convs_p)):
-            if i < len(self.convs_p) - 1:
-                x_p = F.relu(self.convs_p[i](x_p, data.edge_index_p, edge_attr_p))
-            else:
-                x_p = self.convs_p[i](x_p, data.edge_index_p, edge_attr_p)
+        x_p = forward_convs_with_edge_attr(
+            x_p, data.edge_index_p, edge_attr_p, self.convs_p
+        )
+        x_d = forward_convs_with_edge_attr(
+            x_d, data.edge_index_d, edge_attr_d, self.convs_d
+        )
 
         x_p = global_mean_pool(x_p, x_p_batch)  # [batch_size, hidden_channels]
         x_d = global_mean_pool(x_d, x_d_batch)
@@ -387,11 +360,7 @@ class NNConvPairForward:
             x = torch.cat((x_p, x_d), 1)
 
         x = F.dropout(x, p=0.5, training=self.training)
-        for i in range(len(self.lins)):
-            if i < len(self.lins) - 1:
-                x = F.relu(self.lins[i](x))
-            else:
-                x = self.lins[i](x)
+        x = forward_lins(x, self.lins)
 
         return x
 
@@ -560,11 +529,7 @@ class GATProt(GATpKa):
         # global mean pooling
         x = global_mean_pool(x, x_p_batch)  # [batch_size, hidden_channels]
         # run through linear layer
-        for i in range(len(self.lins)):
-            if i < len(self.lins) - 1:
-                x = F.relu(self.lins[i](x))
-            else:
-                x = self.lins[i](x)
+        x = forward_lins(x, self.lins)
         return x
 
 
@@ -603,11 +568,7 @@ class AttentiveProt(AttentivePka):
         # global mean pooling
         # x = global_mean_pool(x, x_p_batch)  # [batch_size, hidden_channels]
         # run through linear layer
-        for i in range(len(self.lins)):
-            if i < len(self.lins) - 1:
-                x = F.relu(self.lins[i](x))
-            else:
-                x = self.lins[i](x)
+        x = forward_lins(x, self.lins)
         return x
 
 
@@ -641,11 +602,7 @@ class GINProt(GINpKa):
         # global mean pooling
         x = global_mean_pool(x, x_p_batch)  # [batch_size, hidden_channels]
         # run through linear layer
-        for i in range(len(self.lins)):
-            if i < len(self.lins) - 1:
-                x = F.relu(self.lins[i](x))
-            else:
-                x = self.lins[i](x)
+        x = forward_lins(x, self.lins)
         return x
 
 
@@ -678,12 +635,7 @@ class GATPair(GATpKa):
             # global mean pooling
             x = global_mean_pool(x, x_batch)  # [batch_size, hidden_channels]
             # run through linear layer
-            for i in range(len(self.lins)):
-                if i < len(self.lins) - 1:
-                    x = F.relu(self.lins[i](x))
-                else:
-                    x = self.lins[i](x)
-            return x
+            return forward_lins(x, self.lins)
 
         func = super().forward
         x_p_batch = data.x_p_batch.to(device=DEVICE)
@@ -741,12 +693,7 @@ class GINPairV1(GINpKa):
             # global mean pooling
             x = global_mean_pool(x, x_batch)  # [batch_size, hidden_channels]
             # run through linear layer
-            for i in range(len(self.lins)):
-                if i < len(self.lins) - 1:
-                    x = F.relu(self.lins[i](x))
-                else:
-                    x = self.lins[i](x)
-            return x
+            return forward_lins(x, self.lins)
 
         x_p_batch = data.x_p_batch.to(device=DEVICE)
         x_d_batch = data.x_d_batch.to(device=DEVICE)
@@ -790,12 +737,7 @@ class GINPairV2(GINpKa):
             # global mean pooling
             x = global_mean_pool(x, x_batch)  # [batch_size, hidden_channels]
             # run through linear layer
-            for i in range(len(lins)):
-                if i < len(lins) - 1:
-                    x = F.relu(lins[i](x))
-                else:
-                    x = lins[i](x)
-            return x
+            return forward_lins(x, lins)
 
         x_p_batch = data.x_p_batch.to(device=DEVICE)
         x_d_batch = data.x_d_batch.to(device=DEVICE)
@@ -855,12 +797,7 @@ class AttentivePairV1(AttentivePka):
         def _forward(x, edge_attr, edge_index, batch, func):
             x = func(x=x, edge_attr=edge_attr, edge_index=edge_index, batch=batch)
             # run through linear layer
-            for i in range(len(self.lins)):
-                if i < len(self.lins) - 1:
-                    x = F.relu(self.lins[i](x))
-                else:
-                    x = self.lins[i](x)
-            return x
+            return forward_lins(x, self.lins)
 
         x_p_batch = data.x_p_batch.to(device=DEVICE)
         x_d_batch = data.x_d_batch.to(device=DEVICE)
@@ -913,12 +850,7 @@ class AttentivePair(AttentivePka):
         def _forward(x, edge_attr, edge_index, batch, func):
             x = func(x=x, edge_attr=edge_attr, edge_index=edge_index, batch=batch)
             # run through linear layer
-            for i in range(len(self.lins)):
-                if i < len(self.lins) - 1:
-                    x = F.relu(self.lins[i](x))
-                else:
-                    x = self.lins[i](x)
-            return x
+            return forward_lins(x, self.lins)
 
         func = super().forward
         x_p_batch = data.x_p_batch.to(device=DEVICE)
