@@ -398,7 +398,11 @@ class NNConvPairForward:
 
 class NNConvSingleArchitecture(GCN):
     def __init__(
-        self, num_node_features, num_edge_features, nr_of_layers=3, embeding_size=96
+        self,
+        num_node_features: int,
+        num_edge_features: int,
+        nr_of_layers: int,
+        hidden_channels: int,
     ):
         super().__init__()
         self.pool = attention_pooling(num_node_features)
@@ -407,85 +411,81 @@ class NNConvSingleArchitecture(GCN):
             num_node_features,
             num_edge_features,
             nr_of_layers=nr_of_layers,
-            embeding_size=embeding_size,
+            embeding_size=hidden_channels,
         )
         if self.attention:
-            input_dim = embeding_size + num_node_features
+            input_dim = hidden_channels + num_node_features
         else:
-            input_dim = embeding_size
+            input_dim = hidden_channels
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=embeding_size,
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
         )
 
 
 class GCNSingleArchitecture(GCN):
-    def __init__(self, num_node_features, nr_of_layers: int, embeding_size: int):
+    def __init__(self, num_node_features, nr_of_layers: int, hidden_channels: int):
         super().__init__()
         self.pool = attention_pooling(num_node_features)
 
         self.convs = self._return_conv(
-            num_node_features, nr_of_layers=nr_of_layers, embeding_size=embeding_size
+            num_node_features, nr_of_layers=nr_of_layers, embeding_size=hidden_channels
         )
 
         if self.attention:
-            input_dim = embeding_size + num_node_features
+            input_dim = hidden_channels + num_node_features
         else:
-            input_dim = embeding_size
+            input_dim = hidden_channels
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=embeding_size,
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
         )
 
 
 class GCNPairArchitecture(GCN):
-    def __init__(
-        self, num_node_features, nr_of_layers: int = 3, embeding_size: int = 96
-    ):
+    def __init__(self, num_node_features, nr_of_layers: int, hidden_channels: int):
         super().__init__()
 
         self.pool = attention_pooling(num_node_features,)
 
         self.convs_p = self._return_conv(
-            num_node_features, nr_of_layers=nr_of_layers, embeding_size=embeding_size
+            num_node_features, nr_of_layers=nr_of_layers, embeding_size=hidden_channels
         )
         self.convs_d = self._return_conv(
-            num_node_features, nr_of_layers=nr_of_layers, embeding_size=embeding_size
+            num_node_features, nr_of_layers=nr_of_layers, embeding_size=hidden_channels
         )
         if self.attention:
-            input_dim = embeding_size * 2 + 2 * num_node_features
+            input_dim = hidden_channels * 2 + 2 * num_node_features
         else:
-            input_dim = embeding_size * 2
+            input_dim = hidden_channels * 2
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=embeding_size,
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
         )
 
         self.pool = attention_pooling(num_node_features)
 
 
 class GCNPairArchitectureV2(GCN):
-    def __init__(
-        self, num_node_features, nr_of_layers: int = 3, embeding_size: int = 96
-    ):
+    def __init__(self, num_node_features, nr_of_layers: int, hidden_channels: int):
         super().__init__()
 
         self.pool = attention_pooling(num_node_features)
 
         self.convs = self._return_conv(
-            num_node_features, nr_of_layers=nr_of_layers, embeding_size=embeding_size
+            num_node_features, nr_of_layers=nr_of_layers, embeding_size=hidden_channels
         )
 
         if self.attention:
-            input_dim = embeding_size
+            input_dim = hidden_channels
         else:
-            input_dim = embeding_size
+            input_dim = hidden_channels
 
         self.lins_d = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=embeding_size,
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
         )
         self.lins_p = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=embeding_size,
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
         )
 
         self.pool = attention_pooling(num_node_features)
@@ -496,8 +496,8 @@ class NNConvPairArchitecture(GCN):
         self,
         num_node_features,
         num_edge_features,
-        nr_of_layers: int = 3,
-        embeding_size: int = 96,
+        nr_of_layers: int,
+        hidden_channels: int,
     ):
         super().__init__()
 
@@ -507,21 +507,21 @@ class NNConvPairArchitecture(GCN):
             num_node_features,
             num_edge_features,
             nr_of_layers=nr_of_layers,
-            embeding_size=embeding_size,
+            embeding_size=hidden_channels,
         )
         self.convs_p = GCN._return_nnconv(
             num_node_features,
             num_edge_features,
             nr_of_layers=nr_of_layers,
-            embeding_size=embeding_size,
+            embeding_size=hidden_channels,
         )
         if self.attention:
-            input_dim = 2 * embeding_size + (2 * num_node_features)
+            input_dim = 2 * hidden_channels + (2 * num_node_features)
         else:
-            input_dim = 2 * embeding_size
+            input_dim = 2 * hidden_channels
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=embeding_size,
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
         )
 
 
@@ -550,7 +550,7 @@ class GATProt(GATpKa):
         )
         print(f"Attention pooling: {attention}")
         self.lins = GATpKa._return_lin(
-            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=hidden_channels
         )
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -591,7 +591,7 @@ class AttentiveProt(AttentivePka):
         )
         print(f"Attention pooling: {attention}")
         self.lins = AttentivePka._return_lin(
-            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=hidden_channels
         )
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -631,7 +631,7 @@ class GINProt(GINpKa):
         )
         print(f"Attention pooling: {attention}")
         self.lins = GINpKa._return_lin(
-            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=hidden_channels
         )
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -669,7 +669,7 @@ class GATPair(GATpKa):
         )
         print(f"Attention pooling: {attention}")
         self.lins = GATpKa._return_lin(
-            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=hidden_channels
         )
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -730,7 +730,7 @@ class GINPairV1(GINpKa):
 
         print(f"Attention pooling: {attention}")
         self.lins = GINpKa._return_lin(
-            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=hidden_channels
         )
         self.GIN_p = GIN_p
         self.GIN_d = GIN_d
@@ -778,10 +778,10 @@ class GINPairV2(GINpKa):
 
         print(f"Attention pooling: {attention}")
         self.lins_d = GINpKa._return_lin(
-            input_dim=out_channels, nr_of_lin_layers=3, embeding_size=64
+            input_dim=out_channels, nr_of_lin_layers=3, embeding_size=hidden_channels
         )
         self.lins_p = GINpKa._return_lin(
-            input_dim=out_channels, nr_of_lin_layers=3, embeding_size=64
+            input_dim=out_channels, nr_of_lin_layers=3, embeding_size=hidden_channels
         )
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -848,7 +848,7 @@ class AttentivePairV1(AttentivePka):
 
         print(f"Attention pooling: {attention}")
         self.lins = AttentivePka._return_lin(
-            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=hidden_channels
         )
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -906,7 +906,7 @@ class AttentivePair(AttentivePka):
 
         print(f"Attention pooling: {attention}")
         self.lins = AttentivePka._return_lin(
-            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=64
+            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=hidden_channels
         )
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -947,11 +947,11 @@ class GCNProt(GCNSingleArchitecture, GCNSingleForward):
         num_node_features,
         num_edge_features,
         nr_of_layers: int = 3,
-        embeding_size: int = 96,
+        hidden_channels: int = 96,
         attention=False,
     ):
         self.attention = attention
-        super().__init__(num_node_features, nr_of_layers, embeding_size)
+        super().__init__(num_node_features, nr_of_layers, hidden_channels)
         print(f"Attention pooling: {self.attention}")
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -964,11 +964,11 @@ class GCNDeprot(GCNSingleArchitecture, GCNSingleForward):
         num_node_features,
         num_edge_features,
         nr_of_layers: int = 3,
-        embeding_size: int = 96,
+        hidden_channels: int = 96,
         attention=False,
     ):
         self.attention = attention
-        super().__init__(num_node_features, nr_of_layers, embeding_size)
+        super().__init__(num_node_features, nr_of_layers, hidden_channels)
         self.pool = attention_pooling(num_node_features)
         print(f"Attention pooling: {self.attention}")
 
@@ -979,17 +979,17 @@ class GCNDeprot(GCNSingleArchitecture, GCNSingleForward):
 class NNConvProt(NNConvSingleArchitecture, NNConvSingleForward):
     def __init__(
         self,
-        num_node_features,
-        num_edge_features,
+        num_node_features: int,
+        num_edge_features: int,
         nr_of_layers: int = 3,
-        embeding_size: int = 96,
-        attention=False,
+        hidden_channels: int = 96,
+        attention: bool = False,
     ):
         self.attention = attention
         print(f"Attention pooling: {self.attention}")
 
         super().__init__(
-            num_node_features, num_edge_features, nr_of_layers, embeding_size
+            num_node_features, num_edge_features, nr_of_layers, hidden_channels
         )
         self.pool = attention_pooling(num_node_features)
 
@@ -1000,16 +1000,16 @@ class NNConvProt(NNConvSingleArchitecture, NNConvSingleForward):
 class NNConvDeprot(NNConvSingleArchitecture, NNConvSingleForward):
     def __init__(
         self,
-        num_node_features,
-        num_edge_features,
+        num_node_features: int,
+        num_edge_features: int,
         nr_of_layers: int = 3,
-        embeding_size: int = 96,
-        attention=False,
+        hidden_channels: int = 96,
+        attention: bool = False,
     ):
         self.attention = attention
         print(f"Attention pooling: {self.attention}")
         super().__init__(
-            num_node_features, num_edge_features, nr_of_layers, embeding_size
+            num_node_features, num_edge_features, nr_of_layers, hidden_channels
         )
         self.pool = attention_pooling(num_node_features)
 
@@ -1028,11 +1028,11 @@ class GCNPairTwoConv(GCNPairArchitecture, GCNPairTwoConvForward):
         num_node_features: int,
         num_edge_features: int,
         nr_of_layers: int = 3,
-        embeding_size: int = 96,
+        hidden_channels: int = 96,
         attention: bool = False,
     ):
         self.attention = attention
-        super().__init__(num_node_features, nr_of_layers, embeding_size)
+        super().__init__(num_node_features, nr_of_layers, hidden_channels)
         print(f"Attention pooling: {self.attention}")
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -1045,11 +1045,11 @@ class GCNPairSingleConv(GCNPairArchitectureV2, GCNPairOneConvForward):
         num_node_features: int,
         num_edge_features: int,
         nr_of_layers: int = 3,
-        embeding_size: int = 96,
+        hidden_channels: int = 96,
         attention: bool = False,
     ):
         self.attention = attention
-        super().__init__(num_node_features, nr_of_layers, embeding_size)
+        super().__init__(num_node_features, nr_of_layers, hidden_channels)
         print(f"Attention pooling: {self.attention}")
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
@@ -1062,12 +1062,12 @@ class NNConvPair(NNConvPairArchitecture, NNConvPairForward):
         num_node_features: int,
         num_edge_features: int,
         nr_of_layers: int = 3,
-        embeding_size: int = 96,
+        hidden_channels: int = 96,
         attention: bool = False,
     ):
         self.attention = attention
         super().__init__(
-            num_node_features, num_edge_features, nr_of_layers, embeding_size
+            num_node_features, num_edge_features, nr_of_layers, hidden_channels
         )
         print(f"Attention pooling: {self.attention}")
 
