@@ -123,6 +123,7 @@ def test_train_gcn_models():
             model = model_class(
                 num_node_features=num_node_features,
                 num_edge_features=num_edge_features,
+                hidden_channels=64,
                 attention=attention_mode,
             ).to(device=DEVICE)
             print(model)
@@ -193,6 +194,7 @@ def test_train_new_models():
             model = model_class(
                 num_node_features=num_node_features,
                 num_edge_features=num_edge_features,
+                hidden_channels=64,
                 attention=attention_mode,
             ).to(device=DEVICE)
             print(model)
