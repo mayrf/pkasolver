@@ -79,6 +79,18 @@ def atom_smarts_query(atom, smarts):
     )
 
 
+def make_smarts_features(atom, smarts_dict):
+    bits = []
+    for lst in smarts_dict.values():
+        i = 0
+        for smarts in lst:
+            if atom_smarts_query(atom, smarts):
+                i = 1
+                continue
+        bits.append(i)
+    return bits
+
+
 def calculate_tanimoto_coefficient(fp1, fp2):
     set1 = set(fp1.nonzero()[0].tolist())
     set2 = set(fp2.nonzero()[0].tolist())

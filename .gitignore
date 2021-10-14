@@ -5,7 +5,7 @@ examples/paper_run_1/models/
 examples/paper_run_1/images_and_tables/
 examples/paper_run_1/testing.ipynb
 examples/paper_run_1/run_data/graph_data.pkl
-
+testing/
 # custom ignores
 *.json
 *.pkl
