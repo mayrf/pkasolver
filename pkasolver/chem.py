@@ -17,7 +17,7 @@ def create_conjugate(mol, id, pka, pH=7.4):
         atom.SetFormalCharge(charge - 1)
         if Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs - 1)
-         
+
     # make protonated conjugate as pKa < pH and charge is neutral or negative
     elif pka <= pH and charge <= 0:
         atom.SetFormalCharge(charge + 1)
@@ -74,13 +74,9 @@ def bond_smarts_query(bond, smarts):
 
 
 def atom_smarts_query(atom, smarts):
-    if atom.GetOwningMol().GetSubstructMatches(Chem.MolFromSmarts(smarts)):
-        if (
-            atom.GetIdx()
-            in atom.GetOwningMol().GetSubstructMatches(Chem.MolFromSmarts(smarts))[0]
-        ):
-            return True
-    return False
+    return atom.GetIdx() in sum(
+        atom.GetOwningMol().GetSubstructMatches(Chem.MolFromSmarts(smarts)), ()
+    )
 
 
 def calculate_tanimoto_coefficient(fp1, fp2):
