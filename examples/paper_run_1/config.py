@@ -34,6 +34,7 @@ list_node_features = [
     "total_degree",
     "is_in_ring",
     "reaction_center",
+    "smarts",
 ]
 list_edge_features = ["bond_type", "is_conjugated", "rotatable"]
 

@@ -174,15 +174,13 @@ def make_nodes(mol, marvin_atom: int, n_features: dict):
     Return a torch.tensor with dimensions num_nodes(atoms) x num_node_features.
     """
     x = []
-    i = 0
     for atom in mol.GetAtoms():
         node = []
         for feat in n_features.values():
-            node.append(feat(atom, i, marvin_atom))
+            node.append(feat(atom, marvin_atom))
         node = list(flatten(node))
         # node = [int(x) for x in node]
         x.append(node)
-        i += 1
     return torch.tensor(np.array([np.array(xi) for xi in x]), dtype=torch.float)
 
 
