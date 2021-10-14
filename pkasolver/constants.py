@@ -14,6 +14,47 @@ rotatable_bond_no_amide = "[!$([NH]!@C(=O))&!D1&!$(*#*)]-&!@[!$([NH]!@C(=O))&!D1
 amide = "[NX3][CX3](=[OX1])[#6]"
 keton = "[CX3]=[OX1]"
 
+smarts_dict = { 
+# from https://molvs.readthedocs.io/en/latest/_modules/molvs/charge.html
+'-OSO3H': ['OS(=O)(=O)[OH]', 'OS(=O)(=O)[O-]'],
+'–SO3H': ['[!O]S(=O)(=O)[OH]', '[!O]S(=O)(=O)[O-]'],
+'-OSO2H': ['O[SD3](=O)[OH]', 'O[SD3](=O)[O-]'],
+'-SO2H': ['[!O][SD3](=O)[OH]', '[!O][SD3](=O)[O-]'],
+'-OPO3H2': ['OP(=O)([OH])[OH]', 'OP(=O)([OH])[O-]'],
+'-PO3H2': ['[!O]P(=O)([OH])[OH]', '[!O]P(=O)([OH])[O-]'],
+'-CO2H': ['C(=O)[OH]', 'C(=O)[O-]'],
+'thiophenol': ['c[SH]', 'c[S-]'],
+'(-OPO3H)-': ['OP(=O)([O-])[OH]', 'OP(=O)([O-])[O-]'],
+'(-PO3H)-': ['[!O]P(=O)([O-])[OH]', '[!O]P(=O)([O-])[O-]'],
+'phthalimide': ['O=C2c1ccccc1C(=O)[NH]2', 'O=C2c1ccccc1C(=O)[N-]2'],
+'CO3H (peracetyl)': ['C(=O)O[OH]', 'C(=O)O[O-]'],
+'alpha-carbon-hydrogen-nitro group': ['O=N(O)[CH]', 'O=N(O)[C-]'],
+'-SO2NH2': ['S(=O)(=O)[NH2]', 'S(=O)(=O)[NH-]'],
+'-OBO2H2': ['OB([OH])[OH]', 'OB([OH])[O-]'],
+'-BO2H2': ['[!O]B([OH])[OH]', '[!O]B([OH])[O-]'],
+'phenol': ['c[OH]', 'c[O-]'],
+'SH (aliphatic)': ['C[SH]', 'C[S-]'],
+'(-OBO2H)-': ['OB([O-])[OH]', 'OB([O-])[O-]'],
+'(-BO2H)-': ['[!O]B([O-])[OH]', '[!O]B([O-])[O-]'],
+'cyclopentadiene': ['C1=CC=C[CH2]1', 'c1ccc[cH-]1'],
+'-CONH2': ['C(=O)[NH2]', 'C(=O)[NH-]'],
+'imidazole': ['c1cnc[nH]1': 'c1cnc[n-]1'],
+'-OH (aliphatic alcohol)': ['[CX4][OH]', '[CX4][O-]'],
+'alpha-carbon-hydrogen-keto group': ['O=C([!O])[C!H0+0]', 'O=C([!O])[C-]'],
+'alpha-carbon-hydrogen-acetyl ester group': ['OC(=O)[C!H0+0]', 'OC(=O)[C-]'],
+'sp carbon hydrogen': ['C#[CH]', 'C#[C-]'],
+'alpha-carbon-hydrogen-sulfone group': ['CS(=O)(=O)[C!H0+0]', 'CS(=O)(=O)[C-]'],
+'alpha-carbon-hydrogen-sulfoxide group': ['C[SD3](=O)[C!H0+0]', 'C[SD3](=O)[C-]'],
+'-NH2': ['[CX4][NH2]', '[CX4][NH-]'],
+'benzyl hydrogen': ['c[CX4H2]', 'c[CX3H-]'],
+'sp2-carbon hydrogen': ['[CX3]=[CX3!H0+0]', '[CX3]=[CX2-]'],
+'sp3-carbon hydrogen': ['[CX4!H0+0]', '[CX3-]'],
+# from https://www.daylight.com/dayhtml_tutorials/languages/smarts/smarts_examples.html#ACID
+'Hydrogen-bond acceptor':['[#6,#7;R0]=[#8]', '[!$([#6,F,Cl,Br,I,o,s,nX3,#7v5,#15v5,#16v4,#16v6,*+1,*+2,*+3])]']
+'Hydrogen-bond donor':['[!$([#6,H0,-,-2,-3])]', '[!H0;#7,#8,#9]']
+'Possible intramolecular H-bond':['[O,N;!H0]-*~*-*=[$([C,N;R0]=O)]']
+}
+
 node_feature_values = {
     "element": [
         1,
