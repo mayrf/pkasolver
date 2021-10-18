@@ -19,8 +19,8 @@ from pkasolver.ml_architecture import (
 import torch
 from pkasolver.constants import (
     DEVICE,
-    node_feature_values,
-    edge_feature_values,
+    node_feat_values,
+    edge_feat_values,
     calculate_nr_of_features,
 )
 
@@ -108,7 +108,7 @@ def test_train_gcn_models():
 
     i_e = 0
     for feat in list_e:
-        i_e += len(edge_feature_values[feat])
+        i_e += len(edge_feat_values[feat])
     num_edge_features = i_e
 
     for model_name, model_class in models:
