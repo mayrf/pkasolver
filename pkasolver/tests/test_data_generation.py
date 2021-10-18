@@ -2,6 +2,7 @@ from rdkit import Chem
 from pkasolver.data import make_features_dicts, make_nodes
 from pkasolver.constants import NODE_FEATURES, EDGE_FEATURES
 from pkasolver.data import make_edges_and_attr, make_nodes, load_data
+import torch
 
 
 def test_features_dicts():
@@ -108,6 +109,8 @@ def test_nodes():
         0.0,
         0.0,
     )
+
+
 def test_smarts_nodes():
     """Test the conversion of mol to nodes with feature subset"""
     from pkasolver.data import preprocess
@@ -157,6 +160,74 @@ def test_smarts_nodes():
         0.0,
         0.0,
     )
+
+
+def test_smarts_nodes_sds():
+    """Test the conversion of mol to nodes with feature subset"""
+
+    list_n = ["smarts"]
+    n_feat = make_features_dicts(NODE_FEATURES, list_n)
+    mol = Chem.MolFromSmiles("CCCCCCCCCCCCOS(=O)(=O)[O-].[Na+]")
+    mol_nodes = make_nodes(mol, 33, n_feat)
+
+    test_nodes = torch.zeros((mol_nodes.shape))
+    test_nodes[12:17, 0] = 1
+    test_nodes[0:12, 32] = 1
+    test_nodes[12, 33] = 1
+    test_nodes[14:17, 33] = 1
+
+    assert torch.equal(test_nodes, mol_nodes)
+
+
+def test_smarts_nodes_amoxicillin():
+    """Test the conversion of mol to nodes with feature subset"""
+
+    list_n = ["smarts"]
+    n_feat = make_features_dicts(NODE_FEATURES, list_n)
+    mol = Chem.MolFromSmiles(
+        "CC1([C@@H](N2[C@H](S1)[C@@H](C2=O)NC(=O)[C@@H](C3=CC=C(C=C3)O)N)C(=O)O)C"
+    )
+    mol_nodes = make_nodes(mol, 23, n_feat)
+
+    test_nodes = torch.zeros((mol_nodes.shape))
+    test_nodes[21:24, 6] = 1
+    test_nodes[16, 16] = 1
+    test_nodes[19, 16] = 1
+    test_nodes[3, 24] = 1
+    test_nodes[6:13, 24] = 1
+    test_nodes[2, 25] = 1
+    test_nodes[21:24, 25] = 1
+    test_nodes[12, 29] = 1
+    test_nodes[20, 29] = 1
+    test_nodes[0, 32] = 1
+    test_nodes[2, 32] = 1
+    test_nodes[4, 32] = 1
+    test_nodes[6, 32] = 1
+    test_nodes[12, 32] = 1
+    test_nodes[24, 32] = 1
+    test_nodes[3, 33] = 1
+    test_nodes[5, 33] = 1
+    test_nodes[8:12, 33] = 1
+    test_nodes[19:24, 33] = 1
+    test_nodes[9, 34] = 1
+    test_nodes[19:21, 34] = 1
+    test_nodes[23, 34] = 1
+
+    assert torch.equal(test_nodes, mol_nodes)
+
+
+def test_smarts_nodes_taurin():
+    """Test the conversion of mol to nodes with feature subset"""
+
+    list_n = ["smarts"]
+    n_feat = make_features_dicts(NODE_FEATURES, list_n)
+    mol = Chem.MolFromSmiles("C(CS(=O)(=O)O)N")
+    mol_nodes = make_nodes(mol, 5, n_feat)
+
+    test_nodes = torch.zeros((mol_nodes.shape[0], 1))
+    test_nodes[1:6] = 1
+
+    assert torch.equal(mol_nodes[:, 1:2], test_nodes)
 
 
 def test_edges_generation():
@@ -252,7 +323,11 @@ def test_generate_data_intances():
     assert charge1 == 1
     assert charge2 == 0
 
-    d3 = mol_to_paired_mol_data(df.iloc[mol_idx], n_feat, e_feat,)
+    d3 = mol_to_paired_mol_data(
+        df.iloc[mol_idx],
+        n_feat,
+        e_feat,
+    )
     # all of them have the same number of nodes
     assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
     # but different node features
@@ -271,7 +346,11 @@ def test_generate_data_intances():
     d2, charge2 = mol_to_single_mol_data(
         df.iloc[mol_idx], n_feat, e_feat, "deprotonated"
     )
-    d3 = mol_to_paired_mol_data(df.iloc[mol_idx], n_feat, e_feat,)
+    d3 = mol_to_paired_mol_data(
+        df.iloc[mol_idx],
+        n_feat,
+        e_feat,
+    )
     print(df.iloc[mol_idx].smiles)
     assert charge1 == 1
     assert charge2 == 0
