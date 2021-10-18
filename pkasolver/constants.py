@@ -15,8 +15,8 @@ rotatable_bond_no_amide = "[!$([NH]!@C(=O))&!D1&!$(*#*)]-&!@[!$([NH]!@C(=O))&!D1
 amide = "[NX3][CX3](=[OX1])[#6]"
 keton = "[CX3]=[OX1]"
 
+# from https://molvs.readthedocs.io/en/latest/_modules/molvs/charge.html
 smarts_dict = {
-    # from https://molvs.readthedocs.io/en/latest/_modules/molvs/charge.html
     "-OSO3H": ["OS(=O)(=O)[OH]", "OS(=O)(=O)[O-]"],
     "–SO3H": ["[!O]S(=O)(=O)[OH]", "[!O]S(=O)(=O)[O-]"],
     "-OSO2H": ["O[SD3](=O)[OH]", "O[SD3](=O)[O-]"],
@@ -50,7 +50,6 @@ smarts_dict = {
     "benzyl hydrogen": ["c[CX4H2]", "c[CX3H-]"],
     "sp2-carbon hydrogen": ["[CX3]=[CX3!H0+0]", "[CX3]=[CX2-]"],
     "sp3-carbon hydrogen": ["[CX4!H0+0]", "[CX3-]"],
-    # from https://www.daylight.com/dayhtml_tutorials/languages/smarts/smarts_examples.html#ACID
     "Hydrogen-bond acceptor": [
         "[#6,#7;R0]=[#8]",
         "[!$([#6,F,Cl,Br,I,o,s,nX3,#7v5,#15v5,#16v4,#16v6,*+1,*+2,*+3])]",
@@ -87,10 +86,7 @@ node_feature_values = {
 
 NODE_FEATURES = {
     "element": lambda atom, marvin_atom: list(
-        map(
-            lambda s: int(atom.GetAtomicNum() == s),
-            node_feature_values["element"],
-        )
+        map(lambda s: int(atom.GetAtomicNum() == s), node_feature_values["element"],)
     ),  # still missing to mark element that's not in the list
     "formal_charge": lambda atom, marvin_atom: list(
         map(

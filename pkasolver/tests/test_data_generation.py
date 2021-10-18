@@ -91,6 +91,73 @@ def test_nodes():
         1.0,
     )
 
+    assert tuple(nodes[0].numpy()) == (
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+    )
+def test_smarts_nodes():
+    """Test the conversion of mol to nodes with feature subset"""
+    from pkasolver.data import preprocess
+
+    sdf_filepaths = load_data()
+    df = preprocess(sdf_filepaths["Training"])
+    list_n = ["smarts"]
+    print(df.iloc[0].smiles)
+    n_feat = make_features_dicts(NODE_FEATURES, list_n)
+    nodes = make_nodes(df.iloc[0].protonated, df.iloc[0].marvin_atom, n_feat)
+
+    assert tuple(nodes[0]) == (
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+    )
+
 
 def test_edges_generation():
     import torch
@@ -185,11 +252,7 @@ def test_generate_data_intances():
     assert charge1 == 1
     assert charge2 == 0
 
-    d3 = mol_to_paired_mol_data(
-        df.iloc[mol_idx],
-        n_feat,
-        e_feat,
-    )
+    d3 = mol_to_paired_mol_data(df.iloc[mol_idx], n_feat, e_feat,)
     # all of them have the same number of nodes
     assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
     # but different node features
@@ -208,11 +271,7 @@ def test_generate_data_intances():
     d2, charge2 = mol_to_single_mol_data(
         df.iloc[mol_idx], n_feat, e_feat, "deprotonated"
     )
-    d3 = mol_to_paired_mol_data(
-        df.iloc[mol_idx],
-        n_feat,
-        e_feat,
-    )
+    d3 = mol_to_paired_mol_data(df.iloc[mol_idx], n_feat, e_feat,)
     print(df.iloc[mol_idx].smiles)
     assert charge1 == 1
     assert charge2 == 0

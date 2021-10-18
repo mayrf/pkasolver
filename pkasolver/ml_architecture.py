@@ -469,7 +469,7 @@ class NNConvPairArchitecture(GCN):
         hidden_channels: int,
     ):
         super().__init__()
-
+        hidden_channels = 16
         self.pool = attention_pooling(num_node_features)
 
         self.convs_d = GCN._return_nnconv(
