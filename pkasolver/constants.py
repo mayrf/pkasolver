@@ -58,7 +58,7 @@ smarts_dict = {
     "Possible intramolecular H-bond": ["[O,N;!H0]-*~*-*=[$([C,N;R0]=O)]"],
 }
 
-node_feature_values = {
+node_feat_values = {
     "element": [
         1,
         6,
@@ -86,12 +86,15 @@ node_feature_values = {
 
 NODE_FEATURES = {
     "element": lambda atom, marvin_atom: list(
-        map(lambda s: int(atom.GetAtomicNum() == s), node_feature_values["element"],)
+        map(
+            lambda s: int(atom.GetAtomicNum() == s),
+            node_feat_values["element"],
+        )
     ),  # still missing to mark element that's not in the list
     "formal_charge": lambda atom, marvin_atom: list(
         map(
             lambda s: int(atom.GetFormalCharge() == s),
-            node_feature_values["formal_charge"],
+            node_feat_values["formal_charge"],
         )
     ),
     "is_in_ring": lambda atom, marvin_atom: atom.IsInRing(),
@@ -99,26 +102,26 @@ NODE_FEATURES = {
     "hybridization": lambda atom, marvin_atom: list(
         map(
             lambda s: int(atom.GetHybridization() == s),
-            node_feature_values["hybridization"],
+            node_feat_values["hybridization"],
         )
     ),
     "total_num_Hs": lambda atom, marvin_atom: list(
         map(
             lambda s: int(atom.GetTotalNumHs() == s),
-            node_feature_values["total_num_Hs"],
+            node_feat_values["total_num_Hs"],
         )
     ),
     "aromatic_tag": lambda atom, marvin_atom: atom.GetIsAromatic(),
     "total_valence": lambda atom, marvin_atom: list(
         map(
             lambda s: int(atom.GetTotalValence() == s),
-            node_feature_values["total_valence"],
+            node_feat_values["total_valence"],
         )
     ),
     "total_degree": lambda atom, marvin_atom: list(
         map(
             lambda s: int(atom.GetTotalDegree() == s),
-            node_feature_values["total_degree"],
+            node_feat_values["total_degree"],
         )
     ),
     "reaction_center": lambda atom, marvin_atom: atom.GetIdx() == int(marvin_atom),
@@ -128,18 +131,18 @@ NODE_FEATURES = {
 
 def calculate_nr_of_features(feature_list: list):
     i_n = 0
-    if all(elem in node_feature_values for elem in feature_list):
+    if all(elem in node_feat_values for elem in feature_list):
         for feat in feature_list:
-            i_n += len(node_feature_values[feat])
-    elif all(elem in edge_feature_values for elem in feature_list):
+            i_n += len(node_feat_values[feat])
+    elif all(elem in edge_feat_values for elem in feature_list):
         for feat in feature_list:
-            i_n += len(edge_feature_values[feat])
+            i_n += len(edge_feat_values[feat])
     else:
         raise RuntimeError()
     return i_n
 
 
-edge_feature_values = {
+edge_feat_values = {
     "bond_type": [1.0, 1.5, 2.0, 3.0],
     "is_conjugated": [1],
     "rotatable": [1],
@@ -149,7 +152,7 @@ EDGE_FEATURES = {
     "bond_type": lambda bond: list(
         map(
             lambda s: int(bond.GetBondTypeAsDouble() == s),
-            edge_feature_values["bond_type"],
+            edge_feat_values["bond_type"],
         )
     ),
     "is_conjugated": lambda bond: bond.GetIsConjugated(),
