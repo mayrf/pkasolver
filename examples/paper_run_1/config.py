@@ -24,7 +24,7 @@ NUM_GRAPH_LAYERS = 4
 NUM_LINEAR_LAYERS = 2
 HIDDEN_CHANNELS = 96
 
-list_node_features = [
+node_feat_list = [
     "element",
     "formal_charge",
     "hybridization",
@@ -36,7 +36,7 @@ list_node_features = [
     "reaction_center",
     "smarts",
 ]
-list_edge_features = ["bond_type", "is_conjugated", "rotatable"]
+edge_feat_list = ["bond_type", "is_conjugated", "rotatable"]
 
 i_n = 0
 for feat in list_node_features:
