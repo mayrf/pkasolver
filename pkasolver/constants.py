@@ -128,20 +128,6 @@ NODE_FEATURES = {
     "smarts": lambda atom, marvin_atom: make_smarts_features(atom, smarts_dict),
 }
 
-
-def calculate_nr_of_features(feature_list: list):
-    i_n = 0
-    if all(elem in node_feat_values for elem in feature_list):
-        for feat in feature_list:
-            i_n += len(node_feat_values[feat])
-    elif all(elem in edge_feat_values for elem in feature_list):
-        for feat in feature_list:
-            i_n += len(edge_feat_values[feat])
-    else:
-        raise RuntimeError()
-    return i_n
-
-
 edge_feat_values = {
     "bond_type": [1.0, 1.5, 2.0, 3.0],
     "is_conjugated": [1],

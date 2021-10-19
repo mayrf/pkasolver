@@ -6,7 +6,7 @@ from pkasolver.constants import DEVICE
 # PyG Dataset to Dataloader
 def dataset_to_dataloader(data, batch_size, shuffle=True):
     """Take a PyG Dataset and return a Dataloader object.
-    
+
     batch_size must be defined.
     Optional shuffle can be enabled.
     """
@@ -63,5 +63,5 @@ def test_graph_model(graph_models, loader, dataset_name):
         res["pKa_true"], res[f"{model_name}"] = x, y
         MAE = mean_absolute_error(x, y)
         RMSE = np.sqrt(mean_squared_error(x, y))
-        print(f"{dataset_name} - {model_name}: MAE {MAE}, RMSE {RMSE}")
+        # print(f"{dataset_name} - {model_name}: MAE {MAE}, RMSE {RMSE}")
     return pd.DataFrame(res)
