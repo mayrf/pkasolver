@@ -11,7 +11,13 @@ from rdkit import Chem
 from torch_geometric.data import Data
 
 from pkasolver.chem import create_conjugate
-from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES, DEVICE
+from pkasolver.constants import (
+    EDGE_FEATURES,
+    NODE_FEATURES,
+    DEVICE,
+    node_feat_values,
+    edge_feat_values,
+)
 
 
 def load_data(base: str = "data/Baltruschat") -> dict:
@@ -166,6 +172,19 @@ class PairData(Data):
 
 
 from pandas.core.common import flatten
+
+
+def calculate_nr_of_features(feature_list: list):
+    i_n = 0
+    if all(elem in node_feat_values for elem in feature_list):
+        for feat in feature_list:
+            i_n += len(node_feat_values[feat])
+    elif all(elem in edge_feat_values for elem in feature_list):
+        for feat in feature_list:
+            i_n += len(edge_feat_values[feat])
+    else:
+        raise RuntimeError()
+    return i_n
 
 
 def make_nodes(mol, marvin_atom: int, n_features: dict):
