@@ -17,8 +17,8 @@ keton = "[CX3]=[OX1]"
 
 # from https://molvs.readthedocs.io/en/latest/_modules/molvs/charge.html
 smarts_dict = {
-    "-OSO3H": ["OS(=O)(=O)[OH]", "OS(=O)(=O)[O-]"],
-    "–SO3H": ["[!O]S(=O)(=O)[OH]", "[!O]S(=O)(=O)[O-]"],
+    "-OSO3H": ["OS(=O)(=O)[OH]", "OS(=O)(=O)[O-]"],  #
+    "–SO3H": ["[!O]S(=O)(=O)[OH]", "[!O]S(=O)(=O)[O-]"],  #
     "-OSO2H": ["O[SD3](=O)[OH]", "O[SD3](=O)[O-]"],
     "-SO2H": ["[!O][SD3](=O)[OH]", "[!O][SD3](=O)[O-]"],
     "-OPO3H2": ["OP(=O)([OH])[OH]", "OP(=O)([OH])[O-]"],
@@ -49,8 +49,8 @@ smarts_dict = {
     "-NH2": ["[CX4][NH2]", "[CX4][NH-]"],
     "benzyl hydrogen": ["c[CX4H2]", "c[CX3H-]"],
     "sp2-carbon hydrogen": ["[CX3]=[CX3!H0+0]", "[CX3]=[CX2-]"],
-    "sp3-carbon hydrogen": ["[CX4!H0+0]", "[CX3-]"],
-    "Hydrogen-bond acceptor": [
+    "sp3-carbon hydrogen": ["[CX4!H0+0]", "[CX3-]"],  #
+    "Hydrogen-bond acceptor": [  #
         "[#6,#7;R0]=[#8]",
         "[!$([#6,F,Cl,Br,I,o,s,nX3,#7v5,#15v5,#16v4,#16v6,*+1,*+2,*+3])]",
     ],
@@ -58,7 +58,7 @@ smarts_dict = {
     "Possible intramolecular H-bond": ["[O,N;!H0]-*~*-*=[$([C,N;R0]=O)]"],
 }
 
-node_feature_values = {
+node_feat_values = {
     "element": [
         1,
         6,
@@ -86,12 +86,15 @@ node_feature_values = {
 
 NODE_FEATURES = {
     "element": lambda atom, marvin_atom: list(
-        map(lambda s: int(atom.GetAtomicNum() == s), node_feature_values["element"],)
+        map(
+            lambda s: int(atom.GetAtomicNum() == s),
+            node_feat_values["element"],
+        )
     ),  # still missing to mark element that's not in the list
     "formal_charge": lambda atom, marvin_atom: list(
         map(
             lambda s: int(atom.GetFormalCharge() == s),
-            node_feature_values["formal_charge"],
+            node_feat_values["formal_charge"],
         )
     ),
     "is_in_ring": lambda atom, marvin_atom: atom.IsInRing(),
@@ -99,47 +102,33 @@ NODE_FEATURES = {
     "hybridization": lambda atom, marvin_atom: list(
         map(
             lambda s: int(atom.GetHybridization() == s),
-            node_feature_values["hybridization"],
+            node_feat_values["hybridization"],
         )
     ),
     "total_num_Hs": lambda atom, marvin_atom: list(
         map(
             lambda s: int(atom.GetTotalNumHs() == s),
-            node_feature_values["total_num_Hs"],
+            node_feat_values["total_num_Hs"],
         )
     ),
     "aromatic_tag": lambda atom, marvin_atom: atom.GetIsAromatic(),
     "total_valence": lambda atom, marvin_atom: list(
         map(
             lambda s: int(atom.GetTotalValence() == s),
-            node_feature_values["total_valence"],
+            node_feat_values["total_valence"],
         )
     ),
     "total_degree": lambda atom, marvin_atom: list(
         map(
             lambda s: int(atom.GetTotalDegree() == s),
-            node_feature_values["total_degree"],
+            node_feat_values["total_degree"],
         )
     ),
     "reaction_center": lambda atom, marvin_atom: atom.GetIdx() == int(marvin_atom),
     "smarts": lambda atom, marvin_atom: make_smarts_features(atom, smarts_dict),
 }
 
-
-def calculate_nr_of_features(feature_list: list):
-    i_n = 0
-    if all(elem in node_feature_values for elem in feature_list):
-        for feat in feature_list:
-            i_n += len(node_feature_values[feat])
-    elif all(elem in edge_feature_values for elem in feature_list):
-        for feat in feature_list:
-            i_n += len(edge_feature_values[feat])
-    else:
-        raise RuntimeError()
-    return i_n
-
-
-edge_feature_values = {
+edge_feat_values = {
     "bond_type": [1.0, 1.5, 2.0, 3.0],
     "is_conjugated": [1],
     "rotatable": [1],
@@ -149,7 +138,7 @@ EDGE_FEATURES = {
     "bond_type": lambda bond: list(
         map(
             lambda s: int(bond.GetBondTypeAsDouble() == s),
-            edge_feature_values["bond_type"],
+            edge_feat_values["bond_type"],
         )
     ),
     "is_conjugated": lambda bond: bond.GetIsConjugated(),
