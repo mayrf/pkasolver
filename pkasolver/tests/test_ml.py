@@ -21,8 +21,8 @@ from pkasolver.constants import (
     DEVICE,
     node_feat_values,
     edge_feat_values,
-    calculate_nr_of_features,
 )
+from pkasolver.data import calculate_nr_of_features
 
 models = [
     ("GCNPairSingleConv", GCNPairSingleConv),
