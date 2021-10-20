@@ -39,7 +39,7 @@ smarts_dict = {
     "(-BO2H)-": ["[!O]B([O-])[OH]", "[!O]B([O-])[O-]"],
     "cyclopentadiene": ["C1=CC=C[CH2]1", "c1ccc[cH-]1"],
     "-CONH2": ["C(=O)[NH2]", "C(=O)[NH-]"],
-    "imidazole": ["c 1cnc[nH]1" "c1cnc[n-]1"],
+    "imidazole": ["c1cnc[nH]1" "c1cnc[n-]1"],
     "-OH (aliphatic alcohol)": ["[CX4][OH]", "[CX4][O-]"],
     "alpha-carbon-hydrogen-keto group": ["O=C([!O])[C!H0+0]", "O=C([!O])[C-]"],
     "alpha-carbon-hydrogen-acetyl ester group": ["OC(=O)[C!H0+0]", "OC(=O)[C-]"],
