@@ -101,7 +101,9 @@ class AttentivePka(AttentiveFP):
 
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int,
+        nr_of_lin_layers: int,
+        embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
@@ -138,7 +140,9 @@ class GATpKa(GAT):
 
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int,
+        nr_of_lin_layers: int,
+        embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
@@ -175,7 +179,9 @@ class GINpKa(GIN):
 
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int,
+        nr_of_lin_layers: int,
+        embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
@@ -199,7 +205,9 @@ class GCN(torch.nn.Module):
 
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int,
+        nr_of_lin_layers: int,
+        embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
@@ -388,7 +396,9 @@ class NNConvSingleArchitecture(GCN):
             input_dim = hidden_channels
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
+            input_dim=input_dim,
+            nr_of_lin_layers=2,
+            embeding_size=hidden_channels,
         )
 
 
@@ -407,7 +417,9 @@ class GCNSingleArchitecture(GCN):
             input_dim = hidden_channels
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
+            input_dim=input_dim,
+            nr_of_lin_layers=2,
+            embeding_size=hidden_channels,
         )
 
 
@@ -415,7 +427,9 @@ class GCNPairArchitecture(GCN):
     def __init__(self, num_node_features, nr_of_layers: int, hidden_channels: int):
         super().__init__()
 
-        self.pool = attention_pooling(num_node_features,)
+        self.pool = attention_pooling(
+            num_node_features,
+        )
 
         self.convs_p = self._return_conv(
             num_node_features, nr_of_layers=nr_of_layers, embeding_size=hidden_channels
@@ -429,7 +443,9 @@ class GCNPairArchitecture(GCN):
             input_dim = hidden_channels * 2
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
+            input_dim=input_dim,
+            nr_of_lin_layers=2,
+            embeding_size=hidden_channels,
         )
 
         self.pool = attention_pooling(num_node_features)
@@ -451,10 +467,14 @@ class GCNPairArchitectureV2(GCN):
             input_dim = hidden_channels
 
         self.lins_d = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
+            input_dim=input_dim,
+            nr_of_lin_layers=2,
+            embeding_size=hidden_channels,
         )
         self.lins_p = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
+            input_dim=input_dim,
+            nr_of_lin_layers=2,
+            embeding_size=hidden_channels,
         )
 
         self.pool = attention_pooling(num_node_features)
@@ -490,7 +510,9 @@ class NNConvPairArchitecture(GCN):
             input_dim = 2 * hidden_channels
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
+            input_dim=input_dim,
+            nr_of_lin_layers=2,
+            embeding_size=hidden_channels,
         )
 
 
@@ -1033,6 +1055,43 @@ def gcn_train(model, loader, optimizer):
         optimizer.zero_grad()  # Clear gradients.
 
 
+def gcn_train_val_optimisation(model, train_loader, val_loader, optimizer):
+    """alternative training function that considers
+    the squared differces between train and val loss
+    in its loss function"""
+    # model.train()
+    for data in train_loader:  # Iterate in batches over the training dataset.
+        val_loss = gcn_val_test(model, val_loader)
+        model.train()
+        out = model(
+            x_p=data.x_p,
+            x_d=data.x_d,
+            edge_attr_p=data.edge_attr_p,
+            edge_attr_d=data.edge_attr_d,
+            data=data,
+        )
+        train_loss = calculate_mse(out.flatten(), data.y)  # Compute the loss.
+        loss = train_loss + torch.square(train_loss - val_loss)
+        loss.backward()  # Derive gradients.
+        optimizer.step()  # Update parameters based on gradients.
+        optimizer.zero_grad()  # Clear gradients.
+
+
+def gcn_val_test(model, loader):
+    model.eval()
+    loss = torch.Tensor([0]).to(device=DEVICE)
+    for data in loader:  # Iterate in batches over the training dataset.
+        out = model(
+            x_p=data.x_p,
+            x_d=data.x_d,
+            edge_attr_p=data.edge_attr_p,
+            edge_attr_d=data.edge_attr_d,
+            data=data,
+        )  # Perform a single forward pass.
+        loss += calculate_mse(out.flatten(), data.y).detach()
+    return loss
+
+
 def gcn_test(model, loader):
     model.eval()
     loss = torch.Tensor([0]).to(device=DEVICE)
@@ -1083,6 +1142,30 @@ def gcn_full_training(
     for epoch in pbar:
         if epoch != 0:
             gcn_train(model, train_loader, optimizer)
+        if epoch % 20 == 0:
+            train_loss = gcn_test(model, train_loader)
+            val_loss = gcn_test(model, val_loader)
+            pbar.set_description(
+                f"Train MAE: {train_loss:.4f}, Validation MAE: {val_loss:.4f}"
+            )
+            results["training-set"].append(train_loss)
+            results["validation-set"].append(val_loss)
+            if path:
+                save_checkpoint(model, optimizer, epoch, train_loss, val_loss, path)
+
+    return results
+
+
+def gcn_full_training_val_optimisation(
+    model, train_loader, val_loader, optimizer, path: str = "", NUM_EPOCHS: int = 1_000
+) -> dict:
+    pbar = tqdm(range(model.checkpoint["epoch"], NUM_EPOCHS + 1), desc="Epoch: ")
+    results = {}
+    results["training-set"] = []
+    results["validation-set"] = []
+    for epoch in pbar:
+        if epoch != 0:
+            gcn_train_val_optimisation(model, train_loader, val_loader, optimizer)
         if epoch % 20 == 0:
             train_loss = gcn_test(model, train_loader)
             val_loss = gcn_test(model, val_loader)
