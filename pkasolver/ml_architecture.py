@@ -13,7 +13,7 @@ from torch_geometric.nn import (
     global_max_pool,
     GlobalAttention,
 )
-
+import numpy as np
 from pkasolver.constants import DEVICE, SEED
 
 #####################################
@@ -1031,6 +1031,8 @@ def gcn_train(model, loader, optimizer):
         loss.backward()  # Derive gradients.
         optimizer.step()  # Update parameters based on gradients.
         optimizer.zero_grad()  # Clear gradients.
+        loss = loss.cpu().detach().numpy()
+        assert not np.isnan(loss)
 
 
 def gcn_test(model, loader):
