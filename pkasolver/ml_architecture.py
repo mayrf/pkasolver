@@ -1,5 +1,7 @@
 import copy
 import pickle
+from torch_geometric.nn.glob.glob import global_add_pool
+from pkasolver.chem import get_nr_of_descriptors
 
 import torch
 from torch_geometric.nn.glob import attention
@@ -101,13 +103,13 @@ class AttentivePka(AttentiveFP):
 
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int, nr_of_lin_layers: int, embeding_size: int, out_dim: int = 1
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
         for _ in range(2, nr_of_lin_layers):
             lins.append(Linear(embeding_size, embeding_size))
-        lins.append(Linear(embeding_size, 1))
+        lins.append(Linear(embeding_size, out_dim))
         return ModuleList(lins)
 
 
@@ -138,13 +140,13 @@ class GATpKa(GAT):
 
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int, nr_of_lin_layers: int, embeding_size: int, out_dim: int = 1
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
         for _ in range(2, nr_of_lin_layers):
             lins.append(Linear(embeding_size, embeding_size))
-        lins.append(Linear(embeding_size, 1))
+        lins.append(Linear(embeding_size, out_dim))
         return ModuleList(lins)
 
 
@@ -175,13 +177,13 @@ class GINpKa(GIN):
 
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int, nr_of_lin_layers: int, embeding_size: int, out_dim: int = 1
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
         for _ in range(2, nr_of_lin_layers):
             lins.append(Linear(embeding_size, embeding_size))
-        lins.append(Linear(embeding_size, 1))
+        lins.append(Linear(embeding_size, out_dim))
         return ModuleList(lins)
 
 
@@ -199,13 +201,13 @@ class GCN(torch.nn.Module):
 
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int, nr_of_lin_layers: int, embeding_size: int, out_dim: int = 1
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
         for _ in range(2, nr_of_lin_layers):
             lins.append(Linear(embeding_size, embeding_size))
-        lins.append(Linear(embeding_size, 1))
+        lins.append(Linear(embeding_size, out_dim))
         return ModuleList(lins)
 
     @staticmethod
@@ -469,7 +471,7 @@ class NNConvPairArchitecture(GCN):
         hidden_channels: int,
     ):
         super().__init__()
-        hidden_channels = 16
+        hidden_channels = 32
         self.pool = attention_pooling(num_node_features)
 
         self.convs_d = GCN._return_nnconv(

@@ -3,6 +3,7 @@ from pkasolver.data import make_features_dicts, make_nodes
 from pkasolver.constants import NODE_FEATURES, EDGE_FEATURES
 from pkasolver.data import make_edges_and_attr, make_nodes, load_data
 import torch
+import numpy as np
 
 
 def test_features_dicts():
@@ -18,6 +19,53 @@ def test_features_dicts():
     assert len(e_feat.keys()) == len(list_e)
 
 
+def test_descriptor_generation():
+    from pkasolver.data import preprocess, mol_to_features
+    from rdkit.Chem import Descriptors
+
+    des_list = [x[0] for x in Descriptors._descList]
+    assert len(des_list) == 208
+    selected_node_features = make_features_dicts(
+        NODE_FEATURES, ["element", "formal_charge"]
+    )
+    selected_edge_features = make_features_dicts(
+        EDGE_FEATURES, ["bond_type", "is_conjugated"]
+    )
+
+    sdf_filepaths = load_data()
+    df = preprocess(sdf_filepaths["Training"])
+    assert len(df) == 5994
+    descriptors_p = []
+    descriptors_d = []
+    for index in df.index:
+        print(index)
+        if index == 1387 or index == 2866:
+            continue
+        descriptors_p.append(
+            mol_to_features(
+                df.iloc[index],
+                selected_node_features,
+                selected_edge_features,
+                "protonated",
+            )[-1]
+        )
+        descriptors_d.append(
+            mol_to_features(
+                df.iloc[index],
+                selected_node_features,
+                selected_edge_features,
+                "deprotonated",
+            )[-1]
+        )
+        # check that non of the descriptors returns nan
+        print(descriptors_d[-1])
+        print(Chem.MolToSmiles(df.iloc[index].deprotonated))
+        assert not any([np.isnan(element) for element in descriptors_d[-1]])
+        print(descriptors_p[-1])
+        print(Chem.MolToSmiles(df.iloc[index].protonated))
+        assert not any([np.isnan(element) for element in descriptors_p[-1]])
+
+
 def test_dataset():
     """what charges are present in the dataset"""
     from pkasolver.data import preprocess
@@ -26,12 +74,12 @@ def test_dataset():
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Training"])
     charges = []
-    for i in range(len(df.index)):
+    for index in df.index:
         charge_prot = np.sum(
-            [a.GetFormalCharge() for a in df.iloc[i].protonated.GetAtoms()]
+            [a.GetFormalCharge() for a in df["protonated"][index].GetAtoms()]
         )
         charge_deprot = np.sum(
-            [a.GetFormalCharge() for a in df.iloc[i].deprotonated.GetAtoms()]
+            [a.GetFormalCharge() for a in df["deprotonated"][index].GetAtoms()]
         )
 
         # the difference needs to be 1
@@ -277,6 +325,10 @@ def test_use_dataset_for_node_generation():
     from pkasolver.data import preprocess
     import torch
 
+    ############
+    mol_idx = 0
+    ############
+
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Training"])
     assert df.iloc[0].pKa == 6.21
@@ -299,35 +351,41 @@ def test_generate_data_intances():
         preprocess,
         mol_to_single_mol_data,
         mol_to_paired_mol_data,
+        _generate_normalized_descriptors,
     )
+    from pkasolver.constants import DEVICE
     import torch
 
     ############
     mol_idx = 0
     ############
     sdf_filepaths = load_data()
-    df = preprocess(sdf_filepaths["Training"])
-    assert df.iloc[mol_idx].pKa == 6.21
-    assert int(df.iloc[mol_idx].marvin_atom) == 10
-    assert df.iloc[mol_idx].smiles == "Brc1c(NC2CC2)nc(C2CC2)nc1N1CCCCCC1"
+    df = preprocess(sdf_filepaths["Training"], filter=True)
+    assert df.pKa[mol_idx] == 6.21
+    assert int(df.marvin_atom[mol_idx]) == 10
+    assert df.smiles[mol_idx] == "Brc1c(NC2CC2)nc(C2CC2)nc1N1CCCCCC1"
 
     list_n = ["element", "formal_charge"]
     n_feat = make_features_dicts(NODE_FEATURES, list_n)
     list_e = ["bond_type", "is_conjugated"]
     e_feat = make_features_dicts(EDGE_FEATURES, list_e)
 
-    d1, charge1 = mol_to_single_mol_data(df.iloc[mol_idx], n_feat, e_feat, "protonated")
+    d1, charge1 = mol_to_single_mol_data(df.loc[mol_idx], n_feat, e_feat, "protonated")
     d2, charge2 = mol_to_single_mol_data(
-        df.iloc[mol_idx], n_feat, e_feat, "deprotonated"
+        df.loc[mol_idx], n_feat, e_feat, "deprotonated"
     )
     assert charge1 == 1
     assert charge2 == 0
 
-    d3 = mol_to_paired_mol_data(
-        df.iloc[mol_idx],
-        n_feat,
-        e_feat,
+    descriptors_p, descriptors_d = _generate_normalized_descriptors(
+        df, selected_edge_features=e_feat, selected_node_features=n_feat,
     )
+
+    d3 = mol_to_paired_mol_data(
+        df.loc[mol_idx], n_feat, e_feat, descriptors_p[mol_idx], descriptors_d[mol_idx]
+    )
+    torch.tensor(d3.descriptor_p, device=DEVICE, dtype=torch.float32),
+
     # all of them have the same number of nodes
     assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
     # but different node features
@@ -342,16 +400,14 @@ def test_generate_data_intances():
     mol_idx = 1429
     ############
 
-    d1, charge1 = mol_to_single_mol_data(df.iloc[mol_idx], n_feat, e_feat, "protonated")
+    d1, charge1 = mol_to_single_mol_data(df.loc[mol_idx], n_feat, e_feat, "protonated")
     d2, charge2 = mol_to_single_mol_data(
-        df.iloc[mol_idx], n_feat, e_feat, "deprotonated"
+        df.loc[mol_idx], n_feat, e_feat, "deprotonated"
     )
     d3 = mol_to_paired_mol_data(
-        df.iloc[mol_idx],
-        n_feat,
-        e_feat,
+        df.loc[mol_idx], n_feat, e_feat, descriptors_p[mol_idx], descriptors_d[mol_idx]
     )
-    print(df.iloc[mol_idx].smiles)
+    print(df.loc[mol_idx].smiles)
     assert charge1 == 1
     assert charge2 == 0
 

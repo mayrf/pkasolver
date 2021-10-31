@@ -19,10 +19,8 @@ from pkasolver.ml_architecture import (
 import torch
 from pkasolver.constants import (
     DEVICE,
-    node_feat_values,
-    edge_feat_values,
+    calculate_nr_of_features,
 )
-from pkasolver.data import calculate_nr_of_features
 
 models = [
     ("GCNPairSingleConv", GCNPairSingleConv),
@@ -105,11 +103,6 @@ def test_train_gcn_models():
     # calculate node/edge features
     num_node_features = calculate_nr_of_features(list_n)
     num_edge_features = calculate_nr_of_features(list_e)
-
-    i_e = 0
-    for feat in list_e:
-        i_e += len(edge_feat_values[feat])
-    num_edge_features = i_e
 
     for model_name, model_class in models:
         print(model_name)

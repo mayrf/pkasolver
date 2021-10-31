@@ -3,6 +3,22 @@ from rdkit import Chem
 from rdkit.Chem.AllChem import GetMorganFingerprintAsBitVect
 
 
+def get_nr_of_descriptors() -> int:
+    from rdkit.Chem import Descriptors
+
+    return len(Descriptors._descList)
+
+
+def get_descriptors_from_mol(mol) -> list:
+    from rdkit.Chem import Descriptors
+    from rdkit.ML.Descriptors import MoleculeDescriptors
+
+    des_list = [x[0] for x in Descriptors._descList]
+    # Calculate all descriptors (listed in des_list)
+    calculator = MoleculeDescriptors.MolecularDescriptorCalculator(des_list)
+    return np.array(calculator.CalcDescriptors(mol))
+
+
 def create_conjugate(mol, id, pka, pH=7.4):
     """Create a new molecule that is the conjugated base/acid to the input molecule."""
     mol = Chem.RWMol(mol)

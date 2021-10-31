@@ -9,15 +9,15 @@ import pandas as pd
 import torch
 from rdkit import Chem
 from torch_geometric.data import Data
+from pkasolver.chem import create_conjugate, get_descriptors_from_mol
 
 from pkasolver.chem import create_conjugate
 from pkasolver.constants import (
     EDGE_FEATURES,
     NODE_FEATURES,
     DEVICE,
-    node_feat_values,
-    edge_feat_values,
 )
+import torch.nn.functional as F
 
 
 def load_data(base: str = "data/Baltruschat") -> dict:
@@ -54,38 +54,59 @@ def train_validation_set_split(df: pd.DataFrame, ratio: float, seed=42):
 
 
 # data preprocessing functions - helpers
-def import_sdf(sdf_filename: str):
+def import_sdf(sdf_filename: str, filter: bool = False):
     """Import an sdf file and return a Dataframe with an additional Smiles column."""
     df = PandasTools.LoadSDF(sdf_filename)
-    df["smiles"] = [Chem.MolToSmiles(m) for m in df["ROMol"]]
+
+    smiles_list, skipping = [], []
+    for idx, mol in enumerate(df["ROMol"]):
+        smiles = Chem.MolToSmiles(mol)
+        # current filter criteria is only that `As` is not allowed
+        if filter:
+            if "As" in smiles:
+                print(smiles)
+                print("skipping ...")
+                skipping.append(idx)
+                continue
+        smiles_list.append(smiles)
+
+    prefilter_shape = df.shape
+
+    if filter:
+        # drop skipping indizes
+        df.drop(df.index[skipping], inplace=True)
+        postfilter_shape = df.shape
+        assert prefilter_shape != postfilter_shape
+        df.reset_index(inplace=True)
+
+    df["smiles"] = smiles_list
     return df
 
 
 def conjugates_to_dataframe(df: pd.DataFrame):
     """Take DataFrame and return a DataFrame with a column of calculated conjugated molecules."""
     conjugates = []
-    for i in range(len(df.index)):
-        mol = df.ROMol[i]
-        index = int(df.marvin_atom[i])
-        pka = float(df.marvin_pKa[i])
-        conjugates.append(create_conjugate(mol, index, pka))
+    for index in df.index:
+        mol = df.ROMol[index]
+        reaction_center_idx = int(df.marvin_atom[index])
+        pka = float(df.marvin_pKa[index])
+        conjugates.append(create_conjugate(mol, reaction_center_idx, pka))
     df["Conjugates"] = conjugates
     return df
 
 
 def sort_conjugates(df):
     """Take DataFrame, check and correct the protonated and deprotonated molecules columns and return the new Dataframe."""
-    prot = []
-    deprot = []
-    for i in range(len(df.index)):
-        indx = int(
-            df.marvin_atom[i]
+    prot, deprot = [], []
+    for index in df.index:
+        reaction_center_idx = int(
+            df.marvin_atom[index]
         )  # mark reaction center where (de)protonation takes place
-        mol = df.ROMol[i]
-        conj = df.Conjugates[i]
+        mol = df.ROMol[index]
+        conj = df.Conjugates[index]
 
-        charge_mol = int(mol.GetAtomWithIdx(indx).GetFormalCharge())
-        charge_conj = int(conj.GetAtomWithIdx(indx).GetFormalCharge())
+        charge_mol = int(mol.GetAtomWithIdx(reaction_center_idx).GetFormalCharge())
+        charge_conj = int(conj.GetAtomWithIdx(reaction_center_idx).GetFormalCharge())
 
         if charge_mol < charge_conj:
             prot.append(conj)
@@ -101,9 +122,9 @@ def sort_conjugates(df):
 
 
 # data preprocessing functions - main
-def preprocess(sdf_filename: str):
+def preprocess(sdf_filename: str, filter: bool = False):
     """Take name string and sdf path, process to Dataframe and save it as a pickle file."""
-    df = import_sdf(sdf_filename)
+    df = import_sdf(sdf_filename, filter=filter)
     df = conjugates_to_dataframe(df)
     df = sort_conjugates(df)
     df["pKa"] = df["pKa"].astype(float)
@@ -136,16 +157,16 @@ class PairData(Data):
 
     def __init__(
         self,
-        # NOTE: everything for protonated
-        edge_index_p,
-        edge_attr_p,
-        x_p,
-        charge_p,
-        # everhtying for deprotonated
-        edge_index_d,
-        edge_attr_d,
-        x_d,
-        charge_d,
+        edge_index_p: torch.Tensor,
+        edge_attr_p: torch.Tensor,
+        x_p: torch.Tensor,
+        charge_p: torch.Tensor,
+        edge_index_d: torch.Tensor,
+        edge_attr_d: torch.Tensor,
+        x_d: torch.Tensor,
+        charge_d: torch.Tensor,
+        list_of_descriptor_p: list = [],
+        list_of_descriptor_d: list = [],
     ):
         super(PairData, self).__init__()
         self.edge_index_p = edge_index_p
@@ -153,6 +174,9 @@ class PairData(Data):
 
         self.x_p = x_p
         self.x_d = x_d
+
+        self.descriptor_p = list_of_descriptor_p
+        self.descriptor_d = list_of_descriptor_d
 
         self.edge_attr_p = edge_attr_p
         self.edge_attr_d = edge_attr_d
@@ -172,19 +196,6 @@ class PairData(Data):
 
 
 from pandas.core.common import flatten
-
-
-def calculate_nr_of_features(feature_list: list):
-    i_n = 0
-    if all(elem in node_feat_values for elem in feature_list):
-        for feat in feature_list:
-            i_n += len(node_feat_values[feat])
-    elif all(elem in edge_feat_values for elem in feature_list):
-        for feat in feature_list:
-            i_n += len(edge_feat_values[feat])
-    else:
-        raise RuntimeError()
-    return i_n
 
 
 def make_nodes(mol, marvin_atom: int, n_features: dict):
@@ -212,22 +223,8 @@ def make_edges_and_attr(mol, e_features):
     edges = []
     edge_attr = []
     for bond in mol.GetBonds():
-        edges.append(
-            np.array(
-                [
-                    [bond.GetBeginAtomIdx()],
-                    [bond.GetEndAtomIdx()],
-                ]
-            )
-        )
-        edges.append(
-            np.array(
-                [
-                    [bond.GetEndAtomIdx()],
-                    [bond.GetBeginAtomIdx()],
-                ]
-            )
-        )
+        edges.append(np.array([[bond.GetBeginAtomIdx()], [bond.GetEndAtomIdx()],]))
+        edges.append(np.array([[bond.GetEndAtomIdx()], [bond.GetBeginAtomIdx()],]))
         edge = []
         for feat in e_features.values():
             edge.append(feat(bond))
@@ -251,28 +248,38 @@ def mol_to_features(row, n_features: dict, e_features: dict, protonation_state: 
         node = make_nodes(row.protonated, row.marvin_atom, n_features)
         edge_index, edge_attr = make_edges_and_attr(row.protonated, e_features)
         charge = np.sum([a.GetFormalCharge() for a in row.protonated.GetAtoms()])
-        return node, edge_index, edge_attr, charge
+        return (
+            node,
+            edge_index,
+            edge_attr,
+            charge,
+            get_descriptors_from_mol(row.protonated),
+        )
     elif protonation_state == "deprotonated":
         node = make_nodes(row.deprotonated, row.marvin_atom, n_features)
         edge_index, edge_attr = make_edges_and_attr(row.deprotonated, e_features)
         charge = np.sum([a.GetFormalCharge() for a in row.deprotonated.GetAtoms()])
-        return node, edge_index, edge_attr, charge
+        return (
+            node,
+            edge_index,
+            edge_attr,
+            charge,
+            get_descriptors_from_mol(row.deprotonated),
+        )
     else:
         raise RuntimeError()
 
 
 def mol_to_paired_mol_data(
-    row,
-    n_features,
-    e_features,
+    row, n_features, e_features, descriptors_p: list = [], descriptors_d: list = [],
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
     """
-    node_p, edge_index_p, edge_attr_p, charge_p = mol_to_features(
+    node_p, edge_index_p, edge_attr_p, charge_p, _ = mol_to_features(
         row, n_features, e_features, "protonated"
     )
-    node_d, edge_index_d, edge_attr_d, charge_d = mol_to_features(
+    node_d, edge_index_d, edge_attr_d, charge_d, _ = mol_to_features(
         row, n_features, e_features, "deprotonated"
     )
 
@@ -281,10 +288,12 @@ def mol_to_paired_mol_data(
         edge_attr_p=edge_attr_p,
         x_p=node_p,
         charge_p=charge_p,
+        list_of_descriptor_p=descriptors_p,
         edge_index_d=edge_index_d,
         edge_attr_d=edge_attr_d,
         x_d=node_d,
         charge_d=charge_d,
+        list_of_descriptor_d=descriptors_d,
     )
     return data
 
@@ -295,14 +304,54 @@ def mol_to_single_mol_data(
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch Data object.
     """
-    node_p, edge_index_p, edge_attr_p, charge = mol_to_features(
+    node_p, edge_index_p, edge_attr_p, charge, descriptors = mol_to_features(
         row, n_features, e_features, protonation_state
     )
     return Data(x=node_p, edge_index=edge_index_p, edge_attr=edge_attr_p), charge
 
 
+def _generate_normalized_descriptors(
+    df: pd.DataFrame, selected_node_features, selected_edge_features
+):
+    descriptors_p = []
+    descriptors_d = []
+    for index in df.index:
+        descriptors_p.append(
+            mol_to_features(
+                df.loc[index],
+                selected_node_features,
+                selected_edge_features,
+                "protonated",
+            )[-1]
+        )
+        descriptors_d.append(
+            mol_to_features(
+                df.loc[index],
+                selected_node_features,
+                selected_edge_features,
+                "deprotonated",
+            )[-1]
+        )
+        if any([np.isnan(element) for element in descriptors_d[-1]]):
+            print(descriptors_d[-1])
+            print(Chem.MolToSmiles(df.loc[index].deprotonated))
+            raise RuntimeError()
+        if any([np.isnan(element) for element in descriptors_p[-1]]):
+            print(descriptors_p[-1])
+            print(Chem.MolToSmiles(df.loc[index].protonated))
+            raise RuntimeError()
+    descriptors_p = F.normalize(torch.tensor(descriptors_p), dim=0).tolist()
+    descriptors_d = F.normalize(torch.tensor(descriptors_d), dim=0).tolist()
+    return descriptors_p, descriptors_d
+
+
 def make_pyg_dataset_from_dataframe(
-    df: pd.DataFrame, list_n: list, list_e: list, paired=False, mode: str = "all"
+    df: pd.DataFrame,
+    list_n: list,
+    list_e: list,
+    paired=False,
+    mode: str = "all",
+    with_descriptors: bool = False,
 ):
     """Take a Dataframe, a list of strings of node features, a list of strings of edge features
     and return a List of PyG Data objects.
@@ -315,28 +364,44 @@ def make_pyg_dataset_from_dataframe(
     selected_node_features = make_features_dicts(NODE_FEATURES, list_n)
     selected_edge_features = make_features_dicts(EDGE_FEATURES, list_e)
     if paired:
-        dataset = []
-        for i in range(len(df.index)):
-            m = mol_to_paired_mol_data(
-                df.iloc[i], selected_node_features, selected_edge_features
+        if with_descriptors:
+            descriptors_p, descriptors_d = _generate_normalized_descriptors(
+                df,
+                selected_edge_features=selected_edge_features,
+                selected_node_features=selected_node_features,
             )
-            m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
-            m.ID = df.ID.iloc[i]
+
+        dataset = []
+        for index in df.index:
+            if with_descriptors:
+                m = mol_to_paired_mol_data(
+                    df.loc[index],
+                    selected_node_features,
+                    selected_edge_features,
+                    torch.tensor([descriptors_p[index]], dtype=torch.float32),
+                    torch.tensor([descriptors_d[index]], dtype=torch.float32),
+                )
+            else:
+                m = mol_to_paired_mol_data(
+                    df.loc[index], selected_node_features, selected_edge_features
+                )
+            m.y = torch.tensor([df.pKa[index]], dtype=torch.float32)
+            m.ID = df.ID[index]
             m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
         return dataset
     else:
         print(f"Generating data with {mode} form")
         dataset = []
-        for i in range(len(df.index)):
+        for index in df.index:
             m, molecular_charge = mol_to_single_mol_data(
-                df.iloc[i],
+                df.loc[index],
                 selected_node_features,
                 selected_edge_features,
                 protonation_state=mode,
             )
-            m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
-            m.ID = df.ID.iloc[i]
+            m.y = torch.tensor([df.pKa[index]], dtype=torch.float32)
+            m.ID = df.ID[index]
             m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
         return dataset
