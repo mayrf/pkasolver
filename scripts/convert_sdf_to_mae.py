@@ -4,10 +4,12 @@ import fileinput, gzip
 data_dir = "/data/local/"
 schroedinger_dir = "/data/shared/software/schrodinger2021-1/"
 convert = f"{schroedinger_dir}/utilities/structconvert"
-sdf_file_name = "mols_chembl.sdf"
+version = 1
+sdf_file_name = f"mols_chembl_v{version}.sdf"
+mae_file_name = f"mols_chembl_v{version}.mae"
 
 # unzip file and copy to working directory
-with gzip.open(f"{data_dir}mols_chembl.sdf.gz", "rb+") as input:
+with gzip.open(f"{data_dir}/{sdf_file_name}.gz", "rb+") as input:
     with open(f"{data_dir}/{sdf_file_name}", "w+") as output:
         for line in input:
             output.write(line.decode())
@@ -27,7 +29,7 @@ for line in fileinput.input(f"{data_dir}/{sdf_file_name}", inplace=True):
 
 # convert to mae file
 o = subprocess.run(
-    [convert, f"{data_dir}/{sdf_file_name}", f"{data_dir}/mols_chembl.mae"],
+    [convert, f"{data_dir}/{sdf_file_name}", f"{data_dir}/{mae_file_name}"],
     stderr=subprocess.STDOUT,
 )
 o.check_returncode()
