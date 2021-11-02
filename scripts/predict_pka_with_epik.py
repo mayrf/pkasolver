@@ -17,9 +17,9 @@ o = subprocess.run(
         f"{epik}",
         "-scan",
         "-imae",
-        f"{data_dir}/{mae_file_name}",
+        f"{data_dir}/{mae_file_name}.gz",
         "-omae",
-        f"{data_dir}/{mae_file_name_with_pka}",
+        f"{data_dir}/{mae_file_name_with_pka}.gz",
     ]
 )
 o.check_returncode()
