@@ -1,35 +1,29 @@
 import os, subprocess
-import fileinput, gzip
 
 data_dir = "/data/local/"
 schroedinger_dir = "/data/shared/software/schrodinger2021-1/"
-convert = f"{schroedinger_dir}/utilities/structconvert"
-version = 1
+perpare = f"{schroedinger_dir}/ligprep"
+version = 0
 sdf_file_name = f"mols_chembl_v{version}.sdf"
 mae_file_name = f"mols_chembl_v{version}.mae"
 
-# unzip file and copy to working directory
-with gzip.open(f"{data_dir}/{sdf_file_name}.gz", "rb+") as input:
-    with open(f"{data_dir}/{sdf_file_name}", "w+") as output:
-        for line in input:
-            output.write(line.decode())
-
 # check that file is present
-if not os.path.isfile(f"{data_dir}/{sdf_file_name}"):
-    raise RuntimeError(f"{data_dir}/{sdf_file_name} file not found")
-
-# correct for possible double '$$$$' pattern
-last_line = ""
-for line in fileinput.input(f"{data_dir}/{sdf_file_name}", inplace=True):
-    if line == last_line and "$$$$" in line:  # make the search pattern more explicit
-        continue
-    else:
-        last_line = line
-        print(line, end="")
+if not os.path.isfile(f"{data_dir}/{sdf_file_name}.gz"):
+    raise RuntimeError(f"{data_dir}/{sdf_file_name}.gz file not found")
 
 # convert to mae file
+# http://gohom.win/ManualHom/Schrodinger/Schrodinger_2015-2_docs/ligprep/ligprep_user_manual.pdf
 o = subprocess.run(
-    [convert, f"{data_dir}/{sdf_file_name}", f"{data_dir}/{mae_file_name}"],
+    [
+        perpare,
+        "-s 1",  # only one stereoisomer, if chiral tag not s et  choose R
+        "-t 1",  # only most probable tautomer generated
+        "-i 0",  # don't adjust the ionization state of the molecule
+        "-isd",
+        f"{data_dir}/{sdf_file_name}.gz",
+        "-omae",
+        f"{data_dir}/{mae_file_name}.gz",
+    ],
     stderr=subprocess.STDOUT,
 )
 o.check_returncode()
