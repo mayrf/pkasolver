@@ -21,7 +21,7 @@ if not os.path.isfile(f"{data_dir}/{sdf_file_name}"):
 # correct for possible double '$$$$' pattern
 last_line = ""
 for line in fileinput.input(f"{data_dir}/{sdf_file_name}", inplace=True):
-    if line == last_line:
+    if line == last_line and "$$$$" in line:  # make the search pattern more explicit
         continue
     else:
         last_line = line
