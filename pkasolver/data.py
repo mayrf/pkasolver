@@ -68,7 +68,12 @@ def conjugates_to_dataframe(df: pd.DataFrame):
         mol = df.ROMol[i]
         index = int(df.marvin_atom[i])
         pka = float(df.marvin_pKa[i])
-        conjugates.append(create_conjugate(mol, index, pka))
+        try:
+            conj = create_conjugate(mol, index, pka)
+            conjugates.append(conj)
+        except:
+            print(f"Could not create conjugate of mol number {i}")
+            conjugates.append(mol)
     df["Conjugates"] = conjugates
     return df
 
@@ -92,6 +97,10 @@ def sort_conjugates(df):
             deprot.append(mol)
 
         elif charge_mol > charge_conj:
+            prot.append(mol)
+            deprot.append(conj)
+        else:
+            print("prot = deprot")
             prot.append(mol)
             deprot.append(conj)
     df["protonated"] = prot
