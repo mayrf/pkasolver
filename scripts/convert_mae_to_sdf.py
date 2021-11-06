@@ -2,7 +2,7 @@ import os, subprocess
 
 data_dir = "/data/shared/projects/pkasolver-data"
 schroedinger_dir = "/data/shared/software/schrodinger2021-1/"
-convert = schroedinger_dir + "utilities/structconvert"
+convert = f"{schroedinger_dir}/utilities/sdconvert"
 version = 0
 sdf_file_name = f"mols_chembl_with_pka_for_v{version}.sdf"
 mae_file_name = f"mols_chembl_with_pka_for_v{version}.mae"
@@ -16,8 +16,12 @@ if not os.path.isfile(f"{data_dir}/{mae_file_name}.gz"):
 o = subprocess.run(
     [
         convert,
-        f"{data_dir}/{mae_file_name}.gz",
+        "-imae",
+        "{data_dir}/{mae_file_name}.gz",
+        "-osdf",
         f"{data_dir}/{sdf_file_name}.gz",
+        "-annstereo",
+        "-pKa",
     ],
     stderr=subprocess.STDOUT,
 )
