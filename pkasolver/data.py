@@ -1,5 +1,8 @@
 # Imports
+from rdkit import Chem
 from rdkit.Chem import PandasTools
+from rdkit.Chem.PandasTools import LoadSDF
+from rdkit.Chem.AllChem import Compute2DCoords
 
 PandasTools.RenderImagesInAllDataFrames(images=True)
 import random
@@ -7,7 +10,7 @@ import random
 import numpy as np
 import pandas as pd
 import torch
-from rdkit import Chem
+
 from torch_geometric.data import Data
 
 from pkasolver.chem import create_conjugate
@@ -56,7 +59,9 @@ def train_validation_set_split(df: pd.DataFrame, ratio: float, seed=42):
 # data preprocessing functions - helpers
 def import_sdf(sdf_filename: str):
     """Import an sdf file and return a Dataframe with an additional Smiles column."""
-    df = PandasTools.LoadSDF(sdf_filename)
+    df = LoadSDF(sdf_filename)
+    for mol in df.ROMol:
+        Compute2DCoords(mol)
     df["smiles"] = [Chem.MolToSmiles(m) for m in df["ROMol"]]
     return df
 

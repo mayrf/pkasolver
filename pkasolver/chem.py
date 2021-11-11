@@ -1,5 +1,6 @@
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem.rdchem import ResonanceMolSupplier
 from rdkit.Chem.AllChem import GetMorganFingerprintAsBitVect
 
 
@@ -38,7 +39,7 @@ def create_conjugate(mol, id, pka, pH=7.4):
     atom.UpdatePropertyCache()
     Tot_Hs_after = atom.GetTotalNumHs()
     assert Tot_Hs != Tot_Hs_after
-
+    # ResonanceMolSupplier(mol)[0]
     return mol
 
 
