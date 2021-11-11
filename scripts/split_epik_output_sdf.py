@@ -3,6 +3,7 @@ import copy
 import gzip
 from pkasolver.chem import create_conjugate
 
+version = 0
 data_dir = "/data/shared/projects/pkasolver-data/"
 schroedinger_dir = "/data/shared/software/schrodinger2021-1/"
 input_file = f"{data_dir}chembl_epik.sdf"
