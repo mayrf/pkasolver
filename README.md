@@ -1,8 +1,8 @@
 #pkasolver
 ==============================
 [//]: # (Badges)
-[![Travis Build Status](https://travis-ci.com/REPLACE_WITH_OWNER_ACCOUNT/pkasolver.svg?branch=master)](https://travis-ci.com/REPLACE_WITH_OWNER_ACCOUNT/pkasolver)
-[![codecov](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/pkasolver/branch/master/graph/badge.svg)](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/pkasolver/branch/master)
+[![Travis Build Status](https://travis-ci.com/MayrF/pkasolver.svg?branch=master)](https://travis-ci.com/MayrF/pkasolver)
+[![codecov](https://codecov.io/gh/MayrF/pkasolver/branch/master/graph/badge.svg)](https://codecov.io/gh/MayrF/pkasolver/branch/master)
 
 pKasolver is a package that enables prediction of pKa values of small molecules via graph convolutional networks. 
 
