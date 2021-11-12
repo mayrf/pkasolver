@@ -16,4 +16,7 @@ dependencies:
   - torchaudio 
   - cudatoolkit
   - pyg
+    # Testing
   - pytest
+  - pytest-cov
+  - codecov
