@@ -3,16 +3,14 @@ channels:
   - defaults
   - rdkit
   - conda-forge
-  - pyg
   - pytorch
-  - nvidia 
+  - pyg
 dependencies:
   - seaborn
   - rdkit
   - matplotlib
   - scikit-learn
   - python
-  - jupyterlab
   - pip
   - pytorch 
   - torchvision 
