@@ -10,10 +10,9 @@ dependencies:
   - rdkit
   - matplotlib
   - scikit-learn
-  - python
   - pip
   - pytorch 
   - torchvision 
   - torchaudio 
-  - cudatoolkit=11.3
+  - cudatoolkit
   - pyg
