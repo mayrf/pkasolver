@@ -1,21 +1,18 @@
 name: test
 channels:
-  - defaults
-  - rdkit
-  - conda-forge
   - pytorch
   - pyg
+  - defaults
+  - conda-forge
 dependencies:
-  - seaborn
   - rdkit
   - matplotlib
-  - scikit-learn
-  - pip
-  - pytorch 
+  - pytorch==1.9
+  - cudatoolkit=11.3
   - torchvision 
   - torchaudio 
-  - cudatoolkit
   - pyg
+  - python==3.8
     # Testing
   - pytest
   - pytest-cov
