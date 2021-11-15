@@ -12,7 +12,7 @@ dependencies:
   - torchvision 
   - torchaudio 
   - pyg
-  - python==3.8
+  - python
     # Testing
   - pytest
   - pytest-cov
