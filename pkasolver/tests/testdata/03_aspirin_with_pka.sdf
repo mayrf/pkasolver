@@ -1,0 +1,114 @@
+CC(=O)OC1=CC=CC=C1C(=O)O
+                    3D
+ Schrodinger Suite 2021-1.
+ 20 20  0  0  1  0            999 V2000
+   -2.0718    1.3097    0.1250 C   0  0  0  0  0  0
+   -0.5510    1.3985    0.1320 C   0  0  0  0  0  0
+    0.0247    2.4715    0.3178 O   0  0  0  0  0  0
+    0.0378    0.2028   -0.0887 O   0  0  0  0  0  0
+    1.4100    0.1078   -0.0931 C   0  0  0  0  0  0
+    2.0864    0.1225    1.1479 C   0  0  0  0  0  0
+    3.4866    0.0142    1.2048 C   0  0  0  0  0  0
+    4.2238   -0.1223    0.0170 C   0  0  0  0  0  0
+    3.5599   -0.1582   -1.2232 C   0  0  0  0  0  0
+    2.1493   -0.0515   -1.3002 C   0  0  0  0  0  0
+    1.4732   -0.1105   -2.6493 C   0  0  0  0  0  0
+    0.2797   -0.3727   -2.7888 O   0  0  0  0  0  0
+    2.2949    0.1761   -3.7018 O   0  5  0  0  0  0
+   -2.4981    2.3069    0.3086 H   0  0  0  0  0  0
+   -2.4022    0.6185    0.9144 H   0  0  0  0  0  0
+   -2.4129    0.9394   -0.8530 H   0  0  0  0  0  0
+    1.5251    0.2250    2.0653 H   0  0  0  0  0  0
+    3.9932    0.0340    2.1586 H   0  0  0  0  0  0
+    5.2998   -0.2069    0.0562 H   0  0  0  0  0  0
+    4.1558   -0.2792   -2.1160 H   0  0  0  0  0  0
+  1  2  1  0  0  0
+  1 14  1  0  0  0
+  1 15  1  0  0  0
+  1 16  1  0  0  0
+  2  3  2  0  0  0
+  2  4  1  0  0  0
+  4  5  1  0  0  0
+  5  6  2  0  0  0
+  5 10  1  0  0  0
+  6  7  1  0  0  0
+  6 17  1  0  0  0
+  7  8  2  0  0  0
+  7 18  1  0  0  0
+  8  9  1  0  0  0
+  8 19  1  0  0  0
+  9 10  2  0  0  0
+  9 20  1  0  0  0
+ 10 11  1  0  0  0
+ 11 12  2  0  0  0
+ 11 13  1  0  0  0
+M  CHG  1  13  -1
+M  END
+> <References>
+Generated with https://api.leruli.com/latest/references/BCE2020,BEG2019,rdkit/bibtex
+
+> <s_m_source_file>
+aspirin.sdf
+
+> <i_m_source_file_index>
+1
+
+> <i_lp_mmshare_version>
+53161
+
+> <r_lp_tautomer_probability>
+1
+
+> <i_f3d_flags>
+0
+
+> <s_lp_Force_Field>
+OPLS_2005
+
+> <r_lp_Energy>
+12.924048
+
+> <b_lp_Chiralities_Consistent>
+1
+
+> <s_lp_Variant>
+CC(=O)OC1=CC=CC=C1C(=O)O-1
+
+> <s_epik_input>
+W0NIM11DKD1PKU9jMVtjSF1bY0hdW2NIXVtjSF1jMUMoPU8pW09IXQ==
+
+> <s_epik_cmdline>
+J2VwaWtfYXBwJywgJy1pbWFlJywgJ2FzcGlyaW4ubWFlJywgJy1vbWFlJywgJ2FzcGlyaW5fd2l0aF9wa2EubWFlJywgJy1zY2FuJywgJy1wJywgJzAuMSc=
+
+> <r_epik_Ionization_Penalty>
+  0.0002
+
+> <r_epik_Ionization_Penalty_Charging>
+  0.0002
+
+> <r_epik_Ionization_Penalty_Neutral>
+  0.0000
+
+> <r_epik_State_Penalty>
+ -0.0000
+
+> <r_epik_Charging_Adjusted_Penalty>
+0.000196158001288354
+
+> <i_epik_Tot_Q>
+-1
+
+> <i_epik_Tot_abs_Q>
+1
+
+> <r_epik_pKa_1>
+  3.520
+
+> <i_epik_pKa_atom_1>
+13
+
+> <s_epik_pKa_identifier_1>
+General Benzoic acids
+
+> <chembl_id>
+test123
