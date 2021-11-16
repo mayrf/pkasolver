@@ -1,15 +1,22 @@
 import os, subprocess
+import argparse
 
-version = 0
-mae_file_name = f"mols_chembl_v{version}.mae"
-mae_file_name_with_pka = f"mols_chembl_with_pka_for_v{version}.mae"
+parser = argparse.ArgumentParser()
+parser.add_argument("--input", help="input filename")
+parser.add_argument("--output", help="output filename")
+args = parser.parse_args()
 
-data_dir = "/data/local/"
+print("inputfile:", args.input)
+print("outputfile:", args.output)
+
+mae_file_name = args.input
+mae_file_name_with_pka = args.output
+
 schroedinger_dir = "/data/shared/software/schrodinger2021-1/"
 epik = f"{schroedinger_dir}/epik"
 
-if not os.path.isfile(f"{data_dir}/{mae_file_name}.gz"):
-    raise RuntimeError(f"{data_dir}/{mae_file_name}.gz file not found")
+if not os.path.isfile(mae_file_name):
+    raise RuntimeError(f"{mae_file_name} file not found")
 
 # predict pka of mols in .mae files with epik
 o = subprocess.run(
@@ -17,9 +24,11 @@ o = subprocess.run(
         f"{epik}",
         "-scan",
         "-imae",
-        f"{data_dir}/{mae_file_name}.gz",
+        mae_file_name,
         "-omae",
-        f"{data_dir}/{mae_file_name_with_pka}.gz",
+        mae_file_name_with_pka,
+        "-p",
+        "0.1",
     ]
 )
 o.check_returncode()

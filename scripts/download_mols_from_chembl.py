@@ -1,9 +1,14 @@
 from chembl_webresource_client.new_client import new_client
 from tqdm import tqdm
 import gzip
+import argparse
 
-version = 1
-sdf_file_name = f"mols_chembl_v{version}.sdf"
+parser = argparse.ArgumentParser()
+parser.add_argument("--output", help="output filename")
+args = parser.parse_args()
+
+print("outputfile:", args.output)
+
 
 molecule = new_client.molecule
 # mols = molecule.filter(max_phase=4)
@@ -12,7 +17,7 @@ mols = molecule.filter(molecule_type="Small molecule").filter(
 )
 print(len(mols))
 
-with gzip.open(f"/data/local/{sdf_file_name}.gz", "wb+") as output:
+with gzip.open(args.output, "wb+") as output:
     for mol in tqdm(mols):
         if mol["molecule_structures"]:
             output.write(mol["molecule_structures"]["molfile"].encode())
