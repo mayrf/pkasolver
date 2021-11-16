@@ -1,7 +1,9 @@
 from rdkit import Chem
+from rdkit.Chem import Draw
 import copy
 import gzip
 from pkasolver.chem import create_conjugate
+from rdkit.Chem.AllChem import Compute2DCoords
 
 version = 0
 data_dir = "/data/shared/projects/pkasolver-data/"
@@ -12,6 +14,7 @@ w = Chem.SDWriter(f"{data_dir}chembl_epik_split.sdf")
 a = 0
 
 for mol in suppl:
+    Compute2DCoords(mol)
     try:
         props = mol.GetPropsAsDict()
         l = len([s for s in props.keys() if "r_epik_pKa" in s])
@@ -26,8 +29,6 @@ for mol in suppl:
             )
         acids = [pka for pka in pkas if pka[0] < 7]
         bases = pkas[len(acids) :]
-        # print(f"{props[f'chembl_id']} acids: {acids}")
-        # print(f"{props[f'chembl_id']} bases: {bases}")
         for prop in props.keys():
             mol.ClearProp(prop)
         acid_mols = [mol]
@@ -49,13 +50,13 @@ for mol in suppl:
             new_mol.SetProp(f"pka_number", f"base_{i + 1}")
             base_mols.append(new_mol)
         mols = acid_mols[1:] + base_mols[1:]
-        # print(len(mols))
         for mol in mols:
             w.write(mol)
 
     except Exception as e:
         print(f"Error at molecule number {a}")
         print(e)
+        Draw.MolToFile(mol, f"{a}.svg", size=(600, 600), addAtomIndices=True)
     a += 1
     if a > 1000:
         break

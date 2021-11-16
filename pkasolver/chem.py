@@ -39,7 +39,7 @@ def create_conjugate(mol, id, pka, pH=7.4):
     atom.UpdatePropertyCache()
     Tot_Hs_after = atom.GetTotalNumHs()
     assert Tot_Hs != Tot_Hs_after
-    # ResonanceMolSupplier(mol)[0]
+    # mol = next(ResonanceMolSupplier(mol))
     return mol
 
 
