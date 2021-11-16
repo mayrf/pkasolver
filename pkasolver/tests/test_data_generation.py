@@ -36,6 +36,67 @@ def test_aspirin_pka_split():
     assert smi == "CC(=O)Oc1ccccc1C(=O)O"
 
 
+def test_eltrombopag_pka_split():
+    import pkasolver
+
+    # path = os.path.abspath(os.path.join(os.path.dirname(pkasolver.__file__), os.pardir))
+    path = os.path.abspath(os.path.dirname(pkasolver.__file__))
+
+    o = subprocess.run(
+        [
+            "python",
+            f"scripts/split_epik_output.py",
+            "--input",
+            f"pkasolver/tests/testdata/03_eltrombopag_with_pka.sdf",
+            "--output",
+            f"pkasolver/tests/testdata/04_split_eltrombopag_with_pka.sdf",
+        ],
+        stderr=subprocess.STDOUT,
+    )
+
+    o.check_returncode()
+    suppl = Chem.SDMolSupplier(
+        str(f"pkasolver/tests/testdata/04_split_eltrombopag_with_pka.sdf"),
+        removeHs=True,
+    )
+    # first eltrombopag species
+    mol = next(suppl)
+    smi1 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    assert np.isclose(float(props["pKa"]), -0.631)
+    print(smi1)
+    assert smi1 == "Cc1ccc(-n2[nH+]c(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2O)cc1C"
+
+    # second eltrombopag species
+    mol = next(suppl)
+    smi2 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    print(props)
+    assert np.isclose(float(props["pKa"]), 4.05)
+    print(smi2)
+    assert smi2 == "Cc1ccc(-n2[nH+]c(C)c(N=Nc3cccc(-c4cccc(C(=O)O)c4)c3O)c2O)cc1C"
+
+    # third eltrombopag species
+    mol = next(suppl)
+    smi3 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    print(props)
+    assert np.isclose(float(props["pKa"]), 7.449)
+    print(smi3)
+    assert smi3 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2[O-])cc1C"
+
+    # third eltrombopag species
+    mol = next(suppl)
+    smi4 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    print(props)
+    assert np.isclose(float(props["pKa"]), 9.894)
+    print(smi4)
+    assert smi4 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3[O-])c2[O-])cc1C"
+
+    assert smi1 != smi2 != smi3 != smi4
+
+
 def test_edta_pka_split():
     import pkasolver
 
@@ -62,35 +123,47 @@ def test_edta_pka_split():
     mol = next(suppl)
     smi1 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
-    np.isclose(float(props["pKa"]), -0.631)
+    assert np.isclose(float(props["pKa"]), 1.337)
     print(smi1)
-    assert smi1 == "Cc1ccc(-n2[nH+]c(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2O)cc1C"
+    assert smi1 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)O)CC(=O)[O-]"
 
     # second EDTA species
     mol = next(suppl)
     smi2 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
-    np.isclose(float(props["pKa"]), -0.631)
+    print(props)
+    assert np.isclose(float(props["pKa"]), 2.241)
     print(smi2)
-    assert smi2 == "Cc1ccc(-n2[nH+]c(C)c(N=Nc3cccc(-c4cccc(C(=O)O)c4)c3O)c2O)cc1C"
+    assert smi2 == "O=C([O-])CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)[O-]"
 
     # third EDTA species
     mol = next(suppl)
     smi3 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
-    np.isclose(float(props["pKa"]), -0.631)
+    print(props)
+    assert np.isclose(float(props["pKa"]), 4.585)
     print(smi3)
-    assert smi3 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2[O-])cc1C"
+    assert smi3 == "O=C([O-])CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)O"
 
-    # third EDTA species
+    # fourth EDTA species
     mol = next(suppl)
     smi4 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
-    np.isclose(float(props["pKa"]), -0.631)
+    print(props)
+    assert np.isclose(float(props["pKa"]), 5.488)
     print(smi4)
-    assert smi4 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3[O-])c2[O-])cc1C"
+    assert smi4 == "O=C(O)CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)O"
 
-    assert smi1 != smi2 != smi3 != smi4
+    # fourth EDTA species
+    mol = next(suppl)
+    smi5 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    print(props)
+    assert np.isclose(float(props["pKa"]), 9.883)
+    print(smi5)
+    assert smi5 == "O=C([O-])CN(CCN(CC(=O)[O-])CC(=O)[O-])CC(=O)[O-]"
+
+    assert smi1 != smi2 != smi3 != smi4 != smi5
 
 
 def test_features_dicts():
