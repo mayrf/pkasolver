@@ -9,24 +9,24 @@ import subprocess, os
 def test_aspirin_pka_split():
     import pkasolver
 
-    path = os.path.abspath(os.path.join(os.path.dirname(pkasolver.__file__), os.pardir))
+    #path = os.path.abspath(os.path.join(os.path.dirname(pkasolver.__file__), os.pardir))
+    path = os.path.abspath(os.path.dirname(pkasolver.__file__))
 
     o = subprocess.run(
         [
             "python",
-            f"{path}/scripts/split_epik_output.py",
+            f"scripts/split_epik_output.py",
             "--input",
-            f"{path}/pkasolver/tests/testdata/03_aspirin_with_pka.sdf",
+            f"pkasolver/tests/testdata/03_aspirin_with_pka.sdf",
             "--output",
-            f"{path}/pkasolver/tests/testdata/04_split_aspirin_with_pka.sdf",
+            f"pkasolver/tests/testdata/04_split_aspirin_with_pka.sdf",
         ],
         stderr=subprocess.STDOUT,
     )
 
     o.check_returncode()
     suppl = Chem.SDMolSupplier(
-        str(f"{path}/pkasolver/tests/testdata/04_split_aspirin_with_pka.sdf"),
-        removeHs=True,
+        str(f"pkasolver/tests/testdata/04_split_aspirin_with_pka.sdf"), removeHs=True,
     )
     mol = next(suppl)
     smi = Chem.MolToSmiles(mol)
