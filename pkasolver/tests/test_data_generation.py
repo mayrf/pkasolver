@@ -16,7 +16,7 @@ def test_aspirin_pka_split():
     o = subprocess.run(
         [
             "python",
-            f"scripts/split_epik_output.py",
+            f"scripts/04_split_epik_output.py",
             "--input",
             f"pkasolver/tests/testdata/03_aspirin_with_pka.sdf",
             "--output",
@@ -45,7 +45,7 @@ def test_eltrombopag_pka_split():
     o = subprocess.run(
         [
             "python",
-            f"scripts/split_epik_output.py",
+            f"scripts/04_split_epik_output.py",
             "--input",
             f"pkasolver/tests/testdata/03_eltrombopag_with_pka.sdf",
             "--output",
@@ -106,9 +106,78 @@ def test_edta_pka_split():
     o = subprocess.run(
         [
             "python",
-            f"scripts/split_epik_output.py",
+            f"scripts/04_split_epik_output.py",
             "--input",
             f"pkasolver/tests/testdata/03_edta_with_pka.sdf",
+            "--output",
+            f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf",
+        ],
+        stderr=subprocess.STDOUT,
+    )
+
+    o.check_returncode()
+    suppl = Chem.SDMolSupplier(
+        str(f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf"), removeHs=True,
+    )
+    # first EDTA species
+    mol = next(suppl)
+    smi1 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    assert np.isclose(float(props["pKa"]), 1.337)
+    print(smi1)
+    assert smi1 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)O)CC(=O)[O-]"
+
+    # second EDTA species
+    mol = next(suppl)
+    smi2 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    print(props)
+    assert np.isclose(float(props["pKa"]), 2.241)
+    print(smi2)
+    assert smi2 == "O=C([O-])CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)[O-]"
+
+    # third EDTA species
+    mol = next(suppl)
+    smi3 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    print(props)
+    assert np.isclose(float(props["pKa"]), 4.585)
+    print(smi3)
+    assert smi3 == "O=C([O-])CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)O"
+
+    # fourth EDTA species
+    mol = next(suppl)
+    smi4 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    print(props)
+    assert np.isclose(float(props["pKa"]), 5.488)
+    print(smi4)
+    assert smi4 == "O=C(O)CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)O"
+
+    # fourth EDTA species
+    mol = next(suppl)
+    smi5 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    print(props)
+    assert np.isclose(float(props["pKa"]), 9.883)
+    print(smi5)
+    assert smi5 == "O=C([O-])CN(CCN(CC(=O)[O-])CC(=O)[O-])CC(=O)[O-]"
+
+    assert smi1 != smi2 != smi3 != smi4 != smi5
+
+
+def test_edta_pka_split_with_compressed_input():
+    import pkasolver
+
+    # path = os.path.abspath(os.path.join(os.path.dirname(pkasolver.__file__), os.pardir))
+    path = os.path.abspath(os.path.dirname(pkasolver.__file__))
+
+    o = subprocess.run(
+        [
+            "python",
+            f"scripts/04_split_epik_output.py",
+            "--input",
+            f"pkasolver/tests/testdata/03z_edta_with_pka.sdf.gz",
             "--output",
             f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf",
         ],

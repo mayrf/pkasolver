@@ -26,7 +26,7 @@ def main():
             suppl = Chem.ForwardSDMolSupplier(fh, removeHs=True)
             processing(suppl, args)
     else:
-        with open(args.input, "r") as fh:
+        with open(args.input, "rb") as fh:
             suppl = Chem.ForwardSDMolSupplier(fh, removeHs=True)
             processing(suppl, args)
 
