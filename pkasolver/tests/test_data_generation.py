@@ -16,14 +16,22 @@ def test_aspirin_pka_split():
             "python",
             f"{path}/scripts/split_epik_output.py",
             "--input",
-            f"{path}/pkasolver/tests/testdata/aspirin_with_pka.sdf",  # only one stereoisomer, if chiral tag not s et  choose R
+            f"{path}/pkasolver/tests/testdata/aspirin_with_pka.sdf",
             "--output",
-            f"{path}/pkasolver/tests/testdata/split_aspirin_with_pka.sdf",  # only one stereoisomer, if chiral tag not s et  choose R
+            f"{path}/pkasolver/tests/testdata/split_aspirin_with_pka.sdf",
         ],
         stderr=subprocess.STDOUT,
     )
 
     o.check_returncode()
+    suppl = Chem.SDMolSupplier(
+        str(f"{path}/pkasolver/tests/testdata/aspirin_with_pka.sdf"), removeHs=False
+    )
+    mol = next(suppl)
+    smi = Chem.MolToSmiles(mol)
+    print(smi)
+    assert smi == "CC(=O)Oc1ccccc1C(=O)[O-]"
+    assert False
 
 
 def test_features_dicts():
