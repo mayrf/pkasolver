@@ -4,6 +4,7 @@ from pkasolver.constants import NODE_FEATURES, EDGE_FEATURES
 from pkasolver.data import make_edges_and_attr, make_nodes, load_data
 import torch
 import subprocess, os
+import numpy as np
 
 
 def test_aspirin_pka_split():
@@ -60,28 +61,37 @@ def test_edta_pka_split():
     # first EDTA species
     mol = next(suppl)
     smi1 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    np.isclose(float(props["pKa"]), -0.631)
     print(smi1)
     assert smi1 == "Cc1ccc(-n2[nH+]c(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2O)cc1C"
 
     # second EDTA species
     mol = next(suppl)
     smi2 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    np.isclose(float(props["pKa"]), -0.631)
     print(smi2)
     assert smi2 == "Cc1ccc(-n2[nH+]c(C)c(N=Nc3cccc(-c4cccc(C(=O)O)c4)c3O)c2O)cc1C"
 
     # third EDTA species
     mol = next(suppl)
     smi3 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    np.isclose(float(props["pKa"]), -0.631)
     print(smi3)
     assert smi3 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2[O-])cc1C"
 
     # third EDTA species
     mol = next(suppl)
     smi4 = Chem.MolToSmiles(mol)
+    props = mol.GetPropsAsDict()
+    np.isclose(float(props["pKa"]), -0.631)
     print(smi4)
     assert smi4 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3[O-])c2[O-])cc1C"
-    
+
     assert smi1 != smi2 != smi3 != smi4
+
 
 def test_features_dicts():
     """Test the generation of the features dict"""
