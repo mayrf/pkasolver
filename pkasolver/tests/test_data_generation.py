@@ -3,6 +3,27 @@ from pkasolver.data import make_features_dicts, make_nodes
 from pkasolver.constants import NODE_FEATURES, EDGE_FEATURES
 from pkasolver.data import make_edges_and_attr, make_nodes, load_data
 import torch
+import subprocess, os
+
+
+def test_aspirin_pka_split():
+    import pkasolver
+
+    path = os.path.abspath(os.path.join(os.path.dirname(pkasolver.__file__), os.pardir))
+
+    o = subprocess.run(
+        [
+            "python",
+            f"{path}/scripts/split_epik_output.py",
+            "--input",
+            f"{path}/pkasolver/tests/testdata/aspirin_with_pka.sdf",  # only one stereoisomer, if chiral tag not s et  choose R
+            "--output",
+            f"{path}/pkasolver/tests/testdata/split_aspirin_with_pka.sdf",  # only one stereoisomer, if chiral tag not s et  choose R
+        ],
+        stderr=subprocess.STDOUT,
+    )
+
+    o.check_returncode()
 
 
 def test_features_dicts():
@@ -323,11 +344,7 @@ def test_generate_data_intances():
     assert charge1 == 1
     assert charge2 == 0
 
-    d3 = mol_to_paired_mol_data(
-        df.iloc[mol_idx],
-        n_feat,
-        e_feat,
-    )
+    d3 = mol_to_paired_mol_data(df.iloc[mol_idx], n_feat, e_feat,)
     # all of them have the same number of nodes
     assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
     # but different node features
@@ -346,11 +363,7 @@ def test_generate_data_intances():
     d2, charge2 = mol_to_single_mol_data(
         df.iloc[mol_idx], n_feat, e_feat, "deprotonated"
     )
-    d3 = mol_to_paired_mol_data(
-        df.iloc[mol_idx],
-        n_feat,
-        e_feat,
-    )
+    d3 = mol_to_paired_mol_data(df.iloc[mol_idx], n_feat, e_feat,)
     print(df.iloc[mol_idx].smiles)
     assert charge1 == 1
     assert charge2 == 0
