@@ -25,14 +25,14 @@ def test_aspirin_pka_split():
 
     o.check_returncode()
     suppl = Chem.SDMolSupplier(
-        str(f"{path}/pkasolver/tests/testdata/aspirin_with_pka.sdf"), removeHs=True
+        str(f"{path}/pkasolver/tests/testdata/04_split_aspirin_with_pka.sdf"),
+        removeHs=True,
     )
     mol = next(suppl)
     smi = Chem.MolToSmiles(mol)
 
     print(smi)
-    assert smi == "CC(=O)Oc1ccccc1C(=O)[O-]"
-    assert False
+    assert smi == "CC(=O)Oc1ccccc1C(=O)O"
 
 
 def test_features_dicts():
