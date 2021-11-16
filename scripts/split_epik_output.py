@@ -32,8 +32,8 @@ with Chem.SDWriter(args.output) as writer:
         nr_of_bases = sum(pka[0] > 7 for pka in pkas)
         assert nr_of_acids + nr_of_bases == len(pkas)
 
-        acidic_mols_properties = [mol_prop for mol_prop in pkas if mol[0] <= 7]
-        basic_mols_properties = [mol_prop for mol_prop in pkas if mol[0] > 7]
+        acidic_mols_properties = [mol_pka for mol_pka in pkas if mol_pka[0] <= 7]
+        basic_mols_properties = [mol_pka for mol_pka in pkas if mol_pka[0] > 7]
 
         assert len(acidic_mols_properties) == nr_of_acids
         assert len(basic_mols_properties) == nr_of_bases
