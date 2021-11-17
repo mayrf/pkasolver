@@ -35,6 +35,8 @@ def processing(suppl, args):
 
     with Chem.SDWriter(args.output) as writer:
         for nr_of_mols, mol in enumerate(suppl):
+            skipping_bases = 0
+            skipping_acids = 0
             try:
                 props = mol.GetPropsAsDict()
             except ValueError as e:
@@ -85,6 +87,10 @@ def processing(suppl, args):
                 except Exception as e:
                     print(f"Error at molecule number {nr_of_mols}")
                     print(e)
+                    print(acid_prop)
+                    print(acidic_mols_properties)
+                    print(Chem.MolToMolBlock(mol))
+                    skipping_acids += 1
                     break  # get out of loop
                     # in case error occurs new_mol is not in acidic_mols list
 
@@ -100,7 +106,7 @@ def processing(suppl, args):
             # same workflow for basic mols
             basic_mols = [mol]
             for idx, basic_prop in enumerate(basic_mols_properties):
-                
+
                 new_mol = basic_mols[-1]
                 new_mol.SetProp(f"ID", str(basic_prop[2]))
                 new_mol.SetProp(f"pKa", str(basic_prop[0]))
@@ -116,8 +122,13 @@ def processing(suppl, args):
                     )
                     # Chem.SanitizeMol(new_mol)
                 except Exception as e:
+                    skipping_bases += 1
                     print(f"Error at molecule number {nr_of_mols}")
                     print(e)
+                    print(basic_prop)
+                    print(basic_mols_properties)
+                    print(Chem.MolToMolBlock(mol))
+
                     break  # get out of loop
                     # in case error occurs new_mol is not in basic list
 
@@ -125,11 +136,13 @@ def processing(suppl, args):
             # bases start with neutral mol and leave out last entry so for every pKa reaction
             # only the protonated participant is included
             mols = acidic_mols[1:] + basic_mols[:-1]
-            assert len(mols) == len(acidic_mols_properties) + len(basic_mols_properties)
+            assert len(mols) == len(acidic_mols_properties) - skipping_acids + len(basic_mols_properties) - skipping_bases
 
             for mol in mols:
                 writer.write(mol)
 
+            if nr_of_mols > 500:
+                raise RuntimeError()
     print(f"finished splitting {nr_of_mols} molecules")
 
 
