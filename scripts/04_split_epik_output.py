@@ -73,7 +73,9 @@ def processing(suppl, args):
 
             # add neutral mol as first acidic mol
             acidic_mols = [mol]
-            for idx, acid_prop in enumerate(acidic_mols_properties):
+            for idx, acid_prop in enumerate(
+                acidic_mols_properties[::-1]
+            ):  # list must be iterated in reverse, in order to protonated the strongest conjugate base first
                 try:
                     new_mol = create_conjugate(
                         acidic_mols[-1], acid_prop[1], acid_prop[0], pH=7
@@ -97,9 +99,15 @@ def processing(suppl, args):
             basic_mols = [mol]
             for idx, basic_prop in enumerate(basic_mols_properties):
                 try:
-                    new_mol = create_conjugate(
-                        basic_mols[-1], basic_prop[1], basic_prop[0], pH=7
+                    new_mol = basic_mols[-1]
+                    basic_mols.append(
+                        create_conjugate(
+                            basic_mols[-1], basic_prop[1], basic_prop[0], pH=7
+                        )
                     )
+                    # new_mol = create_conjugate(
+                    #     basic_mols[-1], basic_prop[1], basic_prop[0], pH=7
+                    # )
                     # Chem.SanitizeMol(new_mol)
                 except Exception as e:
                     print(f"Error at molecule number {nr_of_mols}")
@@ -110,10 +118,12 @@ def processing(suppl, args):
                 new_mol.SetProp(f"marvin_pKa", str(basic_prop[0]))
                 new_mol.SetProp(f"marvin_atom", str(basic_prop[1]))
                 new_mol.SetProp(f"pka_number", f"base_{idx + 1}")
-                basic_mols.append(new_mol)
+                # basic_mols.append(new_mol)
 
-            # combine basic and acidic mols, skipp neutral mol
-            mols = acidic_mols[1:] + basic_mols[1:]
+            # combine basic and acidic mols, skip neutral mol for acids
+            # bases start with neutral mol and leave out last entry so for every pKa reaction
+            # only the protonated participant is included
+            mols = acidic_mols[1:] + basic_mols[:-1]
             assert len(mols) == len(acidic_mols_properties) + len(basic_mols_properties)
 
             for mol in mols:

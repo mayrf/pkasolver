@@ -27,7 +27,8 @@ def test_aspirin_pka_split():
 
     o.check_returncode()
     suppl = Chem.SDMolSupplier(
-        str(f"pkasolver/tests/testdata/04_split_aspirin_with_pka.sdf"), removeHs=True,
+        str(f"pkasolver/tests/testdata/04_split_aspirin_with_pka.sdf"),
+        removeHs=True,
     )
     mol = next(suppl)
     smi = Chem.MolToSmiles(mol)
@@ -63,16 +64,16 @@ def test_eltrombopag_pka_split():
     mol = next(suppl)
     smi1 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
-    assert np.isclose(float(props["pKa"]), -0.631)
+    assert np.isclose(float(props["pKa"]), 4.05)
     print(smi1)
-    assert smi1 == "Cc1ccc(-n2[nH+]c(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2O)cc1C"
+    assert smi1 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)O)c4)c3O)c2O)cc1C"
 
     # second eltrombopag species
     mol = next(suppl)
     smi2 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
     print(props)
-    assert np.isclose(float(props["pKa"]), 4.05)
+    assert np.isclose(float(props["pKa"]), -0.631)
     print(smi2)
     assert smi2 == "Cc1ccc(-n2[nH+]c(C)c(N=Nc3cccc(-c4cccc(C(=O)O)c4)c3O)c2O)cc1C"
 
@@ -83,7 +84,7 @@ def test_eltrombopag_pka_split():
     print(props)
     assert np.isclose(float(props["pKa"]), 7.449)
     print(smi3)
-    assert smi3 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2[O-])cc1C"
+    assert smi3 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2O)cc1C"
 
     # third eltrombopag species
     mol = next(suppl)
@@ -92,7 +93,7 @@ def test_eltrombopag_pka_split():
     print(props)
     assert np.isclose(float(props["pKa"]), 9.894)
     print(smi4)
-    assert smi4 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3[O-])c2[O-])cc1C"
+    assert smi4 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2[O-])cc1C"
 
     assert smi1 != smi2 != smi3 != smi4
 
@@ -117,51 +118,52 @@ def test_edta_pka_split():
 
     o.check_returncode()
     suppl = Chem.SDMolSupplier(
-        str(f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf"), removeHs=True,
+        str(f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf"),
+        removeHs=True,
     )
     # first EDTA species
     mol = next(suppl)
     smi1 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
-    assert np.isclose(float(props["pKa"]), 1.337)
+    assert np.isclose(float(props["pKa"]), 5.488)
     print(smi1)
-    assert smi1 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)O)CC(=O)[O-]"
+    assert smi1 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)[O-])CC(=O)O"
 
     # second EDTA species
     mol = next(suppl)
     smi2 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
     print(props)
-    assert np.isclose(float(props["pKa"]), 2.241)
+    assert np.isclose(float(props["pKa"]), 4.585)
     print(smi2)
-    assert smi2 == "O=C([O-])CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)[O-]"
+    assert smi2 == "O=C([O-])C[NH+](CCN(CC(=O)O)CC(=O)O)CC(=O)[O-]"
 
     # third EDTA species
     mol = next(suppl)
     smi3 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
     print(props)
-    assert np.isclose(float(props["pKa"]), 4.585)
+    assert np.isclose(float(props["pKa"]), 2.241)
     print(smi3)
-    assert smi3 == "O=C([O-])CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)O"
+    assert smi3 == "O=C([O-])C[NH+](CCN(CC(=O)O)CC(=O)O)CC(=O)O"
 
     # fourth EDTA species
     mol = next(suppl)
     smi4 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
     print(props)
-    assert np.isclose(float(props["pKa"]), 5.488)
+    assert np.isclose(float(props["pKa"]), 1.337)
     print(smi4)
     assert smi4 == "O=C(O)CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)O"
 
-    # fourth EDTA species
+    # fifth EDTA species
     mol = next(suppl)
     smi5 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
     print(props)
     assert np.isclose(float(props["pKa"]), 9.883)
     print(smi5)
-    assert smi5 == "O=C([O-])CN(CCN(CC(=O)[O-])CC(=O)[O-])CC(=O)[O-]"
+    assert smi5 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)[O-])CC(=O)[O-]"
 
     assert smi1 != smi2 != smi3 != smi4 != smi5
 
@@ -186,51 +188,52 @@ def test_edta_pka_split_with_compressed_input():
 
     o.check_returncode()
     suppl = Chem.SDMolSupplier(
-        str(f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf"), removeHs=True,
+        str(f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf"),
+        removeHs=True,
     )
     # first EDTA species
     mol = next(suppl)
     smi1 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
-    assert np.isclose(float(props["pKa"]), 1.337)
+    assert np.isclose(float(props["pKa"]), 5.488)
     print(smi1)
-    assert smi1 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)O)CC(=O)[O-]"
+    assert smi1 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)[O-])CC(=O)O"
 
     # second EDTA species
     mol = next(suppl)
     smi2 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
     print(props)
-    assert np.isclose(float(props["pKa"]), 2.241)
+    assert np.isclose(float(props["pKa"]), 4.585)
     print(smi2)
-    assert smi2 == "O=C([O-])CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)[O-]"
+    assert smi2 == "O=C([O-])C[NH+](CCN(CC(=O)O)CC(=O)O)CC(=O)[O-]"
 
     # third EDTA species
     mol = next(suppl)
     smi3 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
     print(props)
-    assert np.isclose(float(props["pKa"]), 4.585)
+    assert np.isclose(float(props["pKa"]), 2.241)
     print(smi3)
-    assert smi3 == "O=C([O-])CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)O"
+    assert smi3 == "O=C([O-])C[NH+](CCN(CC(=O)O)CC(=O)O)CC(=O)O"
 
     # fourth EDTA species
     mol = next(suppl)
     smi4 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
     print(props)
-    assert np.isclose(float(props["pKa"]), 5.488)
+    assert np.isclose(float(props["pKa"]), 1.337)
     print(smi4)
     assert smi4 == "O=C(O)CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)O"
 
-    # fourth EDTA species
+    # fifth EDTA species
     mol = next(suppl)
     smi5 = Chem.MolToSmiles(mol)
     props = mol.GetPropsAsDict()
     print(props)
     assert np.isclose(float(props["pKa"]), 9.883)
     print(smi5)
-    assert smi5 == "O=C([O-])CN(CCN(CC(=O)[O-])CC(=O)[O-])CC(=O)[O-]"
+    assert smi5 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)[O-])CC(=O)[O-]"
 
     assert smi1 != smi2 != smi3 != smi4 != smi5
 
@@ -553,7 +556,11 @@ def test_generate_data_intances():
     assert charge1 == 1
     assert charge2 == 0
 
-    d3 = mol_to_paired_mol_data(df.iloc[mol_idx], n_feat, e_feat,)
+    d3 = mol_to_paired_mol_data(
+        df.iloc[mol_idx],
+        n_feat,
+        e_feat,
+    )
     # all of them have the same number of nodes
     assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
     # but different node features
@@ -572,7 +579,11 @@ def test_generate_data_intances():
     d2, charge2 = mol_to_single_mol_data(
         df.iloc[mol_idx], n_feat, e_feat, "deprotonated"
     )
-    d3 = mol_to_paired_mol_data(df.iloc[mol_idx], n_feat, e_feat,)
+    d3 = mol_to_paired_mol_data(
+        df.iloc[mol_idx],
+        n_feat,
+        e_feat,
+    )
     print(df.iloc[mol_idx].smiles)
     assert charge1 == 1
     assert charge2 == 0

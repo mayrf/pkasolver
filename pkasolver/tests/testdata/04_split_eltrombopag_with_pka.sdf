@@ -71,7 +71,6 @@ CC1=C(C)C=C(N2NC(C)=C(N=NC3=CC=CC(C4=CC(C(=O)O)=CC=C4)=C3O)C2=O)C=C1
  29 30  1  0
  31 32  2  0
  32 33  1  0
-M  CHG  2   7   1  25  -1
 A    7
 N   -0.631000
 A   25
@@ -81,13 +80,13 @@ M  END
 test123
 
 >  <pKa>  (1) 
--0.631
+4.05
 
 >  <marvin_pKa>  (1) 
--0.631
+4.05
 
 >  <marvin_atom>  (1) 
-6
+24
 
 >  <pka_number>  (1) 
 acid_1
@@ -176,13 +175,13 @@ M  END
 test123
 
 >  <pKa>  (2) 
-4.05
+-0.631
 
 >  <marvin_pKa>  (2) 
-4.05
+-0.631
 
 >  <marvin_atom>  (2) 
-24
+6
 
 >  <pka_number>  (2) 
 acid_2
@@ -261,7 +260,7 @@ CC1=C(C)C=C(N2NC(C)=C(N=NC3=CC=CC(C4=CC(C(=O)O)=CC=C4)=C3O)C2=O)C=C1
  29 30  1  0
  31 32  2  0
  32 33  1  0
-M  CHG  2  25  -1  30  -1
+M  CHG  1  25  -1
 A    7
 N   -0.631000
 A   25
@@ -356,7 +355,7 @@ CC1=C(C)C=C(N2NC(C)=C(N=NC3=CC=CC(C4=CC(C(=O)O)=CC=C4)=C3O)C2=O)C=C1
  29 30  1  0
  31 32  2  0
  32 33  1  0
-M  CHG  3  25  -1  28  -1  30  -1
+M  CHG  2  25  -1  30  -1
 A    7
 N   -0.631000
 A   25

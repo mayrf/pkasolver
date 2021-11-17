@@ -41,7 +41,7 @@ O=C(O)CN(CCN(CC(=O)O)CC(=O)O)CC(=O)O
  17 18  1  0
  18 19  2  0
  18 20  1  0
-M  CHG  4   3  -1   8   1  12  -1  20  -1
+M  CHG  4   8   1  12  -1  16  -1  20  -1
 A    3
 O   5.488000
 A    5
@@ -57,13 +57,13 @@ M  END
 test123
 
 >  <pKa>  (1) 
-1.337
+5.488
 
 >  <marvin_pKa>  (1) 
-1.337
+5.488
 
 >  <marvin_atom>  (1) 
-15
+2
 
 >  <pka_number>  (1) 
 acid_1
@@ -112,7 +112,7 @@ O=C(O)CN(CCN(CC(=O)O)CC(=O)O)CC(=O)O
  17 18  1  0
  18 19  2  0
  18 20  1  0
-M  CHG  3   3  -1   8   1  20  -1
+M  CHG  3   8   1  12  -1  16  -1
 A    3
 O   5.488000
 A    5
@@ -128,13 +128,13 @@ M  END
 test123
 
 >  <pKa>  (2) 
-2.241
+4.585
 
 >  <marvin_pKa>  (2) 
-2.241
+4.585
 
 >  <marvin_atom>  (2) 
-11
+19
 
 >  <pka_number>  (2) 
 acid_2
@@ -183,7 +183,7 @@ O=C(O)CN(CCN(CC(=O)O)CC(=O)O)CC(=O)O
  17 18  1  0
  18 19  2  0
  18 20  1  0
-M  CHG  2   3  -1   8   1
+M  CHG  2   8   1  16  -1
 A    3
 O   5.488000
 A    5
@@ -199,13 +199,13 @@ M  END
 test123
 
 >  <pKa>  (3) 
-4.585
+2.241
 
 >  <marvin_pKa>  (3) 
-4.585
+2.241
 
 >  <marvin_atom>  (3) 
-19
+11
 
 >  <pka_number>  (3) 
 acid_3
@@ -270,13 +270,13 @@ M  END
 test123
 
 >  <pKa>  (4) 
-5.488
+1.337
 
 >  <marvin_pKa>  (4) 
-5.488
+1.337
 
 >  <marvin_atom>  (4) 
-2
+15
 
 >  <pka_number>  (4) 
 acid_4
@@ -325,7 +325,7 @@ O=C(O)CN(CCN(CC(=O)O)CC(=O)O)CC(=O)O
  17 18  1  0
  18 19  2  0
  18 20  1  0
-M  CHG  4   3  -1  12  -1  16  -1  20  -1
+M  CHG  5   3  -1   8   1  12  -1  16  -1  20  -1
 A    3
 O   5.488000
 A    5
