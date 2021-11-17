@@ -1,0 +1,206 @@
+{ 
+ s_m_m2io_version
+ :::
+ 2.0.0 
+} 
+
+f_m_ct { 
+ s_m_title
+ i_m_ct_enhanced_stereo_status
+ s_sd_References
+ b_sd_chiral_flag
+ i_sd_version
+ s_m_source_file
+ i_m_source_file_index
+ i_lp_mmshare_version
+ i_f3d_flags
+ s_lp_Force_Field
+ r_lp_Energy
+ b_lp_Chiralities_Consistent
+ s_lp_Variant
+ s_epik_input
+ s_epik_cmdline
+ r_epik_Ionization_Penalty
+ r_epik_Ionization_Penalty_Charging
+ r_epik_Ionization_Penalty_Neutral
+ r_epik_State_Penalty
+ r_epik_Charging_Adjusted_Penalty
+ i_epik_Tot_Q
+ i_epik_Tot_abs_Q
+ r_epik_pKa_1
+ i_epik_pKa_atom_1
+ s_epik_pKa_identifier_1
+ r_epik_pKa_2
+ i_epik_pKa_atom_2
+ s_epik_pKa_identifier_2
+ r_epik_pKa_3
+ i_epik_pKa_atom_3
+ s_epik_pKa_identifier_3
+ r_epik_pKa_4
+ i_epik_pKa_atom_4
+ s_epik_pKa_identifier_4
+ r_epik_pKa_5
+ i_epik_pKa_atom_5
+ s_epik_pKa_identifier_5
+ i_m_ct_format
+ :::
+ O=C(O)CN(CCN(CC(=O)O)CC(=O)O)CC(=O)O 
+  2
+  "Generated with https://api.leruli.com/latest/references/BCE2020,BEG2019,rdkit/bibtex" 
+  0
+  0
+  00_edta.sdf 
+  1
+  53161
+  0
+  OPLS_2005 
+  28.054778
+  1
+  O=C(O)CN(CCN(CC(=O)O)CC(=O)O)CC(=O)O-1 
+  Tz1DKFtPSF0pW0NIMl1OKFtDSDJdQyg9TylbT0hdKVtDSDJdW0NIMl1OKFtDSDJdQyg9TylbT0hdKVtDSDJdQyg9TylbT0hd 
+  J2VwaWtfYXBwJywgJy1pbWFlJywgJzAxX2VkdGEubWFlJywgJy1vbWFlJywgJzAyX2VkdGFfd2l0aF9wa2EubWFlJywgJy1zY2FuJywgJy1wJywgJzAuMSc= 
+    0.0188 
+    0.0188 
+    0.0000 
+    0.0143 
+  0.0330280855830678
+  -3
+  5
+    1.337 
+  16
+  "Ethanoic acid, mono substituted" 
+    2.241 
+  12
+  "Ethanoic acid, mono substituted" 
+    4.585 
+  20
+  "Ethanoic acid, mono substituted" 
+    5.488 
+  3
+  "Ethanoic acid, mono substituted" 
+    9.883 
+  8
+  "Tertiary Aminium Ions" 
+  2
+ m_depend[22] { 
+  # First column is dependency index #
+  i_m_depend_dependency
+  s_m_depend_property
+  :::
+  1 10 r_lp_tautomer_probability 
+  2 10 r_epik_Ionization_Penalty 
+  3 10 r_epik_Ionization_Penalty_Charging 
+  4 10 r_epik_Ionization_Penalty_Neutral 
+  5 10 r_epik_State_Penalty 
+  6 10 r_epik_Charging_Adjusted_Penalty 
+  7 10 i_epik_Tot_Q 
+  8 10 r_epik_pKa_1 
+  9 10 i_epik_pKa_atom_1 
+  10 10 s_epik_pKa_identifier_1 
+  11 10 r_epik_pKa_2 
+  12 10 i_epik_pKa_atom_2 
+  13 10 s_epik_pKa_identifier_2 
+  14 10 r_epik_pKa_3 
+  15 10 i_epik_pKa_atom_3 
+  16 10 s_epik_pKa_identifier_3 
+  17 10 r_epik_pKa_4 
+  18 10 i_epik_pKa_atom_4 
+  19 10 s_epik_pKa_identifier_4 
+  20 10 r_epik_pKa_5 
+  21 10 i_epik_pKa_atom_5 
+  22 10 s_epik_pKa_identifier_5 
+  :::
+ } 
+ m_atom[33] { 
+  # First column is atom index #
+  i_m_mmod_type
+  r_m_x_coord
+  r_m_y_coord
+  r_m_z_coord
+  i_m_residue_number
+  i_m_color
+  r_m_charge1
+  r_m_charge2
+  i_m_atomic_number
+  i_m_formal_charge
+  s_m_color_rgb
+  r_epik_H2O_pKa
+  r_epik_H2O_pKa_uncertainty
+  :::
+  1 15 -1.819441 3.682024 1.549652 900 70 -0.44000 -0.44000 8 0 FF2F2F  <> <>
+  2 2 -2.309158 2.588151 1.827436 900 2 0.52000 0.52000 6 0 A0A0A0  <> <>
+  3 18 -3.426397 2.404070 2.586887 900 70 -0.53000 -0.53000 8 -1 FF2F2F    5.488    0.763 
+  4 3 -1.712785 1.242447 1.392425 900 2 0.09000 0.09000 6 0 A0A0A0  <> <>
+  5 26 -0.825523 1.337497 0.224729 900 43 -0.63000 -0.63000 7 0 5757FF    2.767    0.815 
+  6 3 0.000971 0.126190 0.079740 900 2 0.09000 0.09000 6 0 A0A0A0  <> <>
+  7 3 1.498151 0.422216 -0.148845 900 2 0.09000 0.09000 6 0 A0A0A0  <> <>
+  8 32 2.193253 0.972055 1.027228 900 43 -0.63000 -0.63000 7 1 5757FF  <> <>
+  9 3 3.408307 1.725888 0.667849 900 2 0.09000 0.09000 6 0 A0A0A0  <> <>
+  10 2 3.107195 3.047269 -0.054001 900 2 0.52000 0.52000 6 0 A0A0A0  <> <>
+  11 15 2.027540 3.634072 0.006394 900 70 -0.44000 -0.44000 8 0 FF2F2F  <> <>
+  12 18 4.197942 3.489081 -0.742617 900 70 -0.53000 -0.53000 8 -1 FF2F2F    2.277    0.453 
+  13 3 2.450297 -0.062477 2.040471 900 2 0.09000 0.09000 6 0 A0A0A0  <> <>
+  14 2 2.835632 0.526695 3.400821 900 2 0.52000 0.52000 6 0 A0A0A0  <> <>
+  15 15 2.030063 1.085179 4.142387 900 70 -0.44000 -0.44000 8 0 FF2F2F  <> <>
+  16 18 4.163222 0.359555 3.666881 900 70 -0.53000 -0.53000 8 -1 FF2F2F    2.277    0.453 
+  17 3 -1.552410 1.734671 -1.000374 900 2 0.09000 0.09000 6 0 A0A0A0  <> <>
+  18 2 -0.644907 2.047296 -2.194074 900 2 0.52000 0.52000 6 0 A0A0A0  <> <>
+  19 15 -0.128600 3.147985 -2.373817 900 70 -0.44000 -0.44000 8 0 FF2F2F  <> <>
+  20 18 -0.485304 0.964826 -3.009276 900 70 -0.53000 -0.53000 8 -1 FF2F2F    5.488    0.763 
+  21 41 -1.122003 0.819160 2.218140 900 21 0.06000 0.06000 1 0 FFFFFF  <> <>
+  22 41 -2.525310 0.549006 1.129855 900 21 0.06000 0.06000 1 0 FFFFFF  <> <>
+  23 41 -0.077354 -0.482543 0.992598 900 21 0.06000 0.06000 1 0 FFFFFF  <> <>
+  24 41 -0.353115 -0.458313 -0.782222 900 21 0.06000 0.06000 1 0 FFFFFF  <> <>
+  25 41 2.017779 -0.507323 -0.424423 900 21 0.06000 0.06000 1 0 FFFFFF  <> <>
+  26 41 1.606933 1.157347 -0.959862 900 21 0.06000 0.06000 1 0 FFFFFF  <> <>
+  27 41 3.973785 1.966469 1.580184 900 21 0.06000 0.06000 1 0 FFFFFF  <> <>
+  28 41 4.033607 1.116307 -0.001038 900 21 0.06000 0.06000 1 0 FFFFFF  <> <>
+  29 41 1.544892 -0.671199 2.180827 900 21 0.06000 0.06000 1 0 FFFFFF  <> <>
+  30 41 3.276788 -0.706468 1.705526 900 21 0.06000 0.06000 1 0 FFFFFF  <> <>
+  31 41 -2.223222 0.919435 -1.309244 900 21 0.06000 0.06000 1 0 FFFFFF  <> <>
+  32 41 -2.144077 2.639762 -0.798532 900 21 0.06000 0.06000 1 0 FFFFFF  <> <>
+  33 44 1.510309 1.702060 1.486226 900 21 0.00000 0.00000 1 0 <>   9.883    0.693 
+  :::
+ } 
+ m_bond[32] { 
+  # First column is bond index #
+  i_m_from
+  i_m_to
+  i_m_order
+  :::
+  1 1 2 2
+  2 2 3 1
+  3 2 4 1
+  4 4 5 1
+  5 4 21 1
+  6 4 22 1
+  7 5 6 1
+  8 5 17 1
+  9 6 7 1
+  10 6 23 1
+  11 6 24 1
+  12 7 8 1
+  13 7 25 1
+  14 7 26 1
+  15 8 9 1
+  16 8 13 1
+  17 8 33 1
+  18 9 10 1
+  19 9 27 1
+  20 9 28 1
+  21 10 11 2
+  22 10 12 1
+  23 13 14 1
+  24 13 29 1
+  25 13 30 1
+  26 14 15 2
+  27 14 16 1
+  28 17 18 1
+  29 17 31 1
+  30 17 32 1
+  31 18 19 2
+  32 18 20 1
+  :::
+ } 
+} 
+

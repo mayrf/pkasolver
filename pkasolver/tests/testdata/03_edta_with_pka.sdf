@@ -1,0 +1,186 @@
+O=C(O)CN(CCN(CC(=O)O)CC(=O)O)CC(=O)O
+                    3D
+ Schrodinger Suite 2021-1.
+ 33 32  0  0  1  0            999 V2000
+   -1.8194    3.6820    1.5497 O   0  0  0  0  0  0
+   -2.3092    2.5882    1.8274 C   0  0  0  0  0  0
+   -3.4264    2.4041    2.5869 O   0  5  0  0  0  0
+   -1.7128    1.2424    1.3924 C   0  0  0  0  0  0
+   -0.8255    1.3375    0.2247 N   0  0  0  0  0  0
+    0.0010    0.1262    0.0797 C   0  0  0  0  0  0
+    1.4982    0.4222   -0.1488 C   0  0  0  0  0  0
+    2.1933    0.9721    1.0272 N   0  3  0  0  0  0
+    3.4083    1.7259    0.6678 C   0  0  0  0  0  0
+    3.1072    3.0473   -0.0540 C   0  0  0  0  0  0
+    2.0275    3.6341    0.0064 O   0  0  0  0  0  0
+    4.1979    3.4891   -0.7426 O   0  5  0  0  0  0
+    2.4503   -0.0625    2.0405 C   0  0  0  0  0  0
+    2.8356    0.5267    3.4008 C   0  0  0  0  0  0
+    2.0301    1.0852    4.1424 O   0  0  0  0  0  0
+    4.1632    0.3596    3.6669 O   0  5  0  0  0  0
+   -1.5524    1.7347   -1.0004 C   0  0  0  0  0  0
+   -0.6449    2.0473   -2.1941 C   0  0  0  0  0  0
+   -0.1286    3.1480   -2.3738 O   0  0  0  0  0  0
+   -0.4853    0.9648   -3.0093 O   0  5  0  0  0  0
+   -1.1220    0.8192    2.2181 H   0  0  0  0  0  0
+   -2.5253    0.5490    1.1299 H   0  0  0  0  0  0
+   -0.0774   -0.4825    0.9926 H   0  0  0  0  0  0
+   -0.3531   -0.4583   -0.7822 H   0  0  0  0  0  0
+    2.0178   -0.5073   -0.4244 H   0  0  0  0  0  0
+    1.6069    1.1573   -0.9599 H   0  0  0  0  0  0
+    3.9738    1.9665    1.5802 H   0  0  0  0  0  0
+    4.0336    1.1163   -0.0010 H   0  0  0  0  0  0
+    1.5449   -0.6712    2.1808 H   0  0  0  0  0  0
+    3.2768   -0.7065    1.7055 H   0  0  0  0  0  0
+   -2.2232    0.9194   -1.3092 H   0  0  0  0  0  0
+   -2.1441    2.6398   -0.7985 H   0  0  0  0  0  0
+    1.5103    1.7021    1.4862 H   0  0  0  0  0  0
+  1  2  2  0  0  0
+  2  3  1  0  0  0
+  2  4  1  0  0  0
+  4  5  1  0  0  0
+  4 21  1  0  0  0
+  4 22  1  0  0  0
+  5  6  1  0  0  0
+  5 17  1  0  0  0
+  6  7  1  0  0  0
+  6 23  1  0  0  0
+  6 24  1  0  0  0
+  7  8  1  0  0  0
+  7 25  1  0  0  0
+  7 26  1  0  0  0
+  8  9  1  0  0  0
+  8 13  1  0  0  0
+  8 33  1  0  0  0
+  9 10  1  0  0  0
+  9 27  1  0  0  0
+  9 28  1  0  0  0
+ 10 11  2  0  0  0
+ 10 12  1  0  0  0
+ 13 14  1  0  0  0
+ 13 29  1  0  0  0
+ 13 30  1  0  0  0
+ 14 15  2  0  0  0
+ 14 16  1  0  0  0
+ 17 18  1  0  0  0
+ 17 31  1  0  0  0
+ 17 32  1  0  0  0
+ 18 19  2  0  0  0
+ 18 20  1  0  0  0
+M  CHG  5   3  -1   8   1  12  -1  16  -1  20  -1
+A   3
+O   5.488000
+A   5
+N   2.767000
+A  12
+O   2.277000
+A  16
+O   2.277000
+A  20
+O   5.488000
+A  33
+H   9.883000
+M  END
+> <References>
+Generated with https://api.leruli.com/latest/references/BCE2020,BEG2019,rdkit/bibtex
+
+> <s_m_source_file>
+00_edta.sdf
+
+> <i_m_source_file_index>
+1
+
+> <i_lp_mmshare_version>
+53161
+
+> <i_f3d_flags>
+0
+
+> <s_lp_Force_Field>
+OPLS_2005
+
+> <r_lp_Energy>
+28.054778
+
+> <b_lp_Chiralities_Consistent>
+1
+
+> <s_lp_Variant>
+O=C(O)CN(CCN(CC(=O)O)CC(=O)O)CC(=O)O-1
+
+> <s_epik_input>
+Tz1DKFtPSF0pW0NIMl1OKFtDSDJdQyg9TylbT0hdKVtDSDJdW0NIMl1OKFtDSDJdQyg9TylbT0hdKVtDSDJdQyg9TylbT0hd
+
+> <s_epik_cmdline>
+J2VwaWtfYXBwJywgJy1pbWFlJywgJzAxX2VkdGEubWFlJywgJy1vbWFlJywgJzAyX2VkdGFfd2l0aF9wa2EubWFlJywgJy1zY2FuJywgJy1wJywgJzAuMSc=
+
+> <r_epik_Ionization_Penalty>
+  0.0188
+
+> <r_epik_Ionization_Penalty_Charging>
+  0.0188
+
+> <r_epik_Ionization_Penalty_Neutral>
+  0.0000
+
+> <r_epik_State_Penalty>
+  0.0143
+
+> <r_epik_Charging_Adjusted_Penalty>
+0.0330280855830678
+
+> <i_epik_Tot_Q>
+-3
+
+> <i_epik_Tot_abs_Q>
+5
+
+> <r_epik_pKa_1>
+  1.337
+
+> <i_epik_pKa_atom_1>
+16
+
+> <s_epik_pKa_identifier_1>
+Ethanoic acid, mono substituted
+
+> <r_epik_pKa_2>
+  2.241
+
+> <i_epik_pKa_atom_2>
+12
+
+> <s_epik_pKa_identifier_2>
+Ethanoic acid, mono substituted
+
+> <r_epik_pKa_3>
+  4.585
+
+> <i_epik_pKa_atom_3>
+20
+
+> <s_epik_pKa_identifier_3>
+Ethanoic acid, mono substituted
+
+> <r_epik_pKa_4>
+  5.488
+
+> <i_epik_pKa_atom_4>
+3
+
+> <s_epik_pKa_identifier_4>
+Ethanoic acid, mono substituted
+
+> <r_epik_pKa_5>
+  9.883
+
+> <i_epik_pKa_atom_5>
+8
+
+> <s_epik_pKa_identifier_5>
+Tertiary Aminium Ions
+
+> <chembl_id>
+test123
+
+$$$$

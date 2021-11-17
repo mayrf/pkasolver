@@ -1,9 +1,10 @@
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem.rdchem import ResonanceMolSupplier
 from rdkit.Chem.AllChem import GetMorganFingerprintAsBitVect
 
 
-def create_conjugate(mol, id, pka, pH=7.4):
+def create_conjugate(mol: Chem.Mol, id: int, pka: float, pH=7.4):
     """Create a new molecule that is the conjugated base/acid to the input molecule."""
     mol = Chem.RWMol(mol)
     atom = mol.GetAtomWithIdx(id)
@@ -38,7 +39,7 @@ def create_conjugate(mol, id, pka, pH=7.4):
     atom.UpdatePropertyCache()
     Tot_Hs_after = atom.GetTotalNumHs()
     assert Tot_Hs != Tot_Hs_after
-
+    # mol = next(ResonanceMolSupplier(mol))
     return mol
 
 
