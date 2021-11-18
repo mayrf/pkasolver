@@ -265,20 +265,16 @@ def mol_to_features_old(
 
 
 def mol_to_features(
-    mol, atom, n_features: dict, e_features: dict, protonation_state: str
+    mol, atom_idx: int, n_features: dict, e_features: dict, protonation_state: str
 ):
-    node = make_nodes(mol, atom, n_features)
+    node = make_nodes(mol, atom_idx, n_features)
     edge_index, edge_attr = make_edges_and_attr(mol, e_features)
     charge = np.sum([a.GetFormalCharge() for a in mol.GetAtoms()])
     return node, edge_index, edge_attr, charge
 
 
 def mol_to_paired_mol_data(
-    prot,
-    deprot,
-    atom,
-    n_features,
-    e_features,
+    prot, deprot, atom, n_features, e_features,
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
@@ -304,13 +300,17 @@ def mol_to_paired_mol_data(
 
 
 def mol_to_single_mol_data(
-    mol, atom, n_features, e_features, protonation_state: str = "protonated"
+    mol,
+    atom_idx: int,
+    n_features: dict,
+    e_features: dict,
+    protonation_state: str = "protonated",
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch Data object.
     """
     node_p, edge_index_p, edge_attr_p, charge = mol_to_features(
-        mol, atom, n_features, e_features, protonation_state
+        mol, atom_idx, n_features, e_features, protonation_state
     )
     return Data(x=node_p, edge_index=edge_index_p, edge_attr=edge_attr_p), charge
 
