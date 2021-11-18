@@ -528,13 +528,11 @@ def test_generate_data_intances():
     from pkasolver.data import (
         mol_to_single_mol_data,
         mol_to_paired_mol_data,
+        make_paired_pyg_data_from_mol,
     )
     from pkasolver.chem import create_conjugate
     import torch
 
-    ############
-    mol_idx = 0
-    ############
     sdf_filepaths = load_data()
     suppl = Chem.ForwardSDMolSupplier(sdf_filepaths["Training"], removeHs=True)
 
@@ -582,7 +580,8 @@ def test_generate_data_intances():
             assert torch.equal(d1.edge_index, d2.edge_index)
             # but different edge features (NOTE: In the case of this molecule edge attr are the same)
             assert torch.equal(d1.edge_attr, d2.edge_attr) is True
-
+            # try the encapsuled function
+            make_paired_pyg_data_from_mol(mol, n_feat, e_feat)
             # Try a new molecule
             ############
         elif idx == 1429:
@@ -598,12 +597,15 @@ def test_generate_data_intances():
             d1, charge1 = mol_to_single_mol_data(mol, atom_idx, n_feat, e_feat)
             d2, charge2 = mol_to_single_mol_data(conj, atom_idx, n_feat, e_feat)
             d3 = mol_to_paired_mol_data(mol, conj, atom_idx, n_feat, e_feat,)
-            assert Chem.MolToSmiles(mol) == 'CCCN(CCC)C(=O)c1cc(C)cc(C(=O)N[C@@H](Cc2cc(F)cc(F)c2)[C@H](O)[C@@H]2[NH2+]CCN(Cc3ccccc3)C2=O)c1'
+            assert (
+                Chem.MolToSmiles(mol)
+                == "CCCN(CCC)C(=O)c1cc(C)cc(C(=O)N[C@@H](Cc2cc(F)cc(F)c2)[C@H](O)[C@@H]2[NH2+]CCN(Cc3ccccc3)C2=O)c1"
+            )
             print(Chem.MolToSmiles(mol))
             print(Chem.MolToSmiles(conj))
             print(Chem.MolToMolBlock(conj))
             print(Chem.MolToMolBlock(mol))
-            
+
             print(charge1, charge2)
             assert charge1 == 1
             assert charge2 == 0
@@ -616,6 +618,7 @@ def test_generate_data_intances():
             assert torch.equal(d1.edge_index, d2.edge_index)
             # but different edge features (NOTE: In the case of this molecule edge attr are the same)
             assert torch.equal(d1.edge_attr, d2.edge_attr) is True
+            make_paired_pyg_data_from_mol(mol, n_feat, e_feat)
 
 
 def test_generate_dataset():

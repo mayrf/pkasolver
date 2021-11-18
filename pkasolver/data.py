@@ -272,16 +272,16 @@ def mol_to_features(mol, atom_idx: int, n_features: dict, e_features: dict):
 
 
 def mol_to_paired_mol_data(
-    prot, deprot, atom, n_features, e_features,
+    prot: Chem.Mol, deprot: Chem.Mol, atom_idx: int, n_features: dict, e_features: dict,
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
     """
     node_p, edge_index_p, edge_attr_p, charge_p = mol_to_features(
-        prot, atom, n_features, e_features
+        prot, atom_idx, n_features, e_features
     )
     node_d, edge_index_d, edge_attr_d, charge_d = mol_to_features(
-        deprot, atom, n_features, e_features
+        deprot, atom_idx, n_features, e_features
     )
 
     data = PairData(
@@ -341,18 +341,73 @@ def make_pyg_dataset_from_dataframe(
         print(f"Generating data with {mode} form")
         dataset = []
         for i in range(len(df.index)):
-            m, molecular_charge = mol_to_single_mol_data(
-                df.protonated[i],
-                df.marvin_atom[i],
-                selected_node_features,
-                selected_edge_features,
-                protonation_state=mode,
-            )
+            if mode == "protonated":
+                m, molecular_charge = mol_to_single_mol_data(
+                    df.protonated[i],
+                    df.marvin_atom[i],
+                    selected_node_features,
+                    selected_edge_features,
+                )
+            elif mode == "deprotonated":
+                m, molecular_charge = mol_to_single_mol_data(
+                    df.deprotonated[i],
+                    df.marvin_atom[i],
+                    selected_node_features,
+                    selected_edge_features,
+                )
+            else:
+                raise RuntimeError()
             m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
             m.ID = df.ID.iloc[i]
             m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
         return dataset
+
+
+def make_paired_pyg_data_from_mol(
+    mol: Chem.Mol, selected_node_features: dict, selected_edge_features: dict
+):
+    """Take a rdkit mol and generate a PyG Data object.
+    """
+
+    props = mol.GetPropsAsDict()
+    try:
+        pka = props["pKa"]
+        atom_idx = props["marvin_atom"]
+    except KeyError() as e:
+        print(f"No pka found for molecule: {props}")
+        print(e)
+        raise e
+
+    try:
+        conj = create_conjugate(mol, atom_idx, pka)
+    except AssertionError as e:
+        print(f"mol is failing because: {e}")
+        raise e
+
+    # sort mol and conj into protonated and deprotonated molecule
+    if int(mol.GetAtomWithIdx(atom_idx).GetFormalCharge()) > int(
+        conj.GetAtomWithIdx(atom_idx).GetFormalCharge()
+    ):
+        prot = mol
+        deprot = conj
+    else:
+        prot = conj
+        deprot = mol
+
+    # create PairData object from prot and deprot with the selected node and edge features
+    m = mol_to_paired_mol_data(
+        prot, deprot, atom_idx, selected_node_features, selected_edge_features,
+    )
+    m.y = torch.tensor(pka, dtype=torch.float32)
+    try:
+        m.pka_type = props["pka_number"]
+    except KeyError:
+        pass
+
+    m.ID = props["ID"]
+
+    return m
 
 
 def slice_list(input_list, size):
