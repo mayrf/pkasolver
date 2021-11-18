@@ -27,8 +27,7 @@ def test_aspirin_pka_split():
 
     o.check_returncode()
     suppl = Chem.SDMolSupplier(
-        str(f"pkasolver/tests/testdata/04_split_aspirin_with_pka.sdf"),
-        removeHs=True,
+        str(f"pkasolver/tests/testdata/04_split_aspirin_with_pka.sdf"), removeHs=True,
     )
     mol = next(suppl)
     smi = Chem.MolToSmiles(mol)
@@ -118,8 +117,7 @@ def test_edta_pka_split():
 
     o.check_returncode()
     suppl = Chem.SDMolSupplier(
-        str(f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf"),
-        removeHs=True,
+        str(f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf"), removeHs=True,
     )
     # first EDTA species
     mol = next(suppl)
@@ -188,8 +186,7 @@ def test_edta_pka_split_with_compressed_input():
 
     o.check_returncode()
     suppl = Chem.SDMolSupplier(
-        str(f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf"),
-        removeHs=True,
+        str(f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf"), removeHs=True,
     )
     # first EDTA species
     mol = next(suppl)
@@ -539,63 +536,65 @@ def test_generate_data_intances():
     mol_idx = 0
     ############
     sdf_filepaths = load_data()
-    df = preprocess(sdf_filepaths["Training"])
-    assert df.iloc[mol_idx].pKa == 6.21
-    assert int(df.iloc[mol_idx].marvin_atom) == 10
-    assert df.iloc[mol_idx].smiles == "Brc1c(NC2CC2)nc(C2CC2)nc1N1CCCCCC1"
+    suppl = Chem.ForwardSDMolSupplier(sdf_filepaths["Training"], removeHs=True)
 
-    list_n = ["element", "formal_charge"]
-    n_feat = make_features_dicts(NODE_FEATURES, list_n)
-    list_e = ["bond_type", "is_conjugated"]
-    e_feat = make_features_dicts(EDGE_FEATURES, list_e)
+    for idx, mol in enumerate(suppl):
+        if idx == 0:
+            props = mol.GetPropsAsDict()
 
-    d1, charge1 = mol_to_single_mol_data(df.iloc[mol_idx], n_feat, e_feat, "protonated")
-    d2, charge2 = mol_to_single_mol_data(
-        df.iloc[mol_idx], n_feat, e_feat, "deprotonated"
-    )
-    assert charge1 == 1
-    assert charge2 == 0
+            assert props["pKa"] == 6.21
+            assert int(props["marvin_atom"]) == 10
+            assert Chem.MolToSmiles(mol) == "Brc1c(NC2CC2)nc(C2CC2)nc1N1CCCCCC1"
 
-    d3 = mol_to_paired_mol_data(
-        df.iloc[mol_idx],
-        n_feat,
-        e_feat,
-    )
-    # all of them have the same number of nodes
-    assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
-    # but different node features
-    assert torch.equal(d1.x, d2.x) is False
-    # they have the same connection table
-    assert torch.equal(d1.edge_index, d2.edge_index)
-    # but different edge features (NOTE: In the case of this molecule edge attr are the same)
-    assert torch.equal(d1.edge_attr, d2.edge_attr) is True
+            list_n = ["element", "formal_charge"]
+            n_feat = make_features_dicts(NODE_FEATURES, list_n)
+            list_e = ["bond_type", "is_conjugated"]
+            e_feat = make_features_dicts(EDGE_FEATURES, list_e)
 
-    # Try a new molecule
-    ############
-    mol_idx = 1429
-    ############
+            d1, charge1 = mol_to_single_mol_data(
+                mol, props["marvin_atom"], n_feat, e_feat, "protonated"
+            )
+            d2, charge2 = mol_to_single_mol_data(
+                mol, props["marvin_atom"], n_feat, e_feat, "deprotonated"
+            )
+            assert charge1 == 1
+            assert charge2 == 0
 
-    d1, charge1 = mol_to_single_mol_data(df.iloc[mol_idx], n_feat, e_feat, "protonated")
-    d2, charge2 = mol_to_single_mol_data(
-        df.iloc[mol_idx], n_feat, e_feat, "deprotonated"
-    )
-    d3 = mol_to_paired_mol_data(
-        df.iloc[mol_idx],
-        n_feat,
-        e_feat,
-    )
-    print(df.iloc[mol_idx].smiles)
-    assert charge1 == 1
-    assert charge2 == 0
+            d3 = mol_to_paired_mol_data(mol, props["marvin_atom"], n_feat, e_feat,)
+            # all of them have the same number of nodes
+            assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
+            # but different node features
+            assert torch.equal(d1.x, d2.x) is False
+            # they have the same connection table
+            assert torch.equal(d1.edge_index, d2.edge_index)
+            # but different edge features (NOTE: In the case of this molecule edge attr are the same)
+            assert torch.equal(d1.edge_attr, d2.edge_attr) is True
 
-    # all of them have the same number of nodes
-    assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
-    # but different node features
-    assert torch.equal(d1.x, d2.x) is False
-    # they have the same connection table
-    assert torch.equal(d1.edge_index, d2.edge_index)
-    # but different edge features (NOTE: In the case of this molecule edge attr are the same)
-    assert torch.equal(d1.edge_attr, d2.edge_attr) is True
+            # Try a new molecule
+            ############
+        elif idx == 1429:
+            ############
+            props = mol.GetPropsAsDict()
+
+            d1, charge1 = mol_to_single_mol_data(
+                mol, props["marvin_atom"], n_feat, e_feat, "protonated"
+            )
+            d2, charge2 = mol_to_single_mol_data(
+                mol, props["marvin_atom"], n_feat, e_feat, "deprotonated"
+            )
+            d3 = mol_to_paired_mol_data(mol, props["marvin_atom"], n_feat, e_feat,)
+            print(Chem.MolToSmiles(mol))
+            assert charge1 == 1
+            assert charge2 == 0
+
+            # all of them have the same number of nodes
+            assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
+            # but different node features
+            assert torch.equal(d1.x, d2.x) is False
+            # they have the same connection table
+            assert torch.equal(d1.edge_index, d2.edge_index)
+            # but different edge features (NOTE: In the case of this molecule edge attr are the same)
+            assert torch.equal(d1.edge_attr, d2.edge_attr) is True
 
 
 def test_generate_dataset():
