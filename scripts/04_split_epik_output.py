@@ -2,6 +2,7 @@ from rdkit import Chem
 from pkasolver.chem import create_conjugate
 import argparse
 import gzip
+from rdkit.Chem.AllChem import Compute2DCoords
 
 
 def main():
@@ -35,6 +36,7 @@ def processing(suppl, args):
 
     with Chem.SDWriter(args.output) as writer:
         for nr_of_mols, mol in enumerate(suppl):
+            Compute2DCoords(mol)
             skipping_bases = 0
             skipping_acids = 0
             try:
