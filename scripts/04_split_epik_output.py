@@ -33,6 +33,7 @@ def main():
 
 def processing(suppl, args):
 
+    nr_of_skipped_mols = 0
     with Chem.SDWriter(args.output) as writer:
         for nr_of_mols, mol in enumerate(suppl):
             skipping_bases = 0
@@ -41,6 +42,7 @@ def processing(suppl, args):
                 props = mol.GetPropsAsDict()
             except AttributeError as e:
                 # this mol has no pka value
+                nr_of_skipped_mols += 1
                 print(e)
                 continue
             nr_of_protonation_states = len(
@@ -94,6 +96,7 @@ def processing(suppl, args):
                         print(acidic_mols_properties)
                         print(Chem.MolToMolBlock(mol))
                         skipping_acids += 1
+                        nr_of_skipped_mols += 1
                         continue  # continue instead of break, will not enter this routine gain since skipping_acids != 0
 
                     new_mol.SetProp(f"ID", str(acid_prop[2]))
@@ -137,6 +140,7 @@ def processing(suppl, args):
                         print(basic_mols_properties)
                         print(Chem.MolToMolBlock(mol))
                         skipping_bases += 1
+                        nr_of_skipped_mols += 1
                 else:
                     skipping_bases += 1
 
@@ -155,8 +159,10 @@ def processing(suppl, args):
             for mol in mols:
                 writer.write(mol)
 
+            # if nr_of_mols > 5_000:
+            #    raise RuntimeError()
     print(f"finished splitting {nr_of_mols} molecules")
-
+    print(f'skipped mols: {nr_of_skipped_mols}')
 
 if __name__ == "__main__":
     main()

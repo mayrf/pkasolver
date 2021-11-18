@@ -1,8 +1,9 @@
 # Imports
+import tqdm
 from rdkit import Chem
 from rdkit.Chem import PandasTools
-from rdkit.Chem.PandasTools import LoadSDF
 from rdkit.Chem.AllChem import Compute2DCoords
+from rdkit.Chem.PandasTools import LoadSDF
 
 PandasTools.RenderImagesInAllDataFrames(images=True)
 import random
@@ -10,16 +11,15 @@ import random
 import numpy as np
 import pandas as pd
 import torch
-
 from torch_geometric.data import Data
 
 from pkasolver.chem import create_conjugate
 from pkasolver.constants import (
+    DEVICE,
     EDGE_FEATURES,
     NODE_FEATURES,
-    DEVICE,
-    node_feat_values,
     edge_feat_values,
+    node_feat_values,
 )
 
 
@@ -69,15 +69,16 @@ def import_sdf(sdf_filename: str):
 def conjugates_to_dataframe(df: pd.DataFrame):
     """Take DataFrame and return a DataFrame with a column of calculated conjugated molecules."""
     conjugates = []
-    for i in range(len(df.index)):
+    for i in tqdm.tqdm(range(len(df.index))):
         mol = df.ROMol[i]
         index = int(df.marvin_atom[i])
         pka = float(df.marvin_pKa[i])
         try:
             conj = create_conjugate(mol, index, pka)
             conjugates.append(conj)
-        except:
+        except Exception as e:
             print(f"Could not create conjugate of mol number {i}")
+            print("e")
             conjugates.append(mol)
     df["Conjugates"] = conjugates
     return df
@@ -226,22 +227,8 @@ def make_edges_and_attr(mol, e_features):
     edges = []
     edge_attr = []
     for bond in mol.GetBonds():
-        edges.append(
-            np.array(
-                [
-                    [bond.GetBeginAtomIdx()],
-                    [bond.GetEndAtomIdx()],
-                ]
-            )
-        )
-        edges.append(
-            np.array(
-                [
-                    [bond.GetEndAtomIdx()],
-                    [bond.GetBeginAtomIdx()],
-                ]
-            )
-        )
+        edges.append(np.array([[bond.GetBeginAtomIdx()], [bond.GetEndAtomIdx()],]))
+        edges.append(np.array([[bond.GetEndAtomIdx()], [bond.GetBeginAtomIdx()],]))
         edge = []
         for feat in e_features.values():
             edge.append(feat(bond))
@@ -276,9 +263,7 @@ def mol_to_features(row, n_features: dict, e_features: dict, protonation_state: 
 
 
 def mol_to_paired_mol_data(
-    row,
-    n_features,
-    e_features,
+    row, n_features, e_features,
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
