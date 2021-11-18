@@ -78,7 +78,7 @@ def conjugates_to_dataframe(df: pd.DataFrame):
             conjugates.append(conj)
         except Exception as e:
             print(f"Could not create conjugate of mol number {i}")
-            print("e")
+            print(e)
             conjugates.append(mol)
     df["Conjugates"] = conjugates
     return df
