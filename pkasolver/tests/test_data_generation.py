@@ -588,15 +588,22 @@ def test_generate_data_intances():
         elif idx == 1429:
             ############
             props = mol.GetPropsAsDict()
+            atom_idx = props["marvin_atom"]
+            assert atom_idx == 35
             conj = create_conjugate(mol, atom_idx, props["pKa"])
             pka = props["pKa"]
-            print(pka)
-            atom_idx = props["marvin_atom"]
+            assert np.isclose(float(pka), 6.0)
+            assert np.isclose(float(props["marvin_pKa"]), 6.52)
+
             d1, charge1 = mol_to_single_mol_data(mol, atom_idx, n_feat, e_feat)
             d2, charge2 = mol_to_single_mol_data(conj, atom_idx, n_feat, e_feat)
             d3 = mol_to_paired_mol_data(mol, conj, atom_idx, n_feat, e_feat,)
+            assert Chem.MolToSmiles(mol) == 'CCCN(CCC)C(=O)c1cc(C)cc(C(=O)N[C@@H](Cc2cc(F)cc(F)c2)[C@H](O)[C@@H]2[NH2+]CCN(Cc3ccccc3)C2=O)c1'
             print(Chem.MolToSmiles(mol))
             print(Chem.MolToSmiles(conj))
+            print(Chem.MolToMolBlock(conj))
+            print(Chem.MolToMolBlock(mol))
+            
             print(charge1, charge2)
             assert charge1 == 1
             assert charge2 == 0
