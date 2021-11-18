@@ -247,7 +247,9 @@ def make_features_dicts(all_features, feat_list):
     return {x: all_features[x] for x in feat_list}
 
 
-def mol_to_features(row, n_features: dict, e_features: dict, protonation_state: str):
+def mol_to_features_old(
+    row, n_features: dict, e_features: dict, protonation_state: str
+):
     if protonation_state == "protonated":
         node = make_nodes(row.protonated, row.marvin_atom, n_features)
         edge_index, edge_attr = make_edges_and_attr(row.protonated, e_features)
@@ -262,17 +264,30 @@ def mol_to_features(row, n_features: dict, e_features: dict, protonation_state: 
         raise RuntimeError()
 
 
+def mol_to_features(
+    mol, atom, n_features: dict, e_features: dict, protonation_state: str
+):
+    node = make_nodes(mol, atom, n_features)
+    edge_index, edge_attr = make_edges_and_attr(mol, e_features)
+    charge = np.sum([a.GetFormalCharge() for a in mol.GetAtoms()])
+    return node, edge_index, edge_attr, charge
+
+
 def mol_to_paired_mol_data(
-    row, n_features, e_features,
+    prot,
+    deprot,
+    atom,
+    n_features,
+    e_features,
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
     """
     node_p, edge_index_p, edge_attr_p, charge_p = mol_to_features(
-        row, n_features, e_features, "protonated"
+        prot, atom, n_features, e_features, "protonated"
     )
     node_d, edge_index_d, edge_attr_d, charge_d = mol_to_features(
-        row, n_features, e_features, "deprotonated"
+        deprot, atom, n_features, e_features, "deprotonated"
     )
 
     data = PairData(
@@ -289,13 +304,13 @@ def mol_to_paired_mol_data(
 
 
 def mol_to_single_mol_data(
-    row, n_features, e_features, protonation_state: str = "protonated"
+    mol, atom, n_features, e_features, protonation_state: str = "protonated"
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch Data object.
     """
     node_p, edge_index_p, edge_attr_p, charge = mol_to_features(
-        row, n_features, e_features, protonation_state
+        mol, atom, n_features, e_features, protonation_state
     )
     return Data(x=node_p, edge_index=edge_index_p, edge_attr=edge_attr_p), charge
 
@@ -317,7 +332,11 @@ def make_pyg_dataset_from_dataframe(
         dataset = []
         for i in range(len(df.index)):
             m = mol_to_paired_mol_data(
-                df.iloc[i], selected_node_features, selected_edge_features
+                df.protonated[i],
+                df.deprotonated[i],
+                df.marvin_atom[i],
+                selected_node_features,
+                selected_edge_features,
             )
             m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
             m.ID = df.ID.iloc[i]
@@ -329,7 +348,8 @@ def make_pyg_dataset_from_dataframe(
         dataset = []
         for i in range(len(df.index)):
             m, molecular_charge = mol_to_single_mol_data(
-                df.iloc[i],
+                df.protonated[i],
+                df.marvin_atom[i],
                 selected_node_features,
                 selected_edge_features,
                 protonation_state=mode,
