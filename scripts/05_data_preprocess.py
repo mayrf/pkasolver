@@ -85,13 +85,24 @@ def processing(suppl, args):
             deprot = mol
         # create PairData object from prot and deprot with the selected node and edge features
         m = mol_to_paired_mol_data(
-            prot, deprot, atom, selected_node_features, selected_edge_features,
+            prot,
+            deprot,
+            atom,
+            selected_node_features,
+            selected_edge_features,
         )
         m.y = torch.tensor(pka, dtype=torch.float32)
-        m.pka_type = props["pka_number"]
-        m.ID = props["ID"]
+        if "pka_number" in props.keys():
+            m.pka_type = props["pka_number"]
+        elif "marvin_pKa_type" in props.keys():
+            m.pka_type = props["marvin_pKa_type"]
+        else:
+            m.pka_type = ""
+        try:
+            m.ID = props["ID"]
+        except:
+            m_ID = ""
         pair_data_list.append(m)
-
     with open(args.output, "wb") as f:
         pickle.dump(pair_data_list, f)
 
