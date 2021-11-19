@@ -227,8 +227,22 @@ def make_edges_and_attr(mol, e_features):
     edges = []
     edge_attr = []
     for bond in mol.GetBonds():
-        edges.append(np.array([[bond.GetBeginAtomIdx()], [bond.GetEndAtomIdx()],]))
-        edges.append(np.array([[bond.GetEndAtomIdx()], [bond.GetBeginAtomIdx()],]))
+        edges.append(
+            np.array(
+                [
+                    [bond.GetBeginAtomIdx()],
+                    [bond.GetEndAtomIdx()],
+                ]
+            )
+        )
+        edges.append(
+            np.array(
+                [
+                    [bond.GetEndAtomIdx()],
+                    [bond.GetBeginAtomIdx()],
+                ]
+            )
+        )
         edge = []
         for feat in e_features.values():
             edge.append(feat(bond))
@@ -272,7 +286,11 @@ def mol_to_features(mol, atom_idx: int, n_features: dict, e_features: dict):
 
 
 def mol_to_paired_mol_data(
-    prot: Chem.Mol, deprot: Chem.Mol, atom_idx: int, n_features: dict, e_features: dict,
+    prot: Chem.Mol,
+    deprot: Chem.Mol,
+    atom_idx: int,
+    n_features: dict,
+    e_features: dict,
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
@@ -298,7 +316,10 @@ def mol_to_paired_mol_data(
 
 
 def mol_to_single_mol_data(
-    mol, atom_idx: int, n_features: dict, e_features: dict,
+    mol,
+    atom_idx: int,
+    n_features: dict,
+    e_features: dict,
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch Data object.
@@ -367,8 +388,7 @@ def make_pyg_dataset_from_dataframe(
 def make_paired_pyg_data_from_mol(
     mol: Chem.Mol, selected_node_features: dict, selected_edge_features: dict
 ):
-    """Take a rdkit mol and generate a PyG Data object.
-    """
+    """Take a rdkit mol and generate a PyG Data object."""
 
     props = mol.GetPropsAsDict()
     try:
@@ -397,16 +417,23 @@ def make_paired_pyg_data_from_mol(
 
     # create PairData object from prot and deprot with the selected node and edge features
     m = mol_to_paired_mol_data(
-        prot, deprot, atom_idx, selected_node_features, selected_edge_features,
+        prot,
+        deprot,
+        atom_idx,
+        selected_node_features,
+        selected_edge_features,
     )
     m.y = torch.tensor(pka, dtype=torch.float32)
-    try:
+    if "pka_number" in props.keys():
         m.pka_type = props["pka_number"]
-    except KeyError:
-        pass
-
-    m.ID = props["ID"]
-
+    elif "marvin_pKa_type" in props.keys():
+        m.pka_type = props["marvin_pKa_type"]
+    else:
+        m.pka_type = ""
+    try:
+        m.ID = props["ID"]
+    except:
+        m.ID = ""
     return m
 
 

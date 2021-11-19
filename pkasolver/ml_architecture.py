@@ -101,7 +101,9 @@ class AttentivePka(AttentiveFP):
 
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int,
+        nr_of_lin_layers: int,
+        embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
@@ -138,7 +140,9 @@ class GATpKa(GAT):
 
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int,
+        nr_of_lin_layers: int,
+        embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
@@ -175,7 +179,9 @@ class GINpKa(GIN):
 
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int,
+        nr_of_lin_layers: int,
+        embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
@@ -199,7 +205,9 @@ class GCN(torch.nn.Module):
 
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int,
+        nr_of_lin_layers: int,
+        embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
@@ -388,7 +396,9 @@ class NNConvSingleArchitecture(GCN):
             input_dim = hidden_channels
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
+            input_dim=input_dim,
+            nr_of_lin_layers=2,
+            embeding_size=hidden_channels,
         )
 
 
@@ -407,7 +417,9 @@ class GCNSingleArchitecture(GCN):
             input_dim = hidden_channels
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
+            input_dim=input_dim,
+            nr_of_lin_layers=2,
+            embeding_size=hidden_channels,
         )
 
 
@@ -415,7 +427,9 @@ class GCNPairArchitecture(GCN):
     def __init__(self, num_node_features, nr_of_layers: int, hidden_channels: int):
         super().__init__()
 
-        self.pool = attention_pooling(num_node_features,)
+        self.pool = attention_pooling(
+            num_node_features,
+        )
 
         self.convs_p = self._return_conv(
             num_node_features, nr_of_layers=nr_of_layers, embeding_size=hidden_channels
@@ -429,7 +443,9 @@ class GCNPairArchitecture(GCN):
             input_dim = hidden_channels * 2
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
+            input_dim=input_dim,
+            nr_of_lin_layers=2,
+            embeding_size=hidden_channels,
         )
 
         self.pool = attention_pooling(num_node_features)
@@ -451,10 +467,14 @@ class GCNPairArchitectureV2(GCN):
             input_dim = hidden_channels
 
         self.lins_d = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
+            input_dim=input_dim,
+            nr_of_lin_layers=2,
+            embeding_size=hidden_channels,
         )
         self.lins_p = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
+            input_dim=input_dim,
+            nr_of_lin_layers=2,
+            embeding_size=hidden_channels,
         )
 
         self.pool = attention_pooling(num_node_features)
@@ -490,7 +510,9 @@ class NNConvPairArchitecture(GCN):
             input_dim = 2 * hidden_channels
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
+            input_dim=input_dim,
+            nr_of_lin_layers=2,
+            embeding_size=hidden_channels,
         )
 
 
@@ -1020,6 +1042,7 @@ calculate_mae = torch.nn.L1Loss()  # that's the MAE Loss
 def gcn_train(model, loader, optimizer):
     model.train()
     for data in loader:  # Iterate in batches over the training dataset.
+        data.to(device=DEVICE)
         out = model(
             x_p=data.x_p,
             x_d=data.x_d,
@@ -1037,6 +1060,7 @@ def gcn_test(model, loader):
     model.eval()
     loss = torch.Tensor([0]).to(device=DEVICE)
     for data in loader:  # Iterate in batches over the training dataset.
+        data.to(device=DEVICE)
         out = model(
             x_p=data.x_p,
             x_d=data.x_d,

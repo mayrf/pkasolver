@@ -54,8 +54,10 @@ def processing(
 
     for i, mol in tqdm.tqdm(enumerate(suppl)):
         try:
-            pyg_data = make_paired_pyg_data_from_mol(
-                mol, selected_node_features, selected_edge_features
+            pair_data_list.append(
+                make_paired_pyg_data_from_mol(
+                    mol, selected_node_features, selected_edge_features
+                )
             )
         except (KeyError, AssertionError) as e:
             print(e)
