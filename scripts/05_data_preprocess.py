@@ -52,7 +52,7 @@ def processing(
     pair_data_list = []
     print("Start processing data...")
 
-    for i, mol in tqdm.tqdm(enumerate(suppl)):
+    for nr_of_processed_mols, mol in tqdm.tqdm(enumerate(suppl)):
         try:
             pair_data_list.append(
                 make_paired_pyg_data_from_mol(
@@ -62,6 +62,9 @@ def processing(
         except (KeyError, AssertionError) as e:
             print(e)
             continue
+
+        pair_data_list.append(pyg_data)
+
     print(f"PairData objects of {len(pair_data_list)} molecules successfully saved!")
     return pair_data_list
 
