@@ -101,9 +101,7 @@ class AttentivePka(AttentiveFP):
 
     @staticmethod
     def _return_lin(
-        input_dim: int,
-        nr_of_lin_layers: int,
-        embeding_size: int,
+        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
@@ -140,9 +138,7 @@ class GATpKa(GAT):
 
     @staticmethod
     def _return_lin(
-        input_dim: int,
-        nr_of_lin_layers: int,
-        embeding_size: int,
+        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
@@ -179,9 +175,7 @@ class GINpKa(GIN):
 
     @staticmethod
     def _return_lin(
-        input_dim: int,
-        nr_of_lin_layers: int,
-        embeding_size: int,
+        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
@@ -205,9 +199,7 @@ class GCN(torch.nn.Module):
 
     @staticmethod
     def _return_lin(
-        input_dim: int,
-        nr_of_lin_layers: int,
-        embeding_size: int,
+        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))
@@ -396,9 +388,7 @@ class NNConvSingleArchitecture(GCN):
             input_dim = hidden_channels
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim,
-            nr_of_lin_layers=2,
-            embeding_size=hidden_channels,
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
         )
 
 
@@ -417,9 +407,7 @@ class GCNSingleArchitecture(GCN):
             input_dim = hidden_channels
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim,
-            nr_of_lin_layers=2,
-            embeding_size=hidden_channels,
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
         )
 
 
@@ -427,9 +415,7 @@ class GCNPairArchitecture(GCN):
     def __init__(self, num_node_features, nr_of_layers: int, hidden_channels: int):
         super().__init__()
 
-        self.pool = attention_pooling(
-            num_node_features,
-        )
+        self.pool = attention_pooling(num_node_features,)
 
         self.convs_p = self._return_conv(
             num_node_features, nr_of_layers=nr_of_layers, embeding_size=hidden_channels
@@ -443,9 +429,7 @@ class GCNPairArchitecture(GCN):
             input_dim = hidden_channels * 2
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim,
-            nr_of_lin_layers=2,
-            embeding_size=hidden_channels,
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
         )
 
         self.pool = attention_pooling(num_node_features)
@@ -467,14 +451,10 @@ class GCNPairArchitectureV2(GCN):
             input_dim = hidden_channels
 
         self.lins_d = GCN._return_lin(
-            input_dim=input_dim,
-            nr_of_lin_layers=2,
-            embeding_size=hidden_channels,
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
         )
         self.lins_p = GCN._return_lin(
-            input_dim=input_dim,
-            nr_of_lin_layers=2,
-            embeding_size=hidden_channels,
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
         )
 
         self.pool = attention_pooling(num_node_features)
@@ -510,9 +490,7 @@ class NNConvPairArchitecture(GCN):
             input_dim = 2 * hidden_channels
 
         self.lins = GCN._return_lin(
-            input_dim=input_dim,
-            nr_of_lin_layers=2,
-            embeding_size=hidden_channels,
+            input_dim=input_dim, nr_of_lin_layers=2, embeding_size=hidden_channels,
         )
 
 
@@ -1074,7 +1052,9 @@ def gcn_test(model, loader):
     )  # MAE loss of batches can be summed and divided by the number of batches
 
 
-def save_checkpoint(model, optimizer, epoch, train_loss, validation_loss, path):
+def save_checkpoint(
+    model, optimizer, epoch: int, train_loss: float, validation_loss: float, path: str
+):
     performance = model.checkpoint
     # increment epoch
     performance["epoch"] = epoch + 1

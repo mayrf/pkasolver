@@ -1,15 +1,13 @@
 import argparse
-import pickle
 import os
-import torch
-from torch import optim
-import tqdm
-from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
-from pkasolver.ml import dataset_to_dataloader
-from pkasolver.data import calculate_nr_of_features
-from pkasolver.ml_architecture import GINProt, gcn_full_training
+import pickle
 
-from pkasolver.constants import DEVICE, SEED
+import torch
+from pkasolver.constants import DEVICE
+from pkasolver.data import calculate_nr_of_features
+from pkasolver.ml import dataset_to_dataloader
+from pkasolver.ml_architecture import GINPairV2, gcn_full_training
+from torch import optim
 
 BATCH_SIZE = 64
 NUM_EPOCHS = 1400
@@ -32,24 +30,41 @@ edge_feat_list = ["bond_type", "is_conjugated", "rotatable"]
 num_node_features = calculate_nr_of_features(node_feat_list)
 num_edge_features = calculate_nr_of_features(edge_feat_list)
 
-model_name, model_class = "GINProt", GINProt
+model_name, model_class = "GINPairV2", GINPairV2
 
 
 def main():
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="input filename")
-    parser.add_argument("--val", help="validation filename")
+    parser.add_argument("--val", nargs="?", default="", help="validation filename")
     parser.add_argument("--output", help="output filename")
     args = parser.parse_args()
-    input_zipped = False
-    print("inputfile:", args.input)
-    print("outputfile:", args.output)
+
+    print(f"load training dataset from: {args.input}")
+    if args.val:
+        print(f"load validation dataset from: {args.input}")
+    else:
+        print(f"random 90:10 split is used to generate validation set.")
+    print(f"Write finished model to: {args.output}")
+
     with open(args.input, "rb") as f:
-        dataset = pickle.load(f)
-    train_loader = dataset_to_dataloader(dataset, BATCH_SIZE, shuffle=True)
-    with open(args.val, "rb") as f:
-        dataset = pickle.load(f)
-    val_loader = dataset_to_dataloader(dataset, BATCH_SIZE, shuffle=True)
+        train_dataset = pickle.load(f)
+
+    # if validation argument is not specified randomly split training set
+    if not args.val:
+        from sklearn.model_selection import train_test_split
+
+        train_dataset, validation_dataset = train_test_split(
+            train_dataset, test_size=0.1, shuffle=True
+        )
+    else:
+        # if validation set is specified load it
+        with open(args.val, "rb") as f:
+            validation_dataset = pickle.load(f)
+
+    train_loader = dataset_to_dataloader(train_dataset, BATCH_SIZE, shuffle=True)
+    val_loader = dataset_to_dataloader(validation_dataset, BATCH_SIZE, shuffle=True)
 
     if os.path.isfile(args.output):
         print("Attention: RELOADING model")
@@ -57,15 +72,18 @@ def main():
             model = pickle.load(pickle_file)
     else:
         model = model_class(num_node_features, num_edge_features, hidden_channels=96)
+
     if model.checkpoint["epoch"] < NUM_EPOCHS:
         model.to(device=DEVICE)
         print(model.checkpoint["epoch"])
         optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
         print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
+
         try:
             optimizer.load_state_dict(model.checkpoint["optimizer_state"])
         except:
             pass
+
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, patience=5, verbose=True
         )
