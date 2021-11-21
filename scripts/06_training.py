@@ -6,7 +6,6 @@ from pkasolver.constants import DEVICE
 from pkasolver.data import calculate_nr_of_features
 from pkasolver.ml import dataset_to_dataloader
 from pkasolver.ml_architecture import GINPairV2, gcn_full_training
-from torch import optim
 
 BATCH_SIZE = 512
 NUM_EPOCHS = 500
@@ -96,9 +95,6 @@ def main():
             sum(p.numel() for p in model.parameters() if p.requires_grad == True),
         )
 
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, patience=5, verbose=True
-        )
 
         print(f'Training {model_name} at epoch {model.checkpoint["epoch"]} ...')
         print(f"LR: {LEARNING_RATE}")

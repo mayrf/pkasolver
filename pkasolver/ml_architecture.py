@@ -2,17 +2,11 @@ import copy
 import pickle
 
 import torch
-from torch_geometric.nn.glob import attention
-from tqdm import tqdm
 import torch.nn.functional as F
 from torch.nn import Linear, ModuleList, ReLU, Sequential
-from torch_geometric.nn import (
-    GCNConv,
-    NNConv,
-    global_mean_pool,
-    global_max_pool,
-    GlobalAttention,
-)
+from torch_geometric.nn import GCNConv, GlobalAttention, NNConv, global_mean_pool
+from torch_geometric.nn.glob import attention
+from tqdm import tqdm
 
 from pkasolver.constants import DEVICE, SEED
 
@@ -62,11 +56,7 @@ def forward_lins(x, l: list):
 # defining GCN for single state
 #####################################
 #####################################
-from torch_geometric.nn.models import (
-    GIN,
-    GAT,
-    AttentiveFP,
-)
+from torch_geometric.nn.models import GAT, GIN, AttentiveFP
 
 
 class AttentivePka(AttentiveFP):
@@ -154,8 +144,8 @@ class GINpKa(GIN):
         in_channels: int,
         hidden_channels: int,
         num_layers: int,
-        out_channels,
-        dropout,
+        out_channels: int,
+        dropout: float,
     ):
         super().__init__(
             in_channels=in_channels,
@@ -165,6 +155,7 @@ class GINpKa(GIN):
             dropout=dropout,
         )
         torch.manual_seed(SEED)
+
         self.checkpoint = {
             "epoch": 0,
             "optimizer_state_dict": "",
@@ -1080,10 +1071,16 @@ def save_checkpoint(
 def gcn_full_training(
     model, train_loader, val_loader, optimizer, path: str = "", NUM_EPOCHS: int = 1_000
 ) -> dict:
+    from torch import optim
+
     pbar = tqdm(range(model.checkpoint["epoch"], NUM_EPOCHS + 1), desc="Epoch: ")
     results = {}
     results["training-set"] = []
     results["validation-set"] = []
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, patience=5, verbose=True
+    )
+
     for epoch in pbar:
         if epoch != 0:
             gcn_train(model, train_loader, optimizer)
@@ -1095,6 +1092,7 @@ def gcn_full_training(
             )
             results["training-set"].append(train_loss)
             results["validation-set"].append(val_loss)
+            scheduler.step(val_loss)
             if path:
                 save_checkpoint(model, optimizer, epoch, train_loss, val_loss, path)
 
