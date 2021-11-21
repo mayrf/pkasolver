@@ -9,7 +9,7 @@ from pkasolver.ml_architecture import GINPairV2, gcn_full_training
 from torch import optim
 
 BATCH_SIZE = 512
-NUM_EPOCHS = 20
+NUM_EPOCHS = 500
 LEARNING_RATE = 0.001
 
 node_feat_list = [
@@ -107,7 +107,11 @@ def main():
         print(f"Training on {DEVICE}.")
 
         results = gcn_full_training(
-            model.to(device=DEVICE), train_loader, val_loader, optimizer, NUM_EPOCHS=200
+            model.to(device=DEVICE),
+            train_loader,
+            val_loader,
+            optimizer,
+            NUM_EPOCHS=NUM_EPOCHS,
         )
 
         if args.r:
