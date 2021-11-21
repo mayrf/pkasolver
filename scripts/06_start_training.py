@@ -113,7 +113,7 @@ def data_preprocessing():
             train_set, BATCH_SIZE, shuffle=True
         )
         loaders["epik_validation_set"] = dataset_to_dataloader(
-            train_set, BATCH_SIZE, shuffle=True
+            validation_set, BATCH_SIZE, shuffle=True
         )
     return loaders
 
@@ -137,11 +137,11 @@ def training(loaders):
     print(f"Nr of edge features: {num_edge_features}")
 
     for model_name, model_class in models:
-        
+
         path = f"pretrained_models/"
         os.makedirs(path, exist_ok=True)
         pkl_file_name = f"{path}/{model_name}.pkl"
-        
+
         if os.path.isfile(pkl_file_name):
             print("Attention: RELOADING model")
             with open(pkl_file_name, "rb") as pickle_file:
@@ -169,8 +169,8 @@ def training(loaders):
             print(model_name)
             print(model)
             print(f"Training on {DEVICE}.")
-            print(f'Training set used: {training_set}')
-            print(f'Validation set used: {validation_set}')
+            print(f"Training set used: {training_set}")
+            print(f"Validation set used: {validation_set}")
             results = gcn_full_training(
                 model.to(device=DEVICE),
                 loaders[training_set],
@@ -184,12 +184,12 @@ def training(loaders):
 
 
 def main():
-    print('#####################################')
+    print("#####################################")
     if PRETRAINING:
-        print('THIS IS A PRETRAINING RUN')
+        print("THIS IS A PRETRAINING RUN")
     else:
-        print('THIS IS A TRANSFER LEARNING RUN')
-    print('#####################################')
+        print("THIS IS A TRANSFER LEARNING RUN")
+    print("#####################################")
     loaders = data_preprocessing()
     training(loaders)
 

@@ -1,5 +1,4 @@
 import argparse
-import os
 import pickle
 
 import torch
@@ -9,8 +8,8 @@ from pkasolver.ml import dataset_to_dataloader
 from pkasolver.ml_architecture import GINPairV2, gcn_full_training
 from torch import optim
 
-BATCH_SIZE = 64
-NUM_EPOCHS = 1400
+BATCH_SIZE = 512
+NUM_EPOCHS = 20
 LEARNING_RATE = 0.001
 
 node_feat_list = [
@@ -36,18 +35,21 @@ model_name, model_class = "GINPairV2", GINPairV2
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", help="input filename")
-    parser.add_argument("--val", nargs="?", default="", help="validation filename")
-    parser.add_argument("--output", help="output filename")
+    parser.add_argument("--input", help="training set filename")
+    parser.add_argument("--val", nargs="?", default="", help="validation set filename")
+    parser.add_argument("-r", action="store_true")
+    parser.add_argument("--model", help="trained model filename")
     args = parser.parse_args()
 
+    # decide wheter to split training set or use explicit validation set
     print(f"load training dataset from: {args.input}")
     if args.val:
         print(f"load validation dataset from: {args.input}")
     else:
         print(f"random 90:10 split is used to generate validation set.")
-    print(f"Write finished model to: {args.output}")
+    print(f"Write finished model to: {args.model}")
 
+    # read training set
     with open(args.input, "rb") as f:
         train_dataset = pickle.load(f)
 
@@ -66,9 +68,10 @@ def main():
     train_loader = dataset_to_dataloader(train_dataset, BATCH_SIZE, shuffle=True)
     val_loader = dataset_to_dataloader(validation_dataset, BATCH_SIZE, shuffle=True)
 
-    if os.path.isfile(args.output):
-        print("Attention: RELOADING model")
-        with open(args.output, "rb") as pickle_file:
+    # only load model when in retraining mode, otherwise generate new one
+    if args.r:
+        print("Attention: RELOADING model and freezing GNN")
+        with open(args.model, "rb") as pickle_file:
             model = pickle.load(pickle_file)
     else:
         model = model_class(num_node_features, num_edge_features, hidden_channels=96)
@@ -76,13 +79,22 @@ def main():
     if model.checkpoint["epoch"] < NUM_EPOCHS:
         model.to(device=DEVICE)
         print(model.checkpoint["epoch"])
-        optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
         print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
+        if args.r:
+            print("Freeze Convs submodule parameter.")
+            print(model.get_submodule("convs"))
+            for p in model.get_submodule("convs"):
+                p.requires_grad = False
+            print("FROZEN!")
 
-        try:
-            optimizer.load_state_dict(model.checkpoint["optimizer_state"])
-        except:
-            pass
+        # only use models that are not frozen in optimization
+        optimizer = torch.optim.Adam(
+            filter(lambda p: p.requires_grad, model.parameters()), lr=LEARNING_RATE,
+        )
+        print(
+            "Number of parameters: ",
+            sum(p.numel() for p in model.parameters() if p.requires_grad == True),
+        )
 
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, patience=5, verbose=True
@@ -95,17 +107,17 @@ def main():
         print(f"Training on {DEVICE}.")
 
         results = gcn_full_training(
-            model.to(device=DEVICE),
-            train_loader,
-            val_loader,
-            optimizer,
-            args.output,
-            NUM_EPOCHS,
+            model.to(device=DEVICE), train_loader, val_loader, optimizer, NUM_EPOCHS=200
         )
 
-        with open(args.output, "wb") as pickle_file:
+        if args.r:
+            fully_trained_model = args.model.split(".")[0] + "_fully_trained.pkl"
+        else:
+            fully_trained_model = args.model
+
+        with open(fully_trained_model, "wb") as pickle_file:
             pickle.dump(model.to(device="cpu"), pickle_file)
-        print(f"trained/loaded gcn models successfully")
+        print(f"trained gcn models is saved to: {fully_trained_model}")
 
 
 if __name__ == "__main__":
