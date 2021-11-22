@@ -36,7 +36,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="training set filename")
     parser.add_argument("--val", nargs="?", default="", help="validation set filename")
-    parser.add_argument("-r", action="store_true")
+    parser.add_argument("-r", action="store_true", help="retraining run")
     parser.add_argument("--model", help="trained model filename")
     args = parser.parse_args()
 
@@ -94,7 +94,6 @@ def main():
             "Number of parameters: ",
             sum(p.numel() for p in model.parameters() if p.requires_grad == True),
         )
-
 
         print(f'Training {model_name} at epoch {model.checkpoint["epoch"]} ...')
         print(f"LR: {LEARNING_RATE}")

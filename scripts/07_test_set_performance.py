@@ -46,11 +46,12 @@ def main():
 
     test_loader = dataset_to_dataloader(test_dateset, BATCH_SIZE, shuffle=True)
     with open(args.model, "rb") as pickle_file:
-            model = pickle.load(pickle_file)
-    
+        model = pickle.load(pickle_file)
+
     model.to(device=DEVICE)
     test_loss = gcn_test(model, test_loader)
     print(test_loss)
+
 
 if __name__ == "__main__":
     main()
