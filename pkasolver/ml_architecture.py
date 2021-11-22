@@ -1078,13 +1078,13 @@ def gcn_full_training(
     results["training-set"] = []
     results["validation-set"] = []
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, patience=5, verbose=True
+        optimizer, patience=10, verbose=True
     )
 
     for epoch in pbar:
         if epoch != 0:
             gcn_train(model, train_loader, optimizer)
-        if epoch % 20 == 0:
+        if epoch % 5 == 0:
             train_loss = gcn_test(model, train_loader)
             val_loss = gcn_test(model, val_loader)
             pbar.set_description(
@@ -1092,8 +1092,8 @@ def gcn_full_training(
             )
             results["training-set"].append(train_loss)
             results["validation-set"].append(val_loss)
-            scheduler.step(val_loss)
             if path:
                 save_checkpoint(model, optimizer, epoch, train_loss, val_loss, path)
+        scheduler.step(val_loss)
 
     return results

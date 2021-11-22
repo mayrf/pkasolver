@@ -15,9 +15,9 @@ python 05_data_preprocess.py --input ${data_path}/04_novartis_cleaned_mono_uniqu
 python 05_data_preprocess.py --input ${data_path}/04_AvLiLuMoVe_cleaned_mono_unique_notraindata.sdf --output ${data_path}/05_AvLiLuMoVe_cleaned_mono_unique_notraindata.pkl
 python 05_data_preprocess.py --input ${data_path}/04_combined_training_datasets_unique.sdf --output ${data_path}/05_combined_training_datasets_unique.pkl
 # start with pretraining on the CHEMBL data
-python 06_training.py --input ${data_path}/05_chembl_pretrain_data_v1.pkl --model ${data_path}/06_pretrained_model.pkl
+python 06_training.py --input ${data_path}/05_chembl_pretrain_data_v${version}.pkl --model ${data_path}/06_pretrained_model_v${version}.pkl
 # transfer learning on the experimental data
-python 06_training.py --input ${data_path}/05_combined_training_datasets_unique.pkl --model ${data_path}/06_pretrained_model.pkl -r
+python 06_training.py --input ${data_path}/05_combined_training_datasets_unique.pkl --model ${data_path}/06_pretrained_model_v${version}.pkl -r
 # evaluate performance on the test set
-python 07_test_set_performance.py --input ${data_path}/05_novartis_cleaned_mono_unique_notraindata.pkl --model ${data_path}/06_pretrained_model_fully_trained.pkl -r
-python 07_test_set_performance.py --input ${data_path}/05_AvLiLuMoVe_cleaned_mono_unique_notraindata.pkl.pkl --model ${data_path}/06_pretrained_model_fully_trained.pkl -r
+python 07_test_set_performance.py --input ${data_path}/05_novartis_cleaned_mono_unique_notraindata.pkl --model ${data_path}/06_pretrained_model_v${version}_fully_trained.pkl
+python 07_test_set_performance.py --input ${data_path}/05_AvLiLuMoVe_cleaned_mono_unique_notraindata.pkl.pkl --model ${data_path}/06_pretrained_model__v${version}_fully_trained.pkl

@@ -35,7 +35,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="training set filename")
     parser.add_argument("--val", nargs="?", default="", help="validation set filename")
-    parser.add_argument("-r", action="store_true")
+    parser.add_argument("-r", action="store_true", help="retraining run")
     parser.add_argument("--model", help="trained model filename")
     parser.add_argument("--epochs", help="set number of epochs")
     args = parser.parse_args()
