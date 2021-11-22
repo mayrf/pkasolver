@@ -7,43 +7,43 @@ from pkasolver.data import calculate_nr_of_features
 from pkasolver.ml import dataset_to_dataloader
 from pkasolver.ml_architecture import GINPairV2, gcn_full_training
 
-BATCH_SIZE = 512
-NUM_EPOCHS = 500
-LEARNING_RATE = 0.001
-
-node_feat_list = [
-    "element",
-    "formal_charge",
-    "hybridization",
-    "total_num_Hs",
-    "aromatic_tag",
-    "total_valence",
-    "total_degree",
-    "is_in_ring",
-    "reaction_center",
-    "smarts",
-]
-
-edge_feat_list = ["bond_type", "is_conjugated", "rotatable"]
-num_node_features = calculate_nr_of_features(node_feat_list)
-num_edge_features = calculate_nr_of_features(edge_feat_list)
-
-model_name, model_class = "GINPairV2", GINPairV2
-
 
 def main():
+    BATCH_SIZE = 512
+    NUM_EPOCHS = 2000
+    LEARNING_RATE = 0.001
+
+    node_feat_list = [
+        "element",
+        "formal_charge",
+        "hybridization",
+        "total_num_Hs",
+        "aromatic_tag",
+        "total_valence",
+        "total_degree",
+        "is_in_ring",
+        "reaction_center",
+        "smarts",
+    ]
+
+    edge_feat_list = ["bond_type", "is_conjugated", "rotatable"]
+    num_node_features = calculate_nr_of_features(node_feat_list)
+    num_edge_features = calculate_nr_of_features(edge_feat_list)
+
+    model_name, model_class = "GINPairV2", GINPairV2
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="training set filename")
     parser.add_argument("--val", nargs="?", default="", help="validation set filename")
     parser.add_argument("-r", action="store_true")
     parser.add_argument("--model", help="trained model filename")
+    parser.add_argument("--epochs", help="set number of epochs")
     args = parser.parse_args()
 
     # decide wheter to split training set or use explicit validation set
     print(f"load training dataset from: {args.input}")
     if args.val:
-        print(f"load validation dataset from: {args.input}")
+        print(f"load validation dataset from: {args.val}")
     else:
         print(f"random 90:10 split is used to generate validation set.")
     print(f"Write finished model to: {args.model}")
@@ -51,6 +51,12 @@ def main():
     # read training set
     with open(args.input, "rb") as f:
         train_dataset = pickle.load(f)
+
+    if args.epochs:
+        NUM_EPOCHS = int(args.epochs)
+        print(f"number of epochs set to {NUM_EPOCHS}")
+    else:
+        print(f"number of epochs set to {NUM_EPOCHS} (default)")
 
     # if validation argument is not specified randomly split training set
     if not args.val:
@@ -88,13 +94,13 @@ def main():
 
         # only use models that are not frozen in optimization
         optimizer = torch.optim.Adam(
-            filter(lambda p: p.requires_grad, model.parameters()), lr=LEARNING_RATE,
+            filter(lambda p: p.requires_grad, model.parameters()),
+            lr=LEARNING_RATE,
         )
         print(
             "Number of parameters: ",
             sum(p.numel() for p in model.parameters() if p.requires_grad == True),
         )
-
 
         print(f'Training {model_name} at epoch {model.checkpoint["epoch"]} ...')
         print(f"LR: {LEARNING_RATE}")
@@ -111,7 +117,7 @@ def main():
         )
 
         if args.r:
-            fully_trained_model = args.model.split(".")[0] + "_fully_trained.pkl"
+            fully_trained_model = args.model.split(".")[0] + "_fully_trained_fritz.pkl"
         else:
             fully_trained_model = args.model
 

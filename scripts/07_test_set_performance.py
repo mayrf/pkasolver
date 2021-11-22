@@ -3,7 +3,7 @@ import pickle
 
 from pkasolver.constants import DEVICE
 from pkasolver.data import calculate_nr_of_features
-from pkasolver.ml import dataset_to_dataloader
+from pkasolver.ml import dataset_to_dataloader, calc_testset_performace
 from pkasolver.ml_architecture import GINPairV2, gcn_test
 
 BATCH_SIZE = 512
@@ -46,11 +46,14 @@ def main():
 
     test_loader = dataset_to_dataloader(test_dateset, BATCH_SIZE, shuffle=True)
     with open(args.model, "rb") as pickle_file:
-            model = pickle.load(pickle_file)
-    
+        model = pickle.load(pickle_file)
+
     model.to(device=DEVICE)
     test_loss = gcn_test(model, test_loader)
-    print(test_loss)
+    MAE, RMSE, R2 = calc_testset_performace(model, test_loader)
+    # print(test_loss)
+    print(f"MAE: {MAE}, RMSE: {RMSE}, R2: {R2}")
+
 
 if __name__ == "__main__":
     main()
