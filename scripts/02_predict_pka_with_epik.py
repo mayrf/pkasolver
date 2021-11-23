@@ -35,6 +35,7 @@ def main():
             "14.0",
             "-lowest_pka",
             "0.0",
+            "-WAIT",
         ]
     )
     o.check_returncode()
