@@ -5,6 +5,9 @@ import gzip
 from rdkit.Chem.AllChem import Compute2DCoords
 
 
+PH = 7.4
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="input filename")
@@ -61,8 +64,8 @@ def processing(suppl, args):
                 )
 
             # calculate number of acidic and basic pka values
-            nr_of_acids = sum(pka[0] <= 7 for pka in pkas)
-            nr_of_bases = sum(pka[0] > 7 for pka in pkas)
+            nr_of_acids = sum(pka[0] <= PH for pka in pkas)
+            nr_of_bases = sum(pka[0] > PH for pka in pkas)
             assert nr_of_acids + nr_of_bases == len(pkas)
 
             acidic_mols_properties = [mol_pka for mol_pka in pkas if mol_pka[0] <= 7]
@@ -87,7 +90,7 @@ def processing(suppl, args):
                 ):  # if a acid was skipped, all further acids are skipped
                     try:
                         new_mol = create_conjugate(
-                            acidic_mols[-1], acid_prop[1], acid_prop[0], pH=7
+                            acidic_mols[-1], acid_prop[1], acid_prop[0], pH=PH
                         )
                         # Chem.SanitizeMol(new_mol)
 
@@ -130,7 +133,7 @@ def processing(suppl, args):
                     try:
                         basic_mols.append(
                             create_conjugate(
-                                basic_mols[-1], basic_prop[1], basic_prop[0], pH=7
+                                basic_mols[-1], basic_prop[1], basic_prop[0], pH=PH
                             )
                         )
                         # Chem.SanitizeMol(new_mol)
@@ -164,7 +167,8 @@ def processing(suppl, args):
             # if nr_of_mols > 5_000:
             #    raise RuntimeError()
     print(f"finished splitting {nr_of_mols} molecules")
-    print(f'skipped mols: {nr_of_skipped_mols}')
+    print(f"skipped mols: {nr_of_skipped_mols}")
+
 
 if __name__ == "__main__":
     main()
