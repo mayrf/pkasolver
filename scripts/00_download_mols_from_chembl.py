@@ -14,7 +14,7 @@ def main():
     molecule = new_client.molecule
     # mols = molecule.filter(max_phase=4)
     mols = molecule.filter(molecule_type="Small molecule").filter(
-        molecule_properties__mw_freebase__gte=70
+        molecule_properties__num_ro5_violations=1
     )
     print(len(mols))
 

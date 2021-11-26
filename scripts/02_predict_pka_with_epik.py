@@ -29,12 +29,15 @@ def main():
             mae_file_name,
             "-omae",
             mae_file_name_with_pka,
+            "-ph",
+            "7.4",
             "-p",
             "0.1",
             "-highest_pka",
             "14.0",
             "-lowest_pka",
             "0.0",
+            "-WAIT",
         ]
     )
     o.check_returncode()
