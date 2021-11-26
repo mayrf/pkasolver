@@ -66,7 +66,7 @@ def smi_filter(suppl):
     un = rdMolStandardize.Uncharger()
     smi_list = []
     for mol in suppl:
-        un.uncharge(mol)
+        mol = un.uncharge(mol)
         smi_list.append(Chem.MolToSmiles(mol))
     return smi_list
 
@@ -75,7 +75,7 @@ def ini_filter(suppl):
     un = rdMolStandardize.Uncharger()
     ini_list = []
     for mol in suppl:
-        un.uncharge(mol)
+        mol = un.uncharge(mol)
         ini_list.append(Chem.inchi.MolToInchi(mol))
     return ini_list
 
@@ -85,17 +85,18 @@ def processing(suppl, args, ini_list, smi_list):
     un = rdMolStandardize.Uncharger()
     with Chem.SDWriter(gzip.open(args.output, "wt+")) as writer:
         skipped = 0
-        for mol in tqdm.tqdm(suppl):
+        for idx, mol in enumerate(tqdm.tqdm(suppl)):
             if mol:
-                un.uncharge(mol)
-                inchi = Chem.inchi.MolToInchi(mol)
-                smiles = Chem.MolToSmiles(mol)
+                mol_uncharged = un.uncharge(mol)
+                inchi = Chem.inchi.MolToInchi(mol_uncharged)
+                smiles = Chem.MolToSmiles(mol_uncharged)
                 if inchi in ini_list or smiles in smi_list:
                     dup += 1
                 else:
                     writer.write(mol)
             else:
                 skipped += 1
+
     print(f"{dup} duplicate molecules found and discarted")
     print(f"{skipped} molecules skipped")
 
