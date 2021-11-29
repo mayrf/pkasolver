@@ -50,17 +50,17 @@ def main():
         print(f"load validation dataset from: {args.val}")
     else:
         print(f"random 90:10 split is used to generate validation set.")
-    print(f"Write finished model to: {args.model}")
+    output_path_for_molde = (
+        f"{args.model.split('.')[0]}_{model_name}.{args.model.split('.')[1]}"
+    )
+    print(f"Write finished model to: {output_path_for_molde}")
 
     # read training set
     with open(args.input, "rb") as f:
         train_dataset = pickle.load(f)
 
-    if args.epochs:
-        NUM_EPOCHS = int(args.epochs)
-        print(f"number of epochs set to {NUM_EPOCHS}")
-    else:
-        print(f"number of epochs set to {NUM_EPOCHS} (default)")
+    NUM_EPOCHS = int(args.epochs)
+    print(f"number of epochs set to {NUM_EPOCHS}")
 
     # if validation argument is not specified randomly split training set
     if not args.val:
@@ -120,9 +120,11 @@ def main():
         )
 
         if args.r:
-            fully_trained_model = args.model.split(".")[0] + "_fully_trained_fritz.pkl"
+            fully_trained_model = (
+                output_path_for_molde.split(".")[0] + "_fully_trained.pkl"
+            )
         else:
-            fully_trained_model = args.model
+            fully_trained_model = output_path_for_molde
 
         with open(fully_trained_model, "wb") as pickle_file:
             pickle.dump(model.to(device="cpu"), pickle_file)
