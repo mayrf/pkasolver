@@ -93,9 +93,8 @@ def main():
             print("FROZEN!")
 
         # only use models that are not frozen in optimization
-        optimizer = torch.optim.Adam(
-            filter(lambda p: p.requires_grad, model.parameters()),
-            lr=LEARNING_RATE,
+        optimizer = torch.optim.AdamW(
+            filter(lambda p: p.requires_grad, model.parameters()), lr=LEARNING_RATE,
         )
         print(
             "Number of parameters: ",
