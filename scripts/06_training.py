@@ -10,7 +10,6 @@ from pkasolver.ml_architecture import GINPairV2, gcn_full_training
 
 def main():
     BATCH_SIZE = 512
-    NUM_EPOCHS = 2000
     LEARNING_RATE = 0.001
 
     node_feat_list = [
@@ -37,7 +36,12 @@ def main():
     parser.add_argument("--val", nargs="?", default="", help="validation set filename")
     parser.add_argument("-r", action="store_true", help="retraining run")
     parser.add_argument("--model", help="trained model filename")
-    parser.add_argument("--epochs", help="set number of epochs")
+    parser.add_argument(
+        "--epochs",
+        nargs="?",
+        default="1000",
+        help="set number of epochs (default=1000)",
+    )
     args = parser.parse_args()
 
     # decide wheter to split training set or use explicit validation set
