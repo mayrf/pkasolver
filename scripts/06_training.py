@@ -1,41 +1,37 @@
 import argparse
+import os
 import pickle
 
 import torch
 from pkasolver.constants import DEVICE
 from pkasolver.data import calculate_nr_of_features
 from pkasolver.ml import dataset_to_dataloader
-from pkasolver.ml_architecture import GINPairV2, gcn_full_training
+from pkasolver.ml_architecture import GINPairV1, gcn_full_training
+
+node_feat_list = [
+    "element",
+    "formal_charge",
+    "hybridization",
+    "total_num_Hs",
+    "aromatic_tag",
+    "total_valence",
+    "total_degree",
+    "is_in_ring",
+    "reaction_center",
+    "smarts",
+]
+
+edge_feat_list = ["bond_type", "is_conjugated", "rotatable"]
+num_node_features = calculate_nr_of_features(node_feat_list)
+num_edge_features = calculate_nr_of_features(edge_feat_list)
 
 
 def main():
-    BATCH_SIZE = 512
-    LEARNING_RATE = 0.001
-
-    node_feat_list = [
-        "element",
-        "formal_charge",
-        "hybridization",
-        "total_num_Hs",
-        "aromatic_tag",
-        "total_valence",
-        "total_degree",
-        "is_in_ring",
-        "reaction_center",
-        "smarts",
-    ]
-
-    edge_feat_list = ["bond_type", "is_conjugated", "rotatable"]
-    num_node_features = calculate_nr_of_features(node_feat_list)
-    num_edge_features = calculate_nr_of_features(edge_feat_list)
-
-    model_name, model_class = "GINPairV2", GINPairV2
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="training set filename")
     parser.add_argument("--val", nargs="?", default="", help="validation set filename")
     parser.add_argument("-r", action="store_true", help="retraining run")
-    parser.add_argument("--model", help="trained model filename")
+    parser.add_argument("--model", help="training directory")
     parser.add_argument(
         "--epochs",
         nargs="?",
@@ -44,6 +40,17 @@ def main():
     )
     args = parser.parse_args()
 
+    if args.r:
+        BATCH_SIZE = 64
+    else:
+        BATCH_SIZE = 512
+
+    LEARNING_RATE = 0.001
+
+    model_name, model_class = "GINPairV1", GINPairV1
+
+    # where to save training progress
+
     # decide wheter to split training set or use explicit validation set
     print(f"load training dataset from: {args.input}")
     if args.val:
@@ -51,13 +58,8 @@ def main():
     else:
         print(f"random 90:10 split is used to generate validation set.")
 
-    if args.r:
-        output_path_for_model = f"{args.model.split('.')[0]}_retrained.pkl"
-    else:
-        output_path_for_model = (
-            f"{args.model.split('.')[0]}_{model_name}.{args.model.split('.')[1]}"
-        )
-    print(f"Write finished model to: {output_path_for_model}")
+    print(f"Write models and training progress to: {args.model}")
+    os.makedirs(args.model, exist_ok=True)
 
     # read training set
     with open(args.input, "rb") as f:
@@ -82,50 +84,47 @@ def main():
     val_loader = dataset_to_dataloader(validation_dataset, BATCH_SIZE, shuffle=True)
 
     # only load model when in retraining mode, otherwise generate new one
+    model = model_class(num_node_features, num_edge_features, hidden_channels=96)
+
     if args.r:
+        prefix = "retrained_"
         print("Attention: RELOADING model and freezing GNN")
-        with open(args.model, "rb") as pickle_file:
-            model = pickle.load(pickle_file)
+        print("Freeze Convs submodule parameter.")
+        print(model.get_submodule("convs"))
+        for p in model.get_submodule("convs"):
+            p.requires_grad = False
+        print("FROZEN!")
+        checkpoint = torch.load(f"{args.model}/pretrained_best_model.pt")
+        model.load_state_dict(checkpoint["model_state_dict"])
     else:
-        model = model_class(num_node_features, num_edge_features, hidden_channels=96)
+        prefix = "pretrained_"
 
-    if model.checkpoint["epoch"] < NUM_EPOCHS:
-        model.to(device=DEVICE)
-        print(model.checkpoint["epoch"])
-        print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
-        if args.r:
-            print("Freeze Convs submodule parameter.")
-            print(model.get_submodule("convs"))
-            for p in model.get_submodule("convs"):
-                p.requires_grad = False
-            print("FROZEN!")
+    model.train()
+    # only use models that are not frozen in optimization
+    optimizer = torch.optim.AdamW(
+        filter(lambda p: p.requires_grad, model.parameters()), lr=LEARNING_RATE,
+    )
+    print(
+        "Number of parameters: ",
+        sum(p.numel() for p in model.parameters() if p.requires_grad == True),
+    )
 
-        # only use models that are not frozen in optimization
-        optimizer = torch.optim.AdamW(
-            filter(lambda p: p.requires_grad, model.parameters()), lr=LEARNING_RATE,
-        )
-        print(
-            "Number of parameters: ",
-            sum(p.numel() for p in model.parameters() if p.requires_grad == True),
-        )
-
-        print(f'Training {model_name} at epoch {model.checkpoint["epoch"]} ...')
-        print(f"LR: {LEARNING_RATE}")
-        print(model_name)
-        print(model)
-        print(f"Training on {DEVICE}.")
-
-        results = gcn_full_training(
-            model.to(device=DEVICE),
-            train_loader,
-            val_loader,
-            optimizer,
-            NUM_EPOCHS=NUM_EPOCHS,
-        )
-
-        with open(output_path_for_model, "wb") as pickle_file:
-            pickle.dump(model.to(device="cpu"), pickle_file)
-        print(f"trained gcn models is saved to: {output_path_for_model}")
+    print(f'Training {model_name} at epoch {model.checkpoint["epoch"]} ...')
+    print(f"LR: {LEARNING_RATE}")
+    print(f"Batch-size: {BATCH_SIZE}")
+    print(model_name)
+    print(model)
+    print(f"Training on {DEVICE}.")
+    print(f"Saving models to: {args.model}")
+    results = gcn_full_training(
+        model.to(device=DEVICE),
+        train_loader,
+        val_loader,
+        optimizer,
+        NUM_EPOCHS=NUM_EPOCHS,
+        path=args.model,
+        prefix=prefix,
+    )
 
 
 if __name__ == "__main__":
