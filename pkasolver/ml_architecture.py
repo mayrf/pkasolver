@@ -1078,7 +1078,7 @@ def gcn_full_training(
     results["training-set"] = []
     results["validation-set"] = []
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, patience=10, verbose=True
+        optimizer, patience=20, verbose=True, factor=0.5
     )
 
     for epoch in pbar:
