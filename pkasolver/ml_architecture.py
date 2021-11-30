@@ -1044,32 +1044,47 @@ def gcn_test(model, loader):
 
 
 def save_checkpoint(
-    model, optimizer, epoch: int, train_loss: float, validation_loss: float, path: str
+    model,
+    optimizer,
+    epoch: int,
+    all_validation_loss: list,
+    validation_loss: float,
+    path: str,
+    prefix: str,
 ):
     performance = model.checkpoint
-    # increment epoch
-    performance["epoch"] = epoch + 1
+    torch.save(
+        {
+            "epoch": performance["epoch"],
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "loss": validation_loss,
+        },
+        f"{path}/{prefix}model_at_{epoch}.pt",
+    )
+
     # save performance of best model evaluated on validation set
-    if performance["best_loss"][0] > validation_loss:
-        performance["best_loss"] = (
-            validation_loss,
-            epoch,
-            copy.deepcopy(model.state_dict()),
-        )
-        performance["best_states"][epoch] = (
-            validation_loss,
-            copy.deepcopy(model.state_dict()),
-        )
-    performance["optimizer_state"] = optimizer.state_dict()
-    performance["progress_table"]["epoch"].append(epoch)
-    performance["progress_table"]["train_loss"].append(train_loss)
-    performance["progress_table"]["validation_loss"].append(validation_loss)
-    with open(path, "wb") as pickle_file:
-        pickle.dump(model, pickle_file)
+    if epoch != 0:
+        if validation_loss < min(all_validation_loss[:-1]):
+            torch.save(
+                {
+                    "epoch": performance["epoch"],
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "loss": validation_loss,
+                },
+                f"{path}/{prefix}best_model.pt",
+            )
 
 
 def gcn_full_training(
-    model, train_loader, val_loader, optimizer, path: str = "", NUM_EPOCHS: int = 1_000
+    model,
+    train_loader,
+    val_loader,
+    optimizer,
+    path: str = "",
+    NUM_EPOCHS: int = 1_000,
+    prefix="",
 ) -> dict:
     from torch import optim
 
@@ -1093,7 +1108,15 @@ def gcn_full_training(
             results["training-set"].append(train_loss)
             results["validation-set"].append(val_loss)
             if path:
-                save_checkpoint(model, optimizer, epoch, train_loss, val_loss, path)
+                save_checkpoint(
+                    model,
+                    optimizer,
+                    epoch,
+                    results["validation-set"],
+                    val_loss,
+                    path,
+                    prefix,
+                )
         scheduler.step(val_loss)
 
     return results

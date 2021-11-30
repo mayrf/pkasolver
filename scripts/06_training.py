@@ -50,10 +50,14 @@ def main():
         print(f"load validation dataset from: {args.val}")
     else:
         print(f"random 90:10 split is used to generate validation set.")
-    output_path_for_molde = (
-        f"{args.model.split('.')[0]}_{model_name}.{args.model.split('.')[1]}"
-    )
-    print(f"Write finished model to: {output_path_for_molde}")
+
+    if args.r:
+        output_path_for_model = f"{args.model.split('.')[0]}_retrained.pkl"
+    else:
+        output_path_for_model = (
+            f"{args.model.split('.')[0]}_{model_name}.{args.model.split('.')[1]}"
+        )
+    print(f"Write finished model to: {output_path_for_model}")
 
     # read training set
     with open(args.input, "rb") as f:
@@ -119,16 +123,9 @@ def main():
             NUM_EPOCHS=NUM_EPOCHS,
         )
 
-        if args.r:
-            fully_trained_model = (
-                output_path_for_molde.split(".")[0] + "_fully_trained.pkl"
-            )
-        else:
-            fully_trained_model = output_path_for_molde
-
-        with open(fully_trained_model, "wb") as pickle_file:
+        with open(output_path_for_model, "wb") as pickle_file:
             pickle.dump(model.to(device="cpu"), pickle_file)
-        print(f"trained gcn models is saved to: {fully_trained_model}")
+        print(f"trained gcn models is saved to: {output_path_for_model}")
 
 
 if __name__ == "__main__":
