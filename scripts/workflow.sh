@@ -27,12 +27,10 @@ data_path='/data/shared/projects/pkasolver-data-clean/'
 #python 05_data_preprocess.py --input ${data_path}/00_novartis_testdata.sdf --output ${data_path}/05_novartis_testdata.pkl 
 #python 05_data_preprocess.py --input ${data_path}/00_AvLiLuMoVe_testdata.sdf --output ${data_path}/05_AvLiLuMoVe_testdata.pkl
 #python 05_data_preprocess.py --input ${data_path}/00_experimental_training_datasets.sdf --output ${data_path}/05_experimental_training_datasets.pkl
-# start with pretraining on the CHEMBL data
-# you have to specify the GNN model in the script 
-#python 06_training.py --input ${data_path}/05_chembl_pretrain_data_v${version}.pkl --model ${data_path}/06_pretrained_model_v${version}.pkl --epoch 1000
+#start with pretraining on the CHEMBL data
+python 06_training.py --input ${data_path}/05_chembl_pretrain_data_v${version}.pkl --model ${data_path}/training_with_GINPairV1_v${version} --epoch 1000
 # transfer learning on the experimental data
-#you have to import the specific GNN model in the script
-#python 06_training.py --input ${data_path}/05_experimental_training_datasets.pkl --model ${data_path}/06_pretrained_model_v${version}_GINPairV2.pkl -r --epoch 300
-# evaluate performance on the test set
-python 07_test_set_performance.py --testset ${data_path}/05_novartis_testdata.pkl --model ${data_path}/06_pretrained_model_v${version}_GINPairV2_retrained.pkl
-python 07_test_set_performance.py --testset ${data_path}/05_AvLiLuMoVe_testdata.pkl --model ${data_path}/06_pretrained_model_v${version}_GINPairV2_retrained.pkl
+#python 06_training.py --input ${data_path}/05_experimental_training_datasets.pkl --model ${data_path}/training_with_GINPairV2_v${version} -r --epoch 5
+# evaluate performance on the test set and in the model name
+#python 07_test_set_performance.py --testset ${data_path}/05_novartis_testdata.pkl --model ${data_path}/training_with_GINPairV2_v${version}
+#python 07_test_set_performance.py --testset ${data_path}/05_AvLiLuMoVe_testdata.pkl --model ${data_path}/training_with_GINPairV2_v${version}
