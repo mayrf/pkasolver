@@ -6,7 +6,7 @@ import torch
 from pkasolver.constants import DEVICE
 from pkasolver.data import calculate_nr_of_features
 from pkasolver.ml import dataset_to_dataloader
-from pkasolver.ml_architecture import GINPairV1, gcn_full_training
+from pkasolver.ml_architecture import GINPairV2, gcn_full_training
 
 node_feat_list = [
     "element",
@@ -47,7 +47,7 @@ def main():
 
     LEARNING_RATE = 0.001
 
-    model_name, model_class = "GINPairV1", GINPairV1
+    model_name, model_class = "GINPairV2", GINPairV2
 
     # where to save training progress
 
@@ -71,10 +71,16 @@ def main():
     # if validation argument is not specified randomly split training set
     if not args.val:
         from sklearn.model_selection import train_test_split
+        import random
 
+        rs = random.randint(
+            0, 1_000_000
+        )  # save random_state to reproduce splitting if needed!
         train_dataset, validation_dataset = train_test_split(
-            train_dataset, test_size=0.1, shuffle=True
+            train_dataset, test_size=0.1, shuffle=True, random_state=rs
         )
+        with open(f"{args.model}/randint.pkl", "wb+") as f:
+            pickle.dump(f, rs)
     else:
         # if validation set is specified load it
         with open(args.val, "rb") as f:
