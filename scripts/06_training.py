@@ -71,9 +71,21 @@ def main():
     # if validation argument is not specified randomly split training set
     if not args.val:
         from sklearn.model_selection import train_test_split
+        import random
+
+        if os.path.isfile(f"{args.model}/randint.pkl"):
+            rs = pickle.load(open(f"{args.model}/randint.pkl", "rb"))
+            print(f"Loading randing: {rs}")
+        else:
+            rs = random.randint(
+                0, 1_000_000
+            )  # save random_state to reproduce splitting if needed!
+            print(rs)
+            with open(f"{args.model}/randint_.pkl", "wb+") as f:
+                pickle.dump(rs, f)
 
         train_dataset, validation_dataset = train_test_split(
-            train_dataset, test_size=0.1, shuffle=True
+            train_dataset, test_size=0.1, shuffle=True, random_state=rs
         )
     else:
         # if validation set is specified load it
@@ -84,9 +96,11 @@ def main():
     val_loader = dataset_to_dataloader(validation_dataset, BATCH_SIZE, shuffle=True)
 
     # only load model when in retraining mode, otherwise generate new one
-    model = model_class(num_node_features, num_edge_features, hidden_channels=96)
+    model = model_class(num_node_features, num_edge_features, hidden_channels=64)
 
     if args.r:
+        checkpoint = torch.load(f"{args.model}/pretrained_best_model.pt")
+        model.load_state_dict(checkpoint["model_state_dict"])
         prefix = "retrained_"
         print("Attention: RELOADING model and freezing GNN")
         print("Freeze Convs submodule parameter.")
@@ -94,8 +108,6 @@ def main():
         for p in model.get_submodule("convs"):
             p.requires_grad = False
         print("FROZEN!")
-        checkpoint = torch.load(f"{args.model}/pretrained_best_model.pt")
-        model.load_state_dict(checkpoint["model_state_dict"])
     else:
         prefix = "pretrained_"
 
