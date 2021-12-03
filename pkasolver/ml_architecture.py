@@ -1,11 +1,7 @@
-import copy
-import pickle
-
 import torch
 import torch.nn.functional as F
 from torch.nn import Linear, ModuleList, ReLU, Sequential
 from torch_geometric.nn import GCNConv, GlobalAttention, NNConv, global_mean_pool
-from torch_geometric.nn.glob import attention
 from tqdm import tqdm
 
 from pkasolver.constants import DEVICE, SEED
@@ -677,6 +673,7 @@ class GINPairV1(GINpKa):
         )
         self.GIN_p = GIN_p
         self.GIN_d = GIN_d
+        self.final_lin = Linear(2, 1, device=DEVICE)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
         def _forward(x, edge_index, x_batch, func):
@@ -691,7 +688,7 @@ class GINPairV1(GINpKa):
 
         x_p = _forward(x_p, data.edge_index_p, x_p_batch, self.GIN_p.forward)
         x_d = _forward(x_d, data.edge_index_d, x_d_batch, self.GIN_d.forward)
-        return x_p + x_d
+        return self.final_lin(torch.cat([x_p, x_d], dim=1))
 
 
 class GINPairV2(GINpKa):
@@ -721,6 +718,7 @@ class GINPairV2(GINpKa):
         self.lins_p = GINpKa._return_lin(
             input_dim=out_channels, nr_of_lin_layers=3, embeding_size=hidden_channels
         )
+        self.final_lin = Linear(2, 1, device=DEVICE)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
         def _forward(x, edge_index, x_batch, func, lins):
@@ -735,7 +733,7 @@ class GINPairV2(GINpKa):
 
         x_p = _forward(x_p, data.edge_index_p, x_p_batch, super().forward, self.lins_p)
         x_d = _forward(x_d, data.edge_index_d, x_d_batch, super().forward, self.lins_d)
-        return x_p / x_d
+        return self.final_lin(torch.cat([x_p, x_d], dim=1))
 
 
 class AttentivePairV1(AttentivePka):
@@ -784,6 +782,8 @@ class AttentivePairV1(AttentivePka):
             input_dim=out_channels, nr_of_lin_layers=2, embeding_size=hidden_channels
         )
 
+        self.final_lin = Linear(2, 1, device=DEVICE)
+
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
         def _forward(x, edge_attr, edge_index, batch, func):
             x = func(x=x, edge_attr=edge_attr, edge_index=edge_index, batch=batch)
@@ -807,7 +807,7 @@ class AttentivePairV1(AttentivePka):
             batch=x_d_batch,
             func=self.AttentivePka_d,
         )
-        return x_p + x_d
+        return self.final_lin(F.softmax(torch.Tensor([x_p, x_d])))
 
 
 class AttentivePair(AttentivePka):
