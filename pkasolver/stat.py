@@ -247,6 +247,7 @@ def plot_regression(x, y, name):
     g = sns.jointplot(x=x, y=y, xlim=(2, 12), ylim=(2, 12))
     # Add fit_reg lines to plot
     sns.regplot(x=x, y=y, scatter=False, ax=g.ax_joint, truncate=False)
+    g.plot_marginals(sns.kdeplot, fill=True)
     # Add Diagonal line to Joint axes
     x0, x1 = g.ax_joint.get_xlim()
     y0, y1 = g.ax_joint.get_ylim()

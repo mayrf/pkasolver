@@ -15,8 +15,8 @@ def main():
             i = 0
             for mol in tqdm.tqdm(suppl):
                 props = mol.GetPropsAsDict()
-                # pka = props["pKa"]
-                pka = props["marvin_pKa"]
+                pka = props["pKa"]
+                # pka = props["marvin_pKa"]
                 pH = 7.4
                 mol = Chem.RWMol(mol)
                 atom = mol.GetAtomWithIdx(props["marvin_atom"])
@@ -39,7 +39,7 @@ def main():
 
                 # make protonated conjugate as pKa > pH and there are no proton at the reaction center
                 if (pka > pH and Tot_Hs == 0) or (pka < pH and charge > 0):
-                    print(f"wrong protonation")
+                    # print(f"wrong protonation")
                     writer.write(mol)
                     i += 1
         print(f"{i} wrongly protonated molecules filtered")

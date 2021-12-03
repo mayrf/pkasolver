@@ -345,7 +345,7 @@ def make_pyg_dataset_from_dataframe(
     selected_edge_features = make_features_dicts(EDGE_FEATURES, list_e)
     if paired:
         dataset = []
-        for i in range(len(df.index)):
+        for i in df.index:
             m = mol_to_paired_mol_data(
                 df.protonated[i],
                 df.deprotonated[i],
@@ -353,15 +353,15 @@ def make_pyg_dataset_from_dataframe(
                 selected_node_features,
                 selected_edge_features,
             )
-            m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
-            m.ID = df.ID.iloc[i]
+            m.y = torch.tensor([df.pKa[i]], dtype=torch.float32)
+            m.ID = df.ID[i]
             m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
         return dataset
     else:
         print(f"Generating data with {mode} form")
         dataset = []
-        for i in range(len(df.index)):
+        for i in df.index:
             if mode == "protonated":
                 m, molecular_charge = mol_to_single_mol_data(
                     df.protonated[i],
@@ -378,8 +378,8 @@ def make_pyg_dataset_from_dataframe(
                 )
             else:
                 raise RuntimeError()
-            m.y = torch.tensor([df.pKa.iloc[i]], dtype=torch.float32)
-            m.ID = df.ID.iloc[i]
+            m.y = torch.tensor([df.pKa[i]], dtype=torch.float32)
+            m.ID = df.ID[i]
             m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
         return dataset
