@@ -29,6 +29,7 @@ num_node_features = calculate_nr_of_features(node_feat_list)
 num_edge_features = calculate_nr_of_features(edge_feat_list)
 
 model_name, model_class = "GINPairV1", GINPairV1
+<<<<<<< HEAD
 
 import seaborn as sns
 import numpy as np
@@ -54,6 +55,8 @@ def plot_results(x_col, y_col):
     g.ax_joint.fill_between(lims, lims - 1, lims + 1, color="r", alpha=0.2)
 
     return g
+=======
+>>>>>>> 8e8b887bdf3a1974116a7593f546459667619a44
 
 
 def main():
@@ -108,7 +111,6 @@ def main():
     #     transform=g.ax_joint.transAxes,
     # )
     plt.savefig(f"test_1.pdf", bbox_inches="tight")
-
 
 if __name__ == "__main__":
     main()
