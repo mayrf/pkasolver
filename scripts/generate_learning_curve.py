@@ -5,7 +5,7 @@ import torch
 from pkasolver.constants import DEVICE
 from pkasolver.data import calculate_nr_of_features
 from pkasolver.ml import calculate_performance_of_model_on_data, dataset_to_dataloader
-from pkasolver.ml_architecture import GINPairV2
+from pkasolver.ml_architecture import GINPairV2, GINPairV1
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import train_test_split
 import tqdm, os
@@ -28,9 +28,9 @@ num_node_features = calculate_nr_of_features(node_feat_list)
 num_edge_features = calculate_nr_of_features(edge_feat_list)
 
 model_name, model_class = "GINPairV2", GINPairV2
-base_path_ = f"/data/shared/projects/pkasolver-data-clean/training_with_{model_name}"
+base_path_ = f"/data/shared/projects/pkasolver-data-clean/trained_models/training_with_{model_name}"
 parameter = "hp"
-prefix = "pretraining_"
+prefix = "pretrained_"
 
 
 def calc_mae(l: list):
@@ -50,10 +50,10 @@ def main():
     ) as f:
         train_dataset = pickle.load(f)
 
-    if parameter == "lp":
-        hidden_channels = 64
-    else:
+    if parameter == "hp":
         hidden_channels = 96
+    else:
+        hidden_channels = 64
 
     model = model_class(
         num_node_features, num_edge_features, hidden_channels=hidden_channels
@@ -61,7 +61,7 @@ def main():
 
     nr_of_models = 500
 
-    for j in range(0, 10):
+    for j in range(9, 10):
         base_path = f"{base_path_}_v{j}_{parameter}/"
         randint = pickle.load(open(f"{base_path}/randint.pkl", "rb"))
         train_dataset_subset, validation_dataset = train_test_split(
@@ -84,7 +84,7 @@ def main():
             rmse_list = []
             mae_list = []
             for i in tqdm.tqdm(range(0, nr_of_models, 5)):  # 1_000, 5):
-                checkpoint = torch.load(f"{base_path}/pretrained_model_at_{i}.pt")
+                checkpoint = torch.load(f"{base_path}/{prefix}model_at_{i}.pt")
                 model.load_state_dict(checkpoint["model_state_dict"])
                 model.eval()
                 model.to(device=DEVICE)
@@ -119,13 +119,13 @@ def main():
             )
         else:  # else generate data and save to base_path
             print(
-                f"Calculating {base_path}/{prefix}training_set_performance_{nr_of_models}.pkl"
+                f"Calculating {base_path}/{prefix}validation_set_performance_{nr_of_models}.pkl"
             )
 
             rmse_list = []
             mae_list = []
             for i in tqdm.tqdm(range(0, nr_of_models, 5)):  # 1_000, 5):
-                checkpoint = torch.load(f"{base_path}/pretrained_model_at_{i}.pt")
+                checkpoint = torch.load(f"{base_path}/{prefix}model_at_{i}.pt")
                 model.load_state_dict(checkpoint["model_state_dict"])
                 model.eval()
                 model.to(device=DEVICE)
