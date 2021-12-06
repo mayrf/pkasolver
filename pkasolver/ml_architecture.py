@@ -1,18 +1,8 @@
-import copy
-import pickle
-
 import torch
-from torch_geometric.nn.glob import attention
-from tqdm import tqdm
 import torch.nn.functional as F
 from torch.nn import Linear, ModuleList, ReLU, Sequential
-from torch_geometric.nn import (
-    GCNConv,
-    NNConv,
-    global_mean_pool,
-    global_max_pool,
-    GlobalAttention,
-)
+from torch_geometric.nn import GCNConv, GlobalAttention, NNConv, global_mean_pool
+from tqdm import tqdm
 
 from pkasolver.constants import DEVICE, SEED
 
@@ -62,11 +52,7 @@ def forward_lins(x, l: list):
 # defining GCN for single state
 #####################################
 #####################################
-from torch_geometric.nn.models import (
-    GIN,
-    GAT,
-    AttentiveFP,
-)
+from torch_geometric.nn.models import GAT, GIN, AttentiveFP
 
 
 class AttentivePka(AttentiveFP):
@@ -154,8 +140,8 @@ class GINpKa(GIN):
         in_channels: int,
         hidden_channels: int,
         num_layers: int,
-        out_channels,
-        dropout,
+        out_channels: int,
+        dropout: float,
     ):
         super().__init__(
             in_channels=in_channels,
@@ -165,6 +151,7 @@ class GINpKa(GIN):
             dropout=dropout,
         )
         torch.manual_seed(SEED)
+
         self.checkpoint = {
             "epoch": 0,
             "optimizer_state_dict": "",
@@ -686,6 +673,7 @@ class GINPairV1(GINpKa):
         )
         self.GIN_p = GIN_p
         self.GIN_d = GIN_d
+        self.final_lin = Linear(2, 1, device=DEVICE)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
         def _forward(x, edge_index, x_batch, func):
@@ -700,7 +688,7 @@ class GINPairV1(GINpKa):
 
         x_p = _forward(x_p, data.edge_index_p, x_p_batch, self.GIN_p.forward)
         x_d = _forward(x_d, data.edge_index_d, x_d_batch, self.GIN_d.forward)
-        return x_p + x_d
+        return self.final_lin(torch.cat([x_p, x_d], dim=1))
 
 
 class GINPairV2(GINpKa):
@@ -730,6 +718,7 @@ class GINPairV2(GINpKa):
         self.lins_p = GINpKa._return_lin(
             input_dim=out_channels, nr_of_lin_layers=3, embeding_size=hidden_channels
         )
+        self.final_lin = Linear(2, 1, device=DEVICE)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
         def _forward(x, edge_index, x_batch, func, lins):
@@ -744,7 +733,7 @@ class GINPairV2(GINpKa):
 
         x_p = _forward(x_p, data.edge_index_p, x_p_batch, super().forward, self.lins_p)
         x_d = _forward(x_d, data.edge_index_d, x_d_batch, super().forward, self.lins_d)
-        return x_p / x_d
+        return self.final_lin(torch.cat([x_p, x_d], dim=1))
 
 
 class AttentivePairV1(AttentivePka):
@@ -793,6 +782,8 @@ class AttentivePairV1(AttentivePka):
             input_dim=out_channels, nr_of_lin_layers=2, embeding_size=hidden_channels
         )
 
+        self.final_lin = Linear(2, 1, device=DEVICE)
+
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
         def _forward(x, edge_attr, edge_index, batch, func):
             x = func(x=x, edge_attr=edge_attr, edge_index=edge_index, batch=batch)
@@ -816,7 +807,7 @@ class AttentivePairV1(AttentivePka):
             batch=x_d_batch,
             func=self.AttentivePka_d,
         )
-        return x_p + x_d
+        return self.final_lin(F.softmax(torch.Tensor([x_p, x_d])))
 
 
 class AttentivePair(AttentivePka):
@@ -1020,6 +1011,7 @@ calculate_mae = torch.nn.L1Loss()  # that's the MAE Loss
 def gcn_train(model, loader, optimizer):
     model.train()
     for data in loader:  # Iterate in batches over the training dataset.
+        data.to(device=DEVICE)
         out = model(
             x_p=data.x_p,
             x_d=data.x_d,
@@ -1037,6 +1029,7 @@ def gcn_test(model, loader):
     model.eval()
     loss = torch.Tensor([0]).to(device=DEVICE)
     for data in loader:  # Iterate in batches over the training dataset.
+        data.to(device=DEVICE)
         out = model(
             x_p=data.x_p,
             x_d=data.x_d,
@@ -1050,40 +1043,63 @@ def gcn_test(model, loader):
     )  # MAE loss of batches can be summed and divided by the number of batches
 
 
-def save_checkpoint(model, optimizer, epoch, train_loss, validation_loss, path):
+def save_checkpoint(
+    model,
+    optimizer,
+    epoch: int,
+    all_validation_loss: list,
+    validation_loss: float,
+    path: str,
+    prefix: str,
+):
     performance = model.checkpoint
-    # increment epoch
-    performance["epoch"] = epoch + 1
+    torch.save(
+        {
+            "epoch": performance["epoch"],
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "loss": validation_loss,
+        },
+        f"{path}/{prefix}model_at_{epoch}.pt",
+    )
+
     # save performance of best model evaluated on validation set
-    if performance["best_loss"][0] > validation_loss:
-        performance["best_loss"] = (
-            validation_loss,
-            epoch,
-            copy.deepcopy(model.state_dict()),
-        )
-        performance["best_states"][epoch] = (
-            validation_loss,
-            copy.deepcopy(model.state_dict()),
-        )
-    performance["optimizer_state"] = optimizer.state_dict()
-    performance["progress_table"]["epoch"].append(epoch)
-    performance["progress_table"]["train_loss"].append(train_loss)
-    performance["progress_table"]["validation_loss"].append(validation_loss)
-    with open(path, "wb") as pickle_file:
-        pickle.dump(model, pickle_file)
+    if epoch != 0:
+        if validation_loss < min(all_validation_loss[:-1]):
+            torch.save(
+                {
+                    "epoch": performance["epoch"],
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "loss": validation_loss,
+                },
+                f"{path}/{prefix}best_model.pt",
+            )
 
 
 def gcn_full_training(
-    model, train_loader, val_loader, optimizer, path: str = "", NUM_EPOCHS: int = 1_000
+    model,
+    train_loader,
+    val_loader,
+    optimizer,
+    path: str = "",
+    NUM_EPOCHS: int = 1_000,
+    prefix="",
 ) -> dict:
+    from torch import optim
+
     pbar = tqdm(range(model.checkpoint["epoch"], NUM_EPOCHS + 1), desc="Epoch: ")
     results = {}
     results["training-set"] = []
     results["validation-set"] = []
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, patience=20, verbose=True, factor=0.5
+    )
+
     for epoch in pbar:
         if epoch != 0:
             gcn_train(model, train_loader, optimizer)
-        if epoch % 20 == 0:
+        if epoch % 5 == 0:
             train_loss = gcn_test(model, train_loader)
             val_loss = gcn_test(model, val_loader)
             pbar.set_description(
@@ -1092,6 +1108,15 @@ def gcn_full_training(
             results["training-set"].append(train_loss)
             results["validation-set"].append(val_loss)
             if path:
-                save_checkpoint(model, optimizer, epoch, train_loss, val_loss, path)
+                save_checkpoint(
+                    model,
+                    optimizer,
+                    epoch,
+                    results["validation-set"],
+                    val_loss,
+                    path,
+                    prefix,
+                )
+        scheduler.step(val_loss)
 
     return results

@@ -2,35 +2,16 @@ import argparse
 import gzip
 import pickle
 
-import torch
 import tqdm
-from pkasolver.chem import create_conjugate
 from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
-from pkasolver.data import make_features_dicts, mol_to_paired_mol_data
+from pkasolver.data import (
+    make_features_dicts,
+    make_paired_pyg_data_from_mol,
+)
 from rdkit import Chem
-from rdkit.Chem.AllChem import Compute2DCoords
-
-# define selection of node and edge features
-node_feat_list = [
-    "element",
-    "formal_charge",
-    "hybridization",
-    "total_num_Hs",
-    "aromatic_tag",
-    "total_valence",
-    "total_degree",
-    "is_in_ring",
-    "reaction_center",
-    "smarts",
-]
-
-edge_feat_list = ["bond_type", "is_conjugated", "rotatable"]
-# make dicts from selection list to be used in the processing step
-selected_node_features = make_features_dicts(NODE_FEATURES, node_feat_list)
-selected_edge_features = make_features_dicts(EDGE_FEATURES, edge_feat_list)
 
 
-def main():
+def main(selected_node_features: dict, selected_edge_features: dict):
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="input filename")
     parser.add_argument("--output", help="output filename")
@@ -50,53 +31,62 @@ def main():
     if input_zipped:
         with gzip.open(args.input, "r") as fh:
             suppl = Chem.ForwardSDMolSupplier(fh, removeHs=True)
-            processing(suppl, args)
+            pair_data_list = processing(
+                suppl, selected_node_features, selected_edge_features
+            )
     else:
         with open(args.input, "rb") as fh:
             suppl = Chem.ForwardSDMolSupplier(fh, removeHs=True)
-            processing(suppl, args)
-
-
-def processing(suppl, args):
-    pair_data_list = []
-    print("Start processing data...")
-    for i, mol in tqdm.tqdm(enumerate(suppl)):
-        props = mol.GetPropsAsDict()
-        try:
-            pka = props["pKa"]
-        except:
-            print(f"No pka found for {i}. molecule: {props}")
-            continue
-        atom = props["marvin_atom"]
-        try:
-            conj = create_conjugate(mol, atom, pka)
-        except AssertionError as e:
-            print(f"mol {i} is failing because: {e}")
-            continue
-
-        # sort mol and conj into protonated and deprotonated molecule
-        if int(mol.GetAtomWithIdx(atom).GetFormalCharge()) > int(
-            conj.GetAtomWithIdx(atom).GetFormalCharge()
-        ):
-            prot = mol
-            deprot = conj
-        else:
-            prot = conj
-            deprot = mol
-        # create PairData object from prot and deprot with the selected node and edge features
-        m = mol_to_paired_mol_data(
-            prot, deprot, atom, selected_node_features, selected_edge_features,
-        )
-        m.y = torch.tensor(pka, dtype=torch.float32)
-        m.pka_type = props["pka_number"]
-        m.ID = props["ID"]
-        pair_data_list.append(m)
+            pair_data_list = processing(
+                suppl, selected_node_features, selected_edge_features
+            )
 
     with open(args.output, "wb") as f:
         pickle.dump(pair_data_list, f)
 
+
+def processing(
+    suppl, selected_node_features: dict, selected_edge_features: dict
+) -> list:
+
+    pair_data_list = []
+    print("Start processing data...")
+
+    for nr_of_processed_mols, mol in tqdm.tqdm(enumerate(suppl)):
+        try:
+            pyg_data = make_paired_pyg_data_from_mol(
+                mol, selected_node_features, selected_edge_features
+            )
+
+        except (KeyError, AssertionError) as e:
+            print(e)
+            continue
+
+        pair_data_list.append(pyg_data)
+
     print(f"PairData objects of {len(pair_data_list)} molecules successfully saved!")
+    return pair_data_list
 
 
 if __name__ == "__main__":
-    main()
+    # define selection of node and edge features
+    node_feat_list = [
+        "element",
+        "formal_charge",
+        "hybridization",
+        "total_num_Hs",
+        "aromatic_tag",
+        "total_valence",
+        "total_degree",
+        "is_in_ring",
+        "reaction_center",
+        "smarts",
+    ]
+
+    edge_feat_list = ["bond_type", "is_conjugated", "rotatable"]
+
+    # make dicts from selection list to be used in the processing step
+    selected_node_features = make_features_dicts(NODE_FEATURES, node_feat_list)
+    selected_edge_features = make_features_dicts(EDGE_FEATURES, edge_feat_list)
+
+    main(selected_node_features, selected_edge_features)

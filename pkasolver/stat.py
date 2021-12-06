@@ -14,6 +14,10 @@ import torch
 import pandas as pd
 from scipy.linalg import block_diag
 import copy
+import seaborn as sns
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
 
 
 def calc_importances(
@@ -236,3 +240,42 @@ def compute_js_divergence(train_sample, test_sample, n_bins=10):
     list_of_tuples = support_intersection(p, q)
     p, q = get_probs(list_of_tuples)
     return js_divergence(p, q)
+
+
+def plot_regression(x, y, name):
+    # Define plot canvas
+    g = sns.jointplot(x=x, y=y, xlim=(2, 12), ylim=(2, 12))
+    # Add fit_reg lines to plot
+    sns.regplot(x=x, y=y, scatter=False, ax=g.ax_joint, truncate=False)
+    g.plot_marginals(sns.kdeplot, fill=True)
+    # Add Diagonal line to Joint axes
+    x0, x1 = g.ax_joint.get_xlim()
+    y0, y1 = g.ax_joint.get_ylim()
+    lims = np.array([max(x0, y0), min(x1, y1)])
+    g.ax_joint.plot(lims, lims, "-r")
+    # Add error band of pka ± 1
+    g.ax_joint.fill_between(lims, lims - 1, lims + 1, color="r", alpha=0.2)
+
+    return g
+
+
+def calc_stat_info(y, y_hat, name):
+
+    stat_info = f"""
+        {name}
+        $r^2$ = {r2_score(y, y_hat): .2f}
+        $MAE$ = {mean_absolute_error(y, y_hat): .2f}
+        $RMSE$ = {calc_rmse(y, y_hat): .2f}
+        $kl_div$ = {compute_kl_divergence(y_hat,y): .2f}
+        """
+
+    return stat_info
+
+
+def stat_info_dict(df, x_col, y_col, datasets: list):
+    info_dict = {}
+    for name in datasets:
+        data = df[df["Dataset"] == name]
+        y, y_hat = data[x_col], data[y_col]
+        info_dict[name] = calc_stat_info(y, y_hat, name)
+    return info_dict

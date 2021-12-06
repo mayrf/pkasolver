@@ -526,15 +526,13 @@ def test_use_dataset_for_node_generation():
 def test_generate_data_intances():
     """Test that data classes instances are created correctly"""
     from pkasolver.data import (
-        preprocess,
         mol_to_single_mol_data,
         mol_to_paired_mol_data,
+        make_paired_pyg_data_from_mol,
     )
+    from pkasolver.chem import create_conjugate
     import torch
 
-    ############
-    mol_idx = 0
-    ############
     sdf_filepaths = load_data()
     suppl = Chem.ForwardSDMolSupplier(sdf_filepaths["Training"], removeHs=True)
 
@@ -543,7 +541,8 @@ def test_generate_data_intances():
             props = mol.GetPropsAsDict()
 
             assert props["pKa"] == 6.21
-            assert int(props["marvin_atom"]) == 10
+            atom_idx = props["marvin_atom"]
+            assert int(atom_idx) == 10
             assert Chem.MolToSmiles(mol) == "Brc1c(NC2CC2)nc(C2CC2)nc1N1CCCCCC1"
 
             list_n = ["element", "formal_charge"]
@@ -551,16 +550,28 @@ def test_generate_data_intances():
             list_e = ["bond_type", "is_conjugated"]
             e_feat = make_features_dicts(EDGE_FEATURES, list_e)
 
-            d1, charge1 = mol_to_single_mol_data(
-                mol, props["marvin_atom"], n_feat, e_feat, "protonated"
-            )
-            d2, charge2 = mol_to_single_mol_data(
-                mol, props["marvin_atom"], n_feat, e_feat, "deprotonated"
-            )
+            conj = create_conjugate(mol, atom_idx, props["pKa"])
+
+            d1, charge1 = mol_to_single_mol_data(mol, atom_idx, n_feat, e_feat)
+            d2, charge2 = mol_to_single_mol_data(conj, atom_idx, n_feat, e_feat)
+            assert charge1 != charge2
+            # sort mol and conj into protonated and deprotonated molecule
+            if int(mol.GetAtomWithIdx(atom_idx).GetFormalCharge()) > int(
+                conj.GetAtomWithIdx(atom_idx).GetFormalCharge()
+            ):
+                prot = mol
+                deprot = conj
+            else:
+                prot = conj
+                deprot = mol
+
+            d1, charge1 = mol_to_single_mol_data(prot, atom_idx, n_feat, e_feat)
+            d2, charge2 = mol_to_single_mol_data(deprot, atom_idx, n_feat, e_feat)
+
             assert charge1 == 1
             assert charge2 == 0
 
-            d3 = mol_to_paired_mol_data(mol, props["marvin_atom"], n_feat, e_feat,)
+            d3 = mol_to_paired_mol_data(prot, deprot, atom_idx, n_feat, e_feat,)
             # all of them have the same number of nodes
             assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
             # but different node features
@@ -569,21 +580,33 @@ def test_generate_data_intances():
             assert torch.equal(d1.edge_index, d2.edge_index)
             # but different edge features (NOTE: In the case of this molecule edge attr are the same)
             assert torch.equal(d1.edge_attr, d2.edge_attr) is True
-
+            # try the encapsuled function
+            make_paired_pyg_data_from_mol(mol, n_feat, e_feat)
             # Try a new molecule
             ############
         elif idx == 1429:
             ############
             props = mol.GetPropsAsDict()
+            atom_idx = props["marvin_atom"]
+            assert atom_idx == 35
+            conj = create_conjugate(mol, atom_idx, props["pKa"])
+            pka = props["pKa"]
+            assert np.isclose(float(pka), 6.0)
+            assert np.isclose(float(props["marvin_pKa"]), 6.52)
 
-            d1, charge1 = mol_to_single_mol_data(
-                mol, props["marvin_atom"], n_feat, e_feat, "protonated"
+            d1, charge1 = mol_to_single_mol_data(mol, atom_idx, n_feat, e_feat)
+            d2, charge2 = mol_to_single_mol_data(conj, atom_idx, n_feat, e_feat)
+            d3 = mol_to_paired_mol_data(mol, conj, atom_idx, n_feat, e_feat,)
+            assert (
+                Chem.MolToSmiles(mol)
+                == "CCCN(CCC)C(=O)c1cc(C)cc(C(=O)N[C@@H](Cc2cc(F)cc(F)c2)[C@H](O)[C@@H]2[NH2+]CCN(Cc3ccccc3)C2=O)c1"
             )
-            d2, charge2 = mol_to_single_mol_data(
-                mol, props["marvin_atom"], n_feat, e_feat, "deprotonated"
-            )
-            d3 = mol_to_paired_mol_data(mol, props["marvin_atom"], n_feat, e_feat,)
             print(Chem.MolToSmiles(mol))
+            print(Chem.MolToSmiles(conj))
+            print(Chem.MolToMolBlock(conj))
+            print(Chem.MolToMolBlock(mol))
+
+            print(charge1, charge2)
             assert charge1 == 1
             assert charge2 == 0
 
@@ -595,6 +618,7 @@ def test_generate_data_intances():
             assert torch.equal(d1.edge_index, d2.edge_index)
             # but different edge features (NOTE: In the case of this molecule edge attr are the same)
             assert torch.equal(d1.edge_attr, d2.edge_attr) is True
+            make_paired_pyg_data_from_mol(mol, n_feat, e_feat)
 
 
 def test_generate_dataset():

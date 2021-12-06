@@ -2,6 +2,10 @@ from torch_geometric.loader import DataLoader
 import numpy as np
 import pandas as pd
 from pkasolver.constants import DEVICE
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
+
 
 # PyG Dataset to Dataloader
 def dataset_to_dataloader(data, batch_size, shuffle=True):
@@ -47,10 +51,6 @@ def calculate_performance_of_model_on_data(model, loader):
     return np.array(x_dataset), np.array(y_dataset)
 
 
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import mean_squared_error
-
-
 def test_graph_model(graph_models, loader, dataset_name):
     res = {
         "Dataset": dataset_name,
@@ -65,3 +65,16 @@ def test_graph_model(graph_models, loader, dataset_name):
         RMSE = np.sqrt(mean_squared_error(x, y))
         # print(f"{dataset_name} - {model_name}: MAE {MAE}, RMSE {RMSE}")
     return pd.DataFrame(res)
+
+
+def calc_testset_performace(model, loader):
+
+    model.to(device=DEVICE)
+    x, y = calculate_performance_of_model_on_data(model, loader)
+    # res["pKa_true"], res["pKa_pred"] = x, y
+    MAE = mean_absolute_error(x, y)
+    RMSE = np.sqrt(mean_squared_error(x, y))
+    R2 = r2_score(x, y)
+    # print(f"{dataset_name} - {model_name}: MAE {MAE}, RMSE {RMSE}")
+    # return pd.DataFrame(res)
+    return MAE, RMSE, R2

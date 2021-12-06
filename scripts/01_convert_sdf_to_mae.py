@@ -1,6 +1,7 @@
 import os, subprocess
 import argparse
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="input filename")
@@ -32,10 +33,12 @@ def main():
             sdf_file_name,
             "-omae",
             mae_file_name,
+            "-WAIT",
         ],
         stderr=subprocess.STDOUT,
     )
     o.check_returncode()
+
 
 if __name__ == "__main__":
     main()
