@@ -6,7 +6,7 @@ import torch
 from pkasolver.constants import DEVICE
 from pkasolver.data import calculate_nr_of_features
 from pkasolver.ml import dataset_to_dataloader
-from pkasolver.ml_architecture import GINPairV1, gcn_full_training
+from pkasolver.ml_architecture import GINPairV2, GINPairV1, gcn_full_training
 
 node_feat_list = [
     "element",
@@ -31,6 +31,7 @@ def main():
     parser.add_argument("--input", help="training set filename")
     parser.add_argument("--val", nargs="?", default="", help="validation set filename")
     parser.add_argument("-r", action="store_true", help="retraining run")
+    parser.add_argument("--model_name", help="either GINPairV2 or GINPairV1")
     parser.add_argument("--model", help="training directory")
     parser.add_argument(
         "--epochs",
@@ -39,6 +40,7 @@ def main():
         help="set number of epochs (default=1000)",
     )
     args = parser.parse_args()
+    parameter_size = "hp"
 
     if args.r:
         BATCH_SIZE = 64
@@ -47,10 +49,14 @@ def main():
 
     LEARNING_RATE = 0.001
 
-    model_name, model_class = "GINPairV1", GINPairV1
-
+    if args.model_name == "GINPairV1":
+        model_name, model_class = "GINPairV1", GINPairV1
+    elif args.model_name == "GINPairV2":
+        model_name, model_class = "GINPairV2", GINPairV2
+    else:
+        raise RuntimeError()
     # where to save training progress
-
+    print(f"Used model: {model_name}")
     # decide wheter to split training set or use explicit validation set
     print(f"load training dataset from: {args.input}")
     if args.val:
@@ -81,7 +87,7 @@ def main():
                 0, 1_000_000
             )  # save random_state to reproduce splitting if needed!
             print(rs)
-            with open(f"{args.model}/randint_.pkl", "wb+") as f:
+            with open(f"{args.model}/randint.pkl", "wb+") as f:
                 pickle.dump(rs, f)
 
         train_dataset, validation_dataset = train_test_split(
@@ -96,7 +102,15 @@ def main():
     val_loader = dataset_to_dataloader(validation_dataset, BATCH_SIZE, shuffle=True)
 
     # only load model when in retraining mode, otherwise generate new one
-    model = model_class(num_node_features, num_edge_features, hidden_channels=64)
+    if parameter_size == "hp":
+        hidden_channels = 96
+    else:
+        hidden_channels = 64
+    print(f"Parameter set: {parameter_size}: {hidden_channels=}")
+
+    model = model_class(
+        num_node_features, num_edge_features, hidden_channels=hidden_channels
+    )
 
     if args.r:
         checkpoint = torch.load(f"{args.model}/pretrained_best_model.pt")
