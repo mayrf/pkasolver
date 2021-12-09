@@ -2,13 +2,15 @@ import argparse
 import gzip
 import pickle
 
-import tqdm
+from p_tqdm import p_umap
 from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
 from pkasolver.data import (
     make_features_dicts,
     make_paired_pyg_data_from_mol,
 )
 from rdkit import Chem
+import multiprocessing as mp
+from itertools import repeat
 
 
 def main(selected_node_features: dict, selected_edge_features: dict):
@@ -19,6 +21,8 @@ def main(selected_node_features: dict, selected_edge_features: dict):
     input_zipped = False
     print("inputfile:", args.input)
     print("outputfile:", args.output)
+    print("Start processing data...")
+    pair_data_list = []
 
     # test if it's gzipped
     with gzip.open(args.input, "r") as fh:
@@ -30,42 +34,43 @@ def main(selected_node_features: dict, selected_edge_features: dict):
 
     if input_zipped:
         with gzip.open(args.input, "r") as fh:
-            suppl = Chem.ForwardSDMolSupplier(fh, removeHs=True)
-            pair_data_list = processing(
-                suppl, selected_node_features, selected_edge_features
+            suppl = [mol for mol in Chem.ForwardSDMolSupplier(fh, removeHs=True)]
+            pair_data_list.append(
+                p_umap(
+                    processing,
+                    suppl,
+                    repeat(selected_node_features),
+                    repeat(selected_edge_features),
+                    num_cpus=2,
+                )
             )
     else:
         with open(args.input, "rb") as fh:
-            suppl = Chem.ForwardSDMolSupplier(fh, removeHs=True)
+            suppl = [mol for mol in Chem.ForwardSDMolSupplier(fh, removeHs=True)]
             pair_data_list = processing(
                 suppl, selected_node_features, selected_edge_features
             )
 
+    print(f"PairData objects of {len(pair_data_list)} molecules successfully saved!")
     with open(args.output, "wb") as f:
         pickle.dump(pair_data_list, f)
 
 
-def processing(
-    suppl, selected_node_features: dict, selected_edge_features: dict
-) -> list:
+def processing(mol, selected_node_features: dict, selected_edge_features: dict) -> list:
 
     pair_data_list = []
-    print("Start processing data...")
+    if not mol:
+        return None
+    
+    try:
+        pyg_data = make_paired_pyg_data_from_mol(
+            mol, selected_node_features, selected_edge_features
+        )
+        return pyg_data
 
-    for nr_of_processed_mols, mol in tqdm.tqdm(enumerate(suppl)):
-        try:
-            pyg_data = make_paired_pyg_data_from_mol(
-                mol, selected_node_features, selected_edge_features
-            )
-
-        except (KeyError, AssertionError) as e:
-            print(e)
-            continue
-
-        pair_data_list.append(pyg_data)
-
-    print(f"PairData objects of {len(pair_data_list)} molecules successfully saved!")
-    return pair_data_list
+    except (KeyError, AssertionError) as e:
+        print(e)
+        return None
 
 
 if __name__ == "__main__":
