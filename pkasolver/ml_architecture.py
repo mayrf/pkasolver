@@ -3,7 +3,6 @@ import torch.nn.functional as F
 from torch.nn import Linear, ModuleList, ReLU, Sequential
 from torch_geometric.nn import GCNConv, GlobalAttention, NNConv, global_mean_pool
 from tqdm import tqdm
-
 from pkasolver.constants import DEVICE, SEED
 
 #####################################
@@ -168,7 +167,7 @@ class GINpKa(GIN):
         lins.append(Linear(input_dim, embeding_size))
         for _ in range(2, nr_of_lin_layers):
             lins.append(Linear(embeding_size, embeding_size))
-        lins.append(Linear(embeding_size, 1))
+        lins.append(Linear(embeding_size, embeding_size))
         return ModuleList(lins)
 
 
@@ -633,25 +632,19 @@ class GATPair(GATpKa):
         return x_p + x_d
 
 
-class GINPairV1(GINpKa):
+class GINPairV1(GCN):
     def __init__(
         self,
         num_node_features: int,
         num_edge_features: int,
         hidden_channels: int = 32,
-        num_layers: int = 3,
+        num_layers: int = 4,
         out_channels=32,
         dropout=0.5,
         attention=False,
     ):
+        super().__init__()
 
-        super().__init__(
-            in_channels=num_node_features,
-            out_channels=out_channels,
-            hidden_channels=hidden_channels,
-            num_layers=num_layers,
-            dropout=dropout,
-        )
         GIN_p = GINpKa(
             in_channels=num_node_features,
             out_channels=out_channels,
@@ -669,11 +662,13 @@ class GINPairV1(GINpKa):
 
         print(f"Attention pooling: {attention}")
         self.lins = GINpKa._return_lin(
-            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=hidden_channels
+            input_dim=out_channels * 2,
+            nr_of_lin_layers=3,
+            embeding_size=hidden_channels,
         )
         self.GIN_p = GIN_p
         self.GIN_d = GIN_d
-        self.final_lin = Linear(2, 1, device=DEVICE)
+        self.final_lin = Linear(hidden_channels, 1, device=DEVICE)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
         def _forward(x, edge_index, x_batch, func):
@@ -681,14 +676,17 @@ class GINPairV1(GINpKa):
             # global mean pooling
             x = global_mean_pool(x, x_batch)  # [batch_size, hidden_channels]
             # run through linear layer
-            return forward_lins(x, self.lins)
+            return x
 
         x_p_batch = data.x_p_batch.to(device=DEVICE)
         x_d_batch = data.x_d_batch.to(device=DEVICE)
 
         x_p = _forward(x_p, data.edge_index_p, x_p_batch, self.GIN_p.forward)
         x_d = _forward(x_d, data.edge_index_d, x_d_batch, self.GIN_d.forward)
-        return self.final_lin(torch.cat([x_p, x_d], dim=1))
+        x = torch.cat([x_p, x_d], dim=1)
+        x = forward_lins(x, self.lins)
+
+        return self.final_lin(F.relu(x))
 
 
 class GINPairV2(GINpKa):
@@ -1093,7 +1091,7 @@ def gcn_full_training(
     results["training-set"] = []
     results["validation-set"] = []
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, patience=20, verbose=True, factor=0.5
+        optimizer, patience=150, verbose=True, factor=0.5
     )
 
     for epoch in pbar:

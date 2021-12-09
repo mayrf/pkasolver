@@ -36,16 +36,18 @@ def main():
 
 
 def processing(suppl, args):
-
+    GLOBAL_COUNTER = 0
     nr_of_skipped_mols = 0
     with gzip.open(args.output, "wt+") as sdf_zip:
         with Chem.SDWriter(sdf_zip) as writer:
             for nr_of_mols, mol in enumerate(suppl):
+
                 if not mol:
                     continue
-                Compute2DCoords(mol)
+
                 skipping_bases = 0
                 skipping_acids = 0
+
                 try:
                     props = mol.GetPropsAsDict()
                 except AttributeError as e:
@@ -53,28 +55,41 @@ def processing(suppl, args):
                     nr_of_skipped_mols += 1
                     print(e)
                     continue
+
                 nr_of_protonation_states = len(
                     [s for s in props.keys() if "r_epik_pKa" in s]
                 )
+
                 pkas = []
+
                 for i in range(nr_of_protonation_states):
                     pkas.append(
-                        (
-                            float(props[f"r_epik_pKa_{i+1}"]),
-                            int(props[f"i_epik_pKa_atom_{i+1}"]) - 1,
-                            props[f"chembl_id"],
-                        )
+                        {
+                            "pka_value": float(props[f"r_epik_pKa_{i+1}"]),
+                            "atom_idx": int(props[f"i_epik_pKa_atom_{i+1}"]) - 1,
+                            "chembl_id": props[f"chembl_id"],
+                        }
                     )
 
                 # calculate number of acidic and basic pka values
-                nr_of_acids = sum(pka[0] <= PH for pka in pkas)
-                nr_of_bases = sum(pka[0] > PH for pka in pkas)
-                assert nr_of_acids + nr_of_bases == len(pkas)
+                nr_of_acids = sum(
+                    pka["pka_value"] <= PH and pka["pka_value"] > 0.5 for pka in pkas
+                )
+                nr_of_bases = sum(
+                    pka["pka_value"] > PH and pka["pka_value"] < 13.5 for pka in pkas
+                )
+                assert nr_of_acids + nr_of_bases <= len(pkas)
 
                 acidic_mols_properties = [
-                    mol_pka for mol_pka in pkas if mol_pka[0] <= PH
+                    mol_pka
+                    for mol_pka in pkas
+                    if mol_pka["pka_value"] <= PH and mol_pka["pka_value"] > 0.5
                 ]
-                basic_mols_properties = [mol_pka for mol_pka in pkas if mol_pka[0] > PH]
+                basic_mols_properties = [
+                    mol_pka
+                    for mol_pka in pkas
+                    if mol_pka["pka_value"] > PH and mol_pka["pka_value"] < 13.5
+                ]
 
                 # print(f"acidic prop:{acidic_mols_properties}")
                 # print(f"basic prop: {basic_mols_properties}")
@@ -87,7 +102,7 @@ def processing(suppl, args):
                 for prop in props.keys():
                     mol.ClearProp(prop)
 
-                # add neutral mol as first acidic mol
+                # add mol at pH=7.4
                 acidic_mols = [mol]
                 for idx, acid_prop in enumerate(
                     reversed(acidic_mols_properties)
@@ -97,7 +112,10 @@ def processing(suppl, args):
                     ):  # if a acid was skipped, all further acids are skipped
                         try:
                             new_mol = create_conjugate(
-                                acidic_mols[-1], acid_prop[1], acid_prop[0], pH=PH
+                                acidic_mols[-1],
+                                acid_prop["atom_idx"],
+                                acid_prop["pka_value"],
+                                pH=PH,
                             )
                             # Chem.SanitizeMol(new_mol)
 
@@ -111,11 +129,19 @@ def processing(suppl, args):
                             nr_of_skipped_mols += 1
                             continue  # continue instead of break, will not enter this routine gain since skipping_acids != 0
 
-                        new_mol.SetProp(f"ID", str(acid_prop[2]))
-                        new_mol.SetProp(f"pKa", str(acid_prop[0]))
-                        new_mol.SetProp(f"marvin_pKa", str(acid_prop[0]))
-                        new_mol.SetProp(f"marvin_atom", str(acid_prop[1]))
-                        new_mol.SetProp(f"pka_number", f"acid_{idx + 1}")
+                        GLOBAL_COUNTER += 1
+                        new_mol.SetProp(f"CHEMBL_ID", str(acid_prop["chembl_id"]))
+                        new_mol.SetProp(f"INTERNAL_ID", str(GLOBAL_COUNTER))
+
+                        new_mol.SetProp(f"pKa", str(acid_prop["pka_value"]))
+                        new_mol.SetProp(f"epik_pKa", str(acid_prop["pka_value"]))
+                        new_mol.SetProp(f"epik_atom", str(acid_prop["atom_idx"]))
+                        new_mol.SetProp(f"pKa_number", f"acid_{idx + 1}")
+                        new_mol.SetProp(
+                            f"mol-smiles", f"{Chem.MolToSmiles(acidic_mols[-1])}"
+                        )
+                        new_mol.SetProp(f"conj-smiles", f"{Chem.MolToSmiles(new_mol)}")
+
                         # add current mol to list of acidic mol. for next
                         # lower pKa value, this mol is starting structure
                         acidic_mols.append(new_mol)
@@ -130,20 +156,37 @@ def processing(suppl, args):
                     if (
                         skipping_bases == 0
                     ):  # if a base was skipped, all further bases are skipped
+                        GLOBAL_COUNTER += 1
                         new_mol = basic_mols[-1]
-                        new_mol.SetProp(f"ID", str(basic_prop[2]))
-                        new_mol.SetProp(f"pKa", str(basic_prop[0]))
-                        new_mol.SetProp(f"marvin_pKa", str(basic_prop[0]))
-                        new_mol.SetProp(f"marvin_atom", str(basic_prop[1]))
-                        new_mol.SetProp(f"pka_number", f"base_{idx + 1}")
+                        new_mol.SetProp(f"CHEMBL_ID", str(basic_prop["chembl_id"]))
+
+                        new_mol.SetProp(f"INTERNAL_ID", str(GLOBAL_COUNTER))
+
+                        new_mol.SetProp(f"pKa", str(basic_prop["pka_value"]))
+                        new_mol.SetProp(f"epik_pKa", str(basic_prop["pka_value"]))
+                        new_mol.SetProp(f"epik_atom", str(basic_prop["atom_idx"]))
+                        new_mol.SetProp(f"pKa_number", f"acid_{idx + 1}")
+
+                        new_mol.SetProp(
+                            f"mol-smiles", f"{Chem.MolToSmiles(acidic_mols[-1])}"
+                        )
+                        new_mol.SetProp(f"mol-smiles", f"{Chem.MolToSmiles(new_mol)}")
 
                         try:
+
                             basic_mols.append(
                                 create_conjugate(
-                                    basic_mols[-1], basic_prop[1], basic_prop[0], pH=PH
+                                    new_mol,
+                                    basic_prop["atom_idx"],
+                                    basic_prop["pka_value"],
+                                    pH=PH,
                                 )
                             )
-                            # Chem.SanitizeMol(new_mol)
+
+                            new_mol.SetProp(
+                                f"conj-smiles", f"{Chem.MolToSmiles(basic_mols[-1])}"
+                            )
+
                         except Exception as e:
                             # in case error occurs new_mol is not in basic list
                             print(f"Error at molecule number {nr_of_mols}")
@@ -167,9 +210,15 @@ def processing(suppl, args):
                     + len(basic_mols_properties)
                     - skipping_bases
                 )
-
-                for mol in mols:
-                    writer.write(mol)
+                if len(mols) != 0:
+                    print(f", CHEMBL_ID: {mols[-1].GetProp('CHEMBL_ID')}")
+                    for mol in mols:
+                        pka = mol.GetProp("pKa")
+                        counter = mol.GetProp("INTERNAL_ID")
+                        mol_smiles = mol.GetProp("mol-smiles")
+                        conj_smiles = mol.GetProp("conj-smiles")
+                        print(f"{counter=}, {pka=}, {mol_smiles}, {conj_smiles}")
+                        writer.write(mol)
 
     print(f"finished splitting {nr_of_mols} molecules")
     print(f"skipped mols: {nr_of_skipped_mols}")
