@@ -30,12 +30,12 @@ def create_conjugate(mol: Chem.Mol, id: int, pka: float, pH=7.4):
         atom.SetFormalCharge(charge + 1)
         if Tot_Hs == 0 or Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs + 1)
+        raise RuntimeError("This should only happen for the test set")
+
     else:
-        print(
+        raise RuntimeError(
             f"pka: {pka},charge:{charge},Explicit Hs:{Ex_Hs}, Total Hs:{Tot_Hs}, reaction center atomic number: {atom.GetAtomicNum()}"
         )
-        raise RuntimeError()
-
     atom.UpdatePropertyCache()
     Tot_Hs_after = atom.GetTotalNumHs()
     assert Tot_Hs != Tot_Hs_after
