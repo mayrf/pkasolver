@@ -1017,7 +1017,7 @@ def gcn_train(model, loader, optimizer):
             edge_attr_d=data.edge_attr_d,
             data=data,
         )
-        loss = calculate_mse(out.flatten(), data.y)  # Compute the loss.
+        loss = calculate_mse(out.flatten(), data.x)  # Compute the loss.
         loss.backward()  # Derive gradients.
         optimizer.step()  # Update parameters based on gradients.
         optimizer.zero_grad()  # Clear gradients.
@@ -1035,7 +1035,7 @@ def gcn_test(model, loader):
             edge_attr_d=data.edge_attr_d,
             data=data,
         )  # Perform a single forward pass.
-        loss += calculate_mae(out.flatten(), data.y).detach()
+        loss += calculate_mae(out.flatten(), data.x).detach()
     return round(
         float(loss / len(loader)), 3
     )  # MAE loss of batches can be summed and divided by the number of batches
