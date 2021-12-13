@@ -4,6 +4,8 @@ import argparse
 import gzip
 from molvs import Standardizer
 from copy import deepcopy
+import pickle
+from rdkit.Chem import PropertyMol
 
 s = Standardizer()
 
@@ -16,6 +18,7 @@ def main():
     parser.add_argument("--output", help="output filename")
     args = parser.parse_args()
     input_zipped = False
+    print(f"pH splitting used: {PH}")
     print("inputfile:", args.input)
     print("outputfile:", args.output)
 
@@ -37,6 +40,8 @@ def main():
             processing(suppl, args)
 
 
+# generating the datat for a single molecule for all
+# acidic pKa values
 def iterate_over_acids(
     acidic_mols_properties,
     nr_of_mols,
@@ -60,22 +65,23 @@ def iterate_over_acids(
                 new_mol = create_conjugate(
                     partner_mol, acid_prop["atom_idx"], acid_prop["pka_value"], pH=PH,
                 )
-                # Chem.SanitizeMol(new_mol)
+                Chem.SanitizeMol(new_mol)
                 # new_mol = s.standardize(new_mol)
 
             except Exception as e:
-                print(f"Error at molecule number {nr_of_mols}")
+                print(f"Error at molecule number {nr_of_mols} - acid enumeration")
                 print(e)
                 print(acid_prop)
                 print(acidic_mols_properties)
-                print(Chem.MolToMolBlock(mol))
+                if partner_mol:
+                    print(Chem.MolToSmiles(partner_mol))
                 skipping_acids += 1
                 nr_of_skipped_mols += 1
                 continue  # continue instead of break, will not enter this routine gain since skipping_acids != 0
 
             pka_list.append(acid_prop["pka_value"])
             smiles_list.append(
-                (Chem.MolToSmiles(partner_mol), Chem.MolToSmiles(new_mol))
+                (Chem.MolToSmiles(new_mol), Chem.MolToSmiles(partner_mol))
             )
 
             for mol in [new_mol, partner_mol]:
@@ -90,12 +96,17 @@ def iterate_over_acids(
 
             # add current mol to list of acidic mol. for next
             # lower pKa value, this mol is starting structure
-            acidic_mols.append((partner_mol, new_mol))
+            acidic_mols.append(
+                (
+                    PropertyMol.PropertyMol(new_mol),
+                    PropertyMol.PropertyMol(partner_mol),
+                )
+            )
             partner_mol = deepcopy(new_mol)
 
         else:
             skipping_acids += 1
-    return acidic_mols, nr_of_skipped_mols, GLOBAL_COUNTER
+    return acidic_mols, nr_of_skipped_mols, GLOBAL_COUNTER, skipping_acids
 
 
 def iterate_over_bases(
@@ -111,26 +122,24 @@ def iterate_over_bases(
 
     basic_mols = []
     skipping_bases = 0
-
     for idx, basic_prop in enumerate(basic_mols_properties):
-
         if skipping_bases == 0:  # if a base was skipped, all further bases are skipped
             try:
-
                 new_mol = create_conjugate(
                     partner_mol, basic_prop["atom_idx"], basic_prop["pka_value"], pH=PH,
                 )
 
-                # Chem.SanitizeMol(new_mol)
+                Chem.SanitizeMol(new_mol)
                 # new_mol = s.standardize(new_mol)
 
             except Exception as e:
                 # in case error occurs new_mol is not in basic list
-                print(f"Error at molecule number {nr_of_mols}")
+                print(f"Error at molecule number {nr_of_mols} - bases enumeration")
                 print(e)
                 print(basic_prop)
                 print(basic_mols_properties)
-                print(Chem.MolToMolBlock(mol))
+                if partner_mol:
+                    print(Chem.MolToSmiles(partner_mol))
                 skipping_bases += 1
                 nr_of_skipped_mols += 1
                 continue
@@ -140,7 +149,7 @@ def iterate_over_bases(
                 (Chem.MolToSmiles(partner_mol), Chem.MolToSmiles(new_mol))
             )
 
-            for mol in [new_mol, partner_mol]:
+            for mol in [partner_mol, new_mol]:
                 GLOBAL_COUNTER += 1
                 counter_list.append(GLOBAL_COUNTER)
                 mol.SetProp(f"CHEMBL_ID", str(basic_prop["chembl_id"]))
@@ -152,13 +161,15 @@ def iterate_over_bases(
 
             # add current mol to list of acidic mol. for next
             # lower pKa value, this mol is starting structure
-            basic_mols.append((partner_mol, new_mol))
+            basic_mols.append(
+                (PropertyMol.PropertyMol(partner_mol), PropertyMol.PropertyMol(new_mol))
+            )
             partner_mol = deepcopy(new_mol)
 
         else:
             skipping_bases += 1
 
-    return basic_mols, nr_of_skipped_mols, GLOBAL_COUNTER
+    return basic_mols, nr_of_skipped_mols, GLOBAL_COUNTER, skipping_bases
 
 
 def processing(suppl, args):
@@ -193,6 +204,8 @@ def processing(suppl, args):
                     "chembl_id": props[f"chembl_id"],
                 }
             )
+
+        print(pkas)
 
         # calculate number of acidic and basic pka values
         nr_of_acids = sum(
@@ -230,9 +243,15 @@ def processing(suppl, args):
 
         # add mol at pH=7.4
         mol_at_ph7 = mol
-        partner_mol = deepcopy(mol_at_ph7)
+        print(Chem.MolToSmiles(mol_at_ph7))
         acidic_mols = []
-        acidic_mols, nr_of_skipped_mols, GLOBAL_COUNTER = iterate_over_acids(
+        partner_mol = deepcopy(mol_at_ph7)
+        (
+            acidic_mols,
+            nr_of_skipped_mols,
+            GLOBAL_COUNTER,
+            skipping_acids,
+        ) = iterate_over_acids(
             acidic_mols_properties,
             nr_of_mols,
             partner_mol,
@@ -246,7 +265,12 @@ def processing(suppl, args):
         # same workflow for basic mols
         basic_mols = []
         partner_mol = deepcopy(mol_at_ph7)
-        basic_mols, nr_of_skipped_mols, GLOBAL_COUNTER = iterate_over_bases(
+        (
+            basic_mols,
+            nr_of_skipped_mols,
+            GLOBAL_COUNTER,
+            skipping_bases,
+        ) = iterate_over_bases(
             basic_mols_properties,
             nr_of_mols,
             partner_mol,
@@ -257,10 +281,8 @@ def processing(suppl, args):
             smiles_list,
         )
 
-        # prepare last basic mol, which do
-
         # combine basic and acidic mols, skip neutral mol for acids
-        combined_mols = list(reversed(acidic_mols)) + basic_mols
+        combined_mols = acidic_mols + basic_mols
         if (
             len(combined_mols)
             != len(acidic_mols_properties)
@@ -268,20 +290,33 @@ def processing(suppl, args):
             + len(basic_mols_properties)
             - skipping_bases
         ):
-            print(combined_mols, acidic_mols_properties, basic_mols_properties)
+            raise RuntimeError(
+                combined_mols,
+                acidic_mols_properties,
+                skipping_acids,
+                basic_mols_properties,
+                skipping_bases,
+            )
 
         if len(combined_mols) != 0:
             chembl_id = combined_mols[0][0].GetProp("CHEMBL_ID")
             print(f"CHEMBL_ID: {chembl_id}")
-            for mol in combined_mols:
-                pka = mol[0].GetProp("pKa")
-                if mol[0].GetProp("pKa") != mol[1].GetProp("pKa"):
+            for mols in combined_mols:
+                if mols[0].GetProp("pKa") != mols[1].GetProp("pKa"):
                     raise AssertionError(mol[0].GetProp("pKa"), mol[1].GetProp("pKa"))
-                counter = mol[0].GetProp("INTERNAL_ID")
-                print(
-                    f"{counter=}, {pka=}, {mol[0].GetProp('mol-smiles')}, {mol[1].GetProp('mol-smiles')}"
-                )
 
+                mol1, mol2 = mols
+                pka = mol1.GetProp("pKa")
+                counter = mol1.GetProp("INTERNAL_ID")
+                print(
+                    f"{counter=}, {pka=}, {mol1.GetProp('mol-smiles')}, prot, {mol1.GetProp('epik_atom')}"
+                )
+                pka = mol2.GetProp("pKa")
+                counter = mol2.GetProp("INTERNAL_ID")
+                print(
+                    f"{counter=}, {pka=}, {mol2.GetProp('mol-smiles')}, deprot, {mol1.GetProp('epik_atom')}"
+                )
+            print(pka_list)
             if chembl_id in all_protonation_states_enumerated.keys():
                 raise RuntimeError("Repeated chembl id!")
 
@@ -292,10 +327,9 @@ def processing(suppl, args):
                 "counter_list": counter_list,
             }
 
-        if nr_of_mols > 200:
-            raise RuntimeError
     print(f"finished splitting {nr_of_mols} molecules")
     print(f"skipped mols: {nr_of_skipped_mols}")
+    pickle.dump(all_protonation_states_enumerated, open(args.output, "wb+"))
 
 
 if __name__ == "__main__":

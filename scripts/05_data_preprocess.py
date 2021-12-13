@@ -1,16 +1,17 @@
 import argparse
 import gzip
 import pickle
-
+import torch
 from p_tqdm import p_umap
 from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
 from pkasolver.data import (
     make_features_dicts,
-    make_paired_pyg_data_from_mol,
+    mol_to_paired_mol_data,
 )
 from rdkit import Chem
-import multiprocessing as mp
+from rdkit.Chem import PropertyMol
 from itertools import repeat
+import multiprocess as mp
 
 
 def main(selected_node_features: dict, selected_edge_features: dict):
@@ -23,7 +24,7 @@ def main(selected_node_features: dict, selected_edge_features: dict):
     print("outputfile:", args.output)
     print("Start processing data...")
     pair_data_list = []
-
+    pool = mp.Pool(16)
     # test if it's gzipped
     with gzip.open(args.input, "r") as fh:
         try:
@@ -34,43 +35,78 @@ def main(selected_node_features: dict, selected_edge_features: dict):
 
     if input_zipped:
         with gzip.open(args.input, "r") as fh:
-            suppl = [mol for mol in Chem.ForwardSDMolSupplier(fh, removeHs=True)]
+            suppl = [
+                PropertyMol.PropertyMol(mol)
+                for mol in Chem.ForwardSDMolSupplier(fh, removeHs=True)
+            ]
+            print(len(suppl))
             pair_data_list.append(
                 p_umap(
                     processing,
                     suppl,
                     repeat(selected_node_features),
                     repeat(selected_edge_features),
-                    num_cpus=2,
+                    num_cpus=1,
                 )
             )
     else:
         with open(args.input, "rb") as fh:
-            suppl = [mol for mol in Chem.ForwardSDMolSupplier(fh, removeHs=True)]
-            pair_data_list = processing(
-                suppl, selected_node_features, selected_edge_features
+            suppl = pickle.load(fh)
+            print(len(suppl))
+            pair_data_list.extend(
+                pool.starmap(
+                    processing,
+                    zip(
+                        suppl.values(),
+                        repeat(selected_node_features),
+                        repeat(selected_edge_features),
+                    ),
+                    chunksize=100,
+                )
             )
 
-    print(f"PairData objects of {len(pair_data_list)} molecules successfully saved!")
+    flat_pair_data_list = [item for sublist in pair_data_list for item in sublist]
+    del pair_data_list
+    print(
+        f"PairData objects of {len(flat_pair_data_list)} molecules successfully saved!"
+    )
     with open(args.output, "wb") as f:
-        pickle.dump(pair_data_list, f)
+        pickle.dump(flat_pair_data_list, f)
 
 
-def processing(mol, selected_node_features: dict, selected_edge_features: dict) -> list:
+def processing(
+    entry, selected_node_features: dict, selected_edge_features: dict
+) -> list:
 
-    pair_data_list = []
-    if not mol:
-        return None
-    
-    try:
-        pyg_data = make_paired_pyg_data_from_mol(
-            mol, selected_node_features, selected_edge_features
+    combined_mols = entry["mols"]
+    pka_list = entry["pKa_list"]
+    smiles_list = entry["smiles_list"]
+    idx_list = entry["counter_list"]
+    pairs = []
+    for mol_pair, pka_value in zip(combined_mols, pka_list):
+        chembl_id = mol_pair[0].GetProp("CHEMBL_ID")
+        internal_id1 = mol_pair[0].GetProp("INTERNAL_ID")
+        internal_id2 = mol_pair[1].GetProp("INTERNAL_ID")
+        smiles_prop = mol_pair[0].GetProp("mol-smiles")
+        smiles_deprop = mol_pair[1].GetProp("mol-smiles")
+        atom_idx = mol_pair[0].GetProp("epik_atom")
+
+        m = mol_to_paired_mol_data(
+            mol_pair[0],
+            mol_pair[1],
+            atom_idx,
+            selected_node_features,
+            selected_edge_features,
         )
-        return pyg_data
 
-    except (KeyError, AssertionError) as e:
-        print(e)
-        return None
+        m.x = torch.tensor(pka_value, dtype=torch.float32)
+        m.internal_id = (internal_id1, internal_id2)
+        m.smiles_prop = smiles_prop
+        m.smiles_deprop = smiles_deprop
+        m.chembl_id = chembl_id
+        m.reaction_center = atom_idx
+        pairs.append(m)
+    return pairs
 
 
 if __name__ == "__main__":

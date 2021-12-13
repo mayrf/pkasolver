@@ -2,16 +2,21 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import ResonanceMolSupplier
 from rdkit.Chem.AllChem import GetMorganFingerprintAsBitVect
+from copy import deepcopy
 
 
-def create_conjugate(mol: Chem.Mol, id: int, pka: float, pH=7.4):
+def create_conjugate(
+    mol_initial: Chem.Mol, id: int, pka: float, pH=7.4, ignore_danger: bool = False
+):
     """Create a new molecule that is the conjugated base/acid to the input molecule."""
-    mol = Chem.RWMol(mol)
-    atom = mol.GetAtomWithIdx(id)
+    mol = deepcopy(mol_initial)
+    mol_changed = Chem.RWMol(mol)
+    Chem.SanitizeMol(mol_changed)
+    atom = mol_changed.GetAtomWithIdx(id)
     charge = atom.GetFormalCharge()
     Ex_Hs = atom.GetNumExplicitHs()
     Tot_Hs = atom.GetTotalNumHs()
-
+    danger = False
     # make deprotonated conjugate as pKa > pH with at least one proton or
     # mol charge is positive (otherwise conjugate reaction center would have charge +2 --> highly unlikely)
     if (pka > pH and Tot_Hs > 0) or charge > 0:
@@ -28,9 +33,9 @@ def create_conjugate(mol: Chem.Mol, id: int, pka: float, pH=7.4):
     # make protonated conjugate as pKa > pH and there are no proton at the reaction center
     elif pka > pH and Tot_Hs == 0:
         atom.SetFormalCharge(charge + 1)
+        danger = True
         if Tot_Hs == 0 or Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs + 1)
-        raise RuntimeError("This should only happen for the test set")
 
     else:
         raise RuntimeError(
@@ -40,7 +45,14 @@ def create_conjugate(mol: Chem.Mol, id: int, pka: float, pH=7.4):
     Tot_Hs_after = atom.GetTotalNumHs()
     assert Tot_Hs != Tot_Hs_after
     # mol = next(ResonanceMolSupplier(mol))
-    return mol
+    if danger and not ignore_danger:
+        print(f"Original mol: {Chem.MolToSmiles(mol)}")
+        print(f"Changed mol: {Chem.MolToSmiles(mol_changed)}")
+        print(
+            f"This should only happen for the test set. pka: {pka},charge:{charge},Explicit Hs:{Ex_Hs}, Total Hs:{Tot_Hs}, reaction center atomic number: {atom.GetAtomicNum()}"
+        )
+        raise RuntimeError("danger")
+    return mol_changed
 
 
 def generate_morgan_fp_array(df, mol_column, nBits=4096, radius=3, useFeatures=True):

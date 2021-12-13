@@ -74,7 +74,7 @@ def conjugates_to_dataframe(df: pd.DataFrame):
         index = int(df.marvin_atom[i])
         pka = float(df.marvin_pKa[i])
         try:
-            conj = create_conjugate(mol, index, pka)
+            conj = create_conjugate(mol, index, pka, ignore_danger=True)
             conjugates.append(conj)
         except Exception as e:
             print(f"Could not create conjugate of mol number {i}")
@@ -332,7 +332,7 @@ def make_pyg_dataset_from_dataframe(
                 selected_node_features,
                 selected_edge_features,
             )
-            m.y = torch.tensor([df.pKa[i]], dtype=torch.float32)
+            m.x = torch.tensor([df.pKa[i]], dtype=torch.float32)
             m.ID = df.ID[i]
             m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
@@ -357,7 +357,7 @@ def make_pyg_dataset_from_dataframe(
                 )
             else:
                 raise RuntimeError()
-            m.y = torch.tensor([df.pKa[i]], dtype=torch.float32)
+            m.x = torch.tensor([df.pKa[i]], dtype=torch.float32)
             m.ID = df.ID[i]
             m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
