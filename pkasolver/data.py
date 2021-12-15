@@ -372,12 +372,20 @@ def make_paired_pyg_data_from_mol(
     props = mol.GetPropsAsDict()
     try:
         pka = props["pKa"]
-        atom_idx = props["epik_atom"]
     except KeyError as e:
         print(f"No pKa found for molecule: {props}")
         print(props)
         print(Chem.MolToSmiles(mol))
         raise e
+    if "epik_atom" in props.keys():
+        atom_idx = props["epik_atom"]
+    elif "marvin_atom" in props.keys():
+        atom_idx = props["marvin_atom"]
+    else:
+        print(f"No reaction center foundfor molecule: {props}")
+        print(props)
+        print(Chem.MolToSmiles(mol))
+        raise RuntimeError()
 
     try:
         conj = create_conjugate(mol, atom_idx, pka)
