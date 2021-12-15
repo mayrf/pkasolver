@@ -5,6 +5,7 @@ from pkasolver.data import make_edges_and_attr, make_nodes, load_data
 import torch
 import subprocess, os
 import numpy as np
+import pickle
 
 
 def test_aspirin_pka_split():
@@ -16,24 +17,29 @@ def test_aspirin_pka_split():
     o = subprocess.run(
         [
             "python",
-            f"scripts/04_split_epik_output.py",
+            f"scripts/04_1_split_epik_output.py",
             "--input",
             f"pkasolver/tests/testdata/03_aspirin_with_pka.sdf",
             "--output",
-            f"pkasolver/tests/testdata/04_split_aspirin_with_pka.sdf",
+            f"pkasolver/tests/testdata/04_split_aspirin_with_pka.pkl",
         ],
         stderr=subprocess.STDOUT,
     )
 
     o.check_returncode()
-    suppl = Chem.SDMolSupplier(
-        str(f"pkasolver/tests/testdata/04_split_aspirin_with_pka.sdf"), removeHs=True,
+    f = pickle.load(
+        open("pkasolver/tests/testdata/04_split_aspirin_with_pka.pkl", "rb")
     )
-    mol = next(suppl)
-    smi = Chem.MolToSmiles(mol)
 
-    print(smi)
-    assert smi == "CC(=O)Oc1ccccc1C(=O)O"
+    name = "test123"
+    smi1, smi2 = f[name]["smiles_list"][0]
+    pkas = f[name]["pKa_list"]
+
+    print(smi1)
+    assert smi1 == "CC(=O)Oc1ccccc1C(=O)O"
+    print(smi2)
+    assert smi2 == "CC(=O)Oc1ccccc1C(=O)[O-]"
+    assert np.isclose(float(pkas[0]), 3.52)
 
 
 def test_eltrombopag_pka_split():
@@ -45,60 +51,50 @@ def test_eltrombopag_pka_split():
     o = subprocess.run(
         [
             "python",
-            f"scripts/04_split_epik_output.py",
+            f"scripts/04_1_split_epik_output.py",
             "--input",
             f"pkasolver/tests/testdata/03_eltrombopag_with_pka.sdf",
             "--output",
-            f"pkasolver/tests/testdata/04_split_eltrombopag_with_pka.sdf",
+            f"pkasolver/tests/testdata/04_split_eltrombopag_with_pka.pkl",
         ],
         stderr=subprocess.STDOUT,
     )
 
     o.check_returncode()
-    suppl = Chem.SDMolSupplier(
-        str(f"pkasolver/tests/testdata/04_split_eltrombopag_with_pka.sdf"),
-        removeHs=True,
+
+    f = pickle.load(
+        open("pkasolver/tests/testdata/04_split_eltrombopag_with_pka.pkl", "rb")
     )
-    # first eltrombopag species
-    mol = next(suppl)
-    smi1 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    assert np.isclose(float(props["pKa"]), 4.05)
-    print(smi1)
-    assert smi1 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)O)c4)c3O)c2O)cc1C"
+
+    name = "test123"
+    print(f)
+
+    pkas = f[name]["pKa_list"]
+    # first eltrombopag species is skipped
 
     # second eltrombopag species
-    mol = next(suppl)
-    smi2 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    print(props)
-    assert np.isclose(float(props["pKa"]), -0.631)
-    print(smi2)
-    assert smi2 == "Cc1ccc(-n2[nH+]c(C)c(N=Nc3cccc(-c4cccc(C(=O)O)c4)c3O)c2O)cc1C"
+    smi1, smi2 = f[name]["smiles_list"][0]
+    assert np.isclose(float(pkas[0]), 4.05)
+    print(smi1)
+    assert smi1 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)O)c4)c3O)c2O)cc1C"
+    assert smi2 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2O)cc1C"
 
     # third eltrombopag species
-    mol = next(suppl)
-    smi3 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    print(props)
-    assert np.isclose(float(props["pKa"]), 7.449)
-    print(smi3)
-    assert smi3 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2O)cc1C"
+    smi1, smi2 = f[name]["smiles_list"][1]
+    assert np.isclose(float(pkas[1]), 7.449)
+    assert smi1 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2O)cc1C"
+    assert smi2 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2[O-])cc1C"
 
-    # third eltrombopag species
-    mol = next(suppl)
-    smi4 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    print(props)
-    assert np.isclose(float(props["pKa"]), 9.894)
-    print(smi4)
-    assert smi4 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2[O-])cc1C"
-
-    assert smi1 != smi2 != smi3 != smi4
+    # fourth eltrombopag species
+    smi1, smi2 = f[name]["smiles_list"][2]
+    assert np.isclose(float(pkas[2]), 9.894)
+    assert smi1 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2[O-])cc1C"
+    assert smi2 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3[O-])c2[O-])cc1C"
 
 
 def test_edta_pka_split():
     import pkasolver
+    import gzip, shutil
 
     # path = os.path.abspath(os.path.join(os.path.dirname(pkasolver.__file__), os.pardir))
     path = os.path.abspath(os.path.dirname(pkasolver.__file__))
@@ -106,67 +102,57 @@ def test_edta_pka_split():
     o = subprocess.run(
         [
             "python",
-            f"scripts/04_split_epik_output.py",
+            f"scripts/04_1_split_epik_output.py",
             "--input",
             f"pkasolver/tests/testdata/03_edta_with_pka.sdf",
             "--output",
-            f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf",
+            f"pkasolver/tests/testdata/04_split_edta_with_pka.pkl",
         ],
         stderr=subprocess.STDOUT,
     )
 
     o.check_returncode()
-    suppl = Chem.SDMolSupplier(
-        str(f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf"), removeHs=True,
-    )
+
+    f = pickle.load(open("pkasolver/tests/testdata/04_split_edta_with_pka.pkl", "rb"))
+
+    name = "test123"
+    print(f)
+    pkas = f[name]["pKa_list"]
+    # first eltrombopag species is skipped
+
     # first EDTA species
-    mol = next(suppl)
-    smi1 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    assert np.isclose(float(props["pKa"]), 5.488)
+    smi1, smi2 = f[name]["smiles_list"][0]
+    assert np.isclose(float(pkas[0]), 5.488)
     print(smi1)
     assert smi1 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)[O-])CC(=O)O"
+    assert smi2 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)[O-])CC(=O)[O-]"
 
     # second EDTA species
-    mol = next(suppl)
-    smi2 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    print(props)
-    assert np.isclose(float(props["pKa"]), 4.585)
-    print(smi2)
-    assert smi2 == "O=C([O-])C[NH+](CCN(CC(=O)O)CC(=O)O)CC(=O)[O-]"
+    smi1, smi2 = f[name]["smiles_list"][1]
+    assert np.isclose(float(pkas[1]), 4.585)
+    assert smi1 == "O=C([O-])C[NH+](CCN(CC(=O)O)CC(=O)O)CC(=O)[O-]"
+    assert smi2 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)[O-])CC(=O)O"
 
     # third EDTA species
-    mol = next(suppl)
-    smi3 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    print(props)
-    assert np.isclose(float(props["pKa"]), 2.241)
-    print(smi3)
-    assert smi3 == "O=C([O-])C[NH+](CCN(CC(=O)O)CC(=O)O)CC(=O)O"
+    smi1, smi2 = f[name]["smiles_list"][2]
+    assert np.isclose(float(pkas[2]), 2.241)
+    assert smi1 == "O=C([O-])C[NH+](CCN(CC(=O)O)CC(=O)O)CC(=O)O"
+    assert smi2 == "O=C([O-])C[NH+](CCN(CC(=O)O)CC(=O)O)CC(=O)[O-]"
 
     # fourth EDTA species
-    mol = next(suppl)
-    smi4 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    print(props)
-    assert np.isclose(float(props["pKa"]), 1.337)
-    print(smi4)
-    assert smi4 == "O=C(O)CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)O"
+    smi1, smi2 = f[name]["smiles_list"][3]
+    assert np.isclose(float(pkas[3]), 1.337)
+    assert smi1 == "O=C(O)CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)O"
+    assert smi2 == "O=C([O-])C[NH+](CCN(CC(=O)O)CC(=O)O)CC(=O)O"
 
     # fifth EDTA species
-    mol = next(suppl)
-    smi5 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    print(props)
-    assert np.isclose(float(props["pKa"]), 9.883)
-    print(smi5)
-    assert smi5 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)[O-])CC(=O)[O-]"
-
-    assert smi1 != smi2 != smi3 != smi4 != smi5
+    smi1, smi2 = f[name]["smiles_list"][4]
+    assert np.isclose(float(pkas[4]), 9.883)
+    assert smi1 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)[O-])CC(=O)[O-]"
+    assert smi2 == "O=C([O-])CN(CCN(CC(=O)[O-])CC(=O)[O-])CC(=O)[O-]"
 
 
-def test_edta_pka_split_with_compressed_input():
+def test_exp_sets_generation():
     import pkasolver
 
     # path = os.path.abspath(os.path.join(os.path.dirname(pkasolver.__file__), os.pardir))
@@ -175,64 +161,111 @@ def test_edta_pka_split_with_compressed_input():
     o = subprocess.run(
         [
             "python",
-            f"scripts/04_split_epik_output.py",
+            f"scripts/04_2_prepare_rest.py",
             "--input",
-            f"pkasolver/tests/testdata/03z_edta_with_pka.sdf.gz",
+            f"pkasolver/tests/testdata/04_split_exp_dataset_with_pka.sdf",
             "--output",
-            f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf",
+            f"pkasolver/tests/testdata/exp_training_dataset.pkl",
         ],
         stderr=subprocess.STDOUT,
     )
 
     o.check_returncode()
-    suppl = Chem.SDMolSupplier(
-        str(f"pkasolver/tests/testdata/04_split_edta_with_pka.sdf"), removeHs=True,
+
+    f = pickle.load(open("pkasolver/tests/testdata/exp_training_dataset.pkl", "rb"))
+    # print(f)
+
+    # first mol
+    name = "mol0"
+    pkas = f[name]["pKa_list"]
+    assert np.isclose(pkas[0], 6.21)
+    smi1, smi2 = f[name]["smiles_list"][0]
+    assert smi1 == "Brc1c(N2CCCCCC2)nc(C2CC2)[nH+]c1NC1CC1"
+    assert smi2 == "Brc1c(NC2CC2)nc(C2CC2)nc1N1CCCCCC1"
+
+    # second mol
+    name = "mol1"
+    pkas = f[name]["pKa_list"]
+    print(pkas)
+    assert np.isclose(pkas[0], 7.46)
+    smi1, smi2 = f[name]["smiles_list"][0]
+    assert smi1 == "Brc1cc(Br)c(NC2=[NH+]CCN2)c(Br)c1"
+    assert smi2 == "Brc1cc(Br)c(NC2=NCCN2)c(Br)c1"
+
+    # third mol
+    name = "mol2"
+    pkas = f[name]["pKa_list"]
+    print(pkas)
+    assert np.isclose(pkas[0], 4.2)
+    smi1, smi2 = f[name]["smiles_list"][0]
+    assert smi1 == "Brc1cc2cccnc2c2[nH+]cccc12"
+    assert smi2 == "Brc1cc2cccnc2c2ncccc12"
+
+    # fourth mol
+    name = "mol3"
+    pkas = f[name]["pKa_list"]
+    print(pkas)
+    assert np.isclose(pkas[0], 3.73)
+    smi1, smi2 = f[name]["smiles_list"][0]
+    assert smi1 == "Brc1ccc(-c2nn[nH]n2)cc1"
+    assert smi2 == "Brc1ccc(-c2nn[n-]n2)cc1"
+
+
+def test_data_preprocessing_for_baltruschat():
+    import pkasolver
+
+    path = os.path.abspath(os.path.dirname(pkasolver.__file__))
+
+    o = subprocess.run(
+        [
+            "python",
+            f"scripts/05_data_preprocess.py",
+            "--input",
+            f"pkasolver/tests/testdata/exp_training_dataset.pkl",
+            "--output",
+            f"pkasolver/tests/testdata/test.pkl",
+        ],
+        stderr=subprocess.STDOUT,
     )
-    # first EDTA species
-    mol = next(suppl)
-    smi1 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    assert np.isclose(float(props["pKa"]), 5.488)
-    print(smi1)
-    assert smi1 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)[O-])CC(=O)O"
 
-    # second EDTA species
-    mol = next(suppl)
-    smi2 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    print(props)
-    assert np.isclose(float(props["pKa"]), 4.585)
-    print(smi2)
-    assert smi2 == "O=C([O-])C[NH+](CCN(CC(=O)O)CC(=O)O)CC(=O)[O-]"
+    o.check_returncode()
 
-    # third EDTA species
-    mol = next(suppl)
-    smi3 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    print(props)
-    assert np.isclose(float(props["pKa"]), 2.241)
-    print(smi3)
-    assert smi3 == "O=C([O-])C[NH+](CCN(CC(=O)O)CC(=O)O)CC(=O)O"
+    f = pickle.load(open("pkasolver/tests/testdata/test.pkl", "rb"))
+    print(f)
 
-    # fourth EDTA species
-    mol = next(suppl)
-    smi4 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    print(props)
-    assert np.isclose(float(props["pKa"]), 1.337)
-    print(smi4)
-    assert smi4 == "O=C(O)CN(CC[NH+](CC(=O)O)CC(=O)O)CC(=O)O"
+    assert len(f) == 16
 
-    # fifth EDTA species
-    mol = next(suppl)
-    smi5 = Chem.MolToSmiles(mol)
-    props = mol.GetPropsAsDict()
-    print(props)
-    assert np.isclose(float(props["pKa"]), 9.883)
-    print(smi5)
-    assert smi5 == "O=C([O-])CN(CC[NH+](CC(=O)[O-])CC(=O)[O-])CC(=O)[O-]"
+    # first mol
+    entry = f[0]
+    pka = entry.reference_value
+    assert np.isclose(pka, 6.21)
+    smi1, smi2 = entry.smiles_prop, entry.smiles_deprop
+    assert smi1 == "Brc1c(N2CCCCCC2)nc(C2CC2)[nH+]c1NC1CC1"
+    assert smi2 == "Brc1c(NC2CC2)nc(C2CC2)nc1N1CCCCCC1"
 
-    assert smi1 != smi2 != smi3 != smi4 != smi5
+    # second mol
+    entry = f[1]
+    pka = entry.reference_value
+    assert np.isclose(pka, 7.46)
+    smi1, smi2 = entry.smiles_prop, entry.smiles_deprop
+    assert smi1 == "Brc1cc(Br)c(NC2=[NH+]CCN2)c(Br)c1"
+    assert smi2 == "Brc1cc(Br)c(NC2=NCCN2)c(Br)c1"
+
+    # third mol
+    entry = f[2]
+    pka = entry.reference_value
+    assert np.isclose(pka, 4.2)
+    smi1, smi2 = entry.smiles_prop, entry.smiles_deprop
+    assert smi1 == "Brc1cc2cccnc2c2[nH+]cccc12"
+    assert smi2 == "Brc1cc2cccnc2c2ncccc12"
+
+    # third mol
+    entry = f[3]
+    pka = entry.reference_value
+    assert np.isclose(pka, 3.73)
+    smi1, smi2 = entry.smiles_prop, entry.smiles_deprop
+    assert smi1 == "Brc1ccc(-c2nn[nH]n2)cc1"
+    assert smi2 == "Brc1ccc(-c2nn[n-]n2)cc1"
 
 
 def test_features_dicts():
@@ -581,7 +614,7 @@ def test_generate_data_intances():
             # but different edge features (NOTE: In the case of this molecule edge attr are the same)
             assert torch.equal(d1.edge_attr, d2.edge_attr) is True
             # try the encapsuled function
-            make_paired_pyg_data_from_mol(mol, n_feat, e_feat)
+            # make_paired_pyg_data_from_mol(mol, n_feat, e_feat)
             # Try a new molecule
             ############
         elif idx == 1429:
