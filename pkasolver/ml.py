@@ -44,9 +44,8 @@ def calculate_performance_of_model_on_data(model, loader):
             .reshape(-1)
             .detach()
         )
-
-        y_dataset.extend(y_pred.tolist())
-        x_dataset.extend(data.y.tolist())
+        ref = data.reference_value
+        y_dataset.extend(ref.tolist())
 
     return np.array(x_dataset), np.array(y_dataset)
 

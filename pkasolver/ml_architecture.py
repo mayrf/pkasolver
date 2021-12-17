@@ -689,6 +689,60 @@ class GINPairV1(GCN):
         return self.final_lin(F.relu(x))
 
 
+class GINPairV3(GCN):
+    def __init__(
+        self,
+        num_node_features: int,
+        num_edge_features: int,
+        hidden_channels: int = 32,
+        num_layers: int = 4,
+        out_channels=32,
+        dropout=0.5,
+        attention=False,
+    ):
+        super().__init__()
+
+        GIN_p = GINpKa(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+        GIN_d = GINpKa(
+            in_channels=num_node_features,
+            out_channels=out_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+
+        print(f"Attention pooling: {attention}")
+        self.lins = GINpKa._return_lin(
+            input_dim=out_channels, nr_of_lin_layers=3, embeding_size=hidden_channels,
+        )
+        self.GIN_p = GIN_p
+        self.GIN_d = GIN_d
+        self.final_lin = Linear(hidden_channels * 2, 1, device=DEVICE)
+
+    def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
+        def _forward(x, edge_index, x_batch, func):
+            x = func(x=x, edge_index=edge_index)
+            # global mean pooling
+            x = global_mean_pool(x, x_batch)  # [batch_size, hidden_channels]
+            # run through linear layer
+            return forward_lins(x, self.lins)
+
+        x_p_batch = data.x_p_batch.to(device=DEVICE)
+        x_d_batch = data.x_d_batch.to(device=DEVICE)
+
+        x_p = _forward(x_p, data.edge_index_p, x_p_batch, self.GIN_p.forward)
+        x_d = _forward(x_d, data.edge_index_d, x_d_batch, self.GIN_d.forward)
+        x = torch.cat([x_p, x_d], dim=1)
+
+        return self.final_lin(F.relu(x))
+
+
 class GINPairV2(GINpKa):
     def __init__(
         self,
@@ -1017,7 +1071,8 @@ def gcn_train(model, loader, optimizer):
             edge_attr_d=data.edge_attr_d,
             data=data,
         )
-        loss = calculate_mse(out.flatten(), data.x)  # Compute the loss.
+        ref = data.reference_value
+        loss = calculate_mse(out.flatten(), ref)  # Compute the loss.
         loss.backward()  # Derive gradients.
         optimizer.step()  # Update parameters based on gradients.
         optimizer.zero_grad()  # Clear gradients.
@@ -1035,7 +1090,8 @@ def gcn_test(model, loader):
             edge_attr_d=data.edge_attr_d,
             data=data,
         )  # Perform a single forward pass.
-        loss += calculate_mae(out.flatten(), data.x).detach()
+        ref = data.reference_value
+        loss += calculate_mae(out.flatten(), ref).detach()
     return round(
         float(loss / len(loader)), 3
     )  # MAE loss of batches can be summed and divided by the number of batches
