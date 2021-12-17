@@ -21,7 +21,7 @@ def main():
     # convert to mae file
     # http://gohom.win/ManualHom/Schrodinger/Schrodinger_2015-2_docs/ligprep/ligprep_user_manual.pdf
     o = subprocess.run(
-        [convert, "-imae", args.input, "-osdf", args.output, "-annstereo", "-pKa","-WAIT"],
+        [convert, "-imae", args.input, "-osdf", args.output, "-annstereo", "-pKa"],
         stderr=subprocess.STDOUT,
     )
     o.check_returncode()

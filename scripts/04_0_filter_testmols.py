@@ -29,17 +29,17 @@ def main():
 
         if input_zipped:
             with gzip.open(i, "r") as fh:
-                suppl = Chem.ForwardSDMolSupplier(fh, removeHs=False)
+                suppl = Chem.ForwardSDMolSupplier(fh, removeHs=True)
                 ini_list.extend(ini_filter(suppl))
             with gzip.open(i, "r") as fh:
-                suppl = Chem.ForwardSDMolSupplier(fh, removeHs=False)
+                suppl = Chem.ForwardSDMolSupplier(fh, removeHs=True)
                 smi_list.extend(smi_filter(suppl))
         else:
             with open(i, "rb") as fh:
-                suppl = Chem.ForwardSDMolSupplier(fh, removeHs=False)
+                suppl = Chem.ForwardSDMolSupplier(fh, removeHs=True)
                 ini_list.extend(ini_filter(suppl))
             with open(i, "rb") as fh:
-                suppl = Chem.ForwardSDMolSupplier(fh, removeHs=False)
+                suppl = Chem.ForwardSDMolSupplier(fh, removeHs=True)
                 smi_list.extend(smi_filter(suppl))
 
     print(f"{len(ini_list)} inchi test molecules found")
@@ -90,8 +90,12 @@ def processing(suppl, args, ini_list, smi_list):
             for idx, mol in enumerate(tqdm.tqdm(suppl)):
                 if mol:
                     mol_uncharged = un.uncharge(mol)
-                    inchi = Chem.inchi.MolToInchi(mol_uncharged)
                     smiles = Chem.MolToSmiles(mol_uncharged)
+                    try:
+                        inchi = Chem.inchi.MolToInchi(mol_uncharged)
+                    except Chem.rdchem.KekulizeException:
+                        print(smiles)
+
                     if inchi in ini_list or smiles in smi_list:
                         dup += 1
                     else:

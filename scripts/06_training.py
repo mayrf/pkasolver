@@ -6,7 +6,7 @@ import torch
 from pkasolver.constants import DEVICE
 from pkasolver.data import calculate_nr_of_features
 from pkasolver.ml import dataset_to_dataloader
-from pkasolver.ml_architecture import GINPairV2, GINPairV1, gcn_full_training
+from pkasolver.ml_architecture import GINPairV3, GINPairV1, gcn_full_training
 
 node_feat_list = [
     "element",
@@ -51,8 +51,8 @@ def main():
 
     if args.model_name == "GINPairV1":
         model_name, model_class = "GINPairV1", GINPairV1
-    elif args.model_name == "GINPairV2":
-        model_name, model_class = "GINPairV2", GINPairV2
+    elif args.model_name == "GINPairV3":
+        model_name, model_class = "GINPairV3", GINPairV3
     else:
         raise RuntimeError()
     # where to save training progress
@@ -115,21 +115,26 @@ def main():
     if args.r:
         checkpoint = torch.load(f"{args.model}/pretrained_best_model.pt")
         model.load_state_dict(checkpoint["model_state_dict"])
-        prefix = "retrained_"
-        print("Attention: RELOADING model and freezing GNN")
-        print("Freeze Convs submodule parameter.")
-        print(model.get_submodule("convs"))
-        for p in model.get_submodule("convs"):
-            p.requires_grad = False
-        print("FROZEN!")
+        prefix = "retrained_last_two_layers"
+        parms = []
+        print("Attention: RELOADING model and extracting only last two linear layers")
+        # parms.extend(model.get_submodule("lins.0").parameters())
+        # parms.extend(model.get_submodule("lins.1").parameters())
+        parms.extend(model.get_submodule("lins.2").parameters())
+        print("####################")
+        parms.extend(model.get_submodule("final_lin").parameters())
+        # parms = model.parameters()
+        optimizer = torch.optim.AdamW(parms, lr=LEARNING_RATE,)
+
     else:
         prefix = "pretrained_"
+        optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE,)
 
     model.train()
     # only use models that are not frozen in optimization
-    optimizer = torch.optim.AdamW(
-        filter(lambda p: p.requires_grad, model.parameters()), lr=LEARNING_RATE,
-    )
+    # optimizer = torch.optim.AdamW(
+    #    filter(lambda p: p.requires_grad, model.parameters()), lr=LEARNING_RATE,
+    # )
     print(
         "Number of parameters: ",
         sum(p.numel() for p in model.parameters() if p.requires_grad == True),

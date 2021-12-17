@@ -24,7 +24,7 @@ def main(selected_node_features: dict, selected_edge_features: dict):
     print("outputfile:", args.output)
     print("Start processing data...")
     pair_data_list = []
-    pool = mp.Pool(16)
+    pool = mp.Pool(32)
     # test if it's gzipped
     with gzip.open(args.input, "r") as fh:
         try:
@@ -80,8 +80,6 @@ def processing(
 
     combined_mols = entry["mols"]
     pka_list = entry["pKa_list"]
-    smiles_list = entry["smiles_list"]
-    idx_list = entry["counter_list"]
     pairs = []
     for mol_pair, pka_value in zip(combined_mols, pka_list):
         chembl_id = mol_pair[0].GetProp("CHEMBL_ID")
@@ -99,7 +97,7 @@ def processing(
             selected_edge_features,
         )
 
-        m.x = torch.tensor(pka_value, dtype=torch.float32)
+        m.reference_value = torch.tensor(pka_value, dtype=torch.float32)
         m.internal_id = (internal_id1, internal_id2)
         m.smiles_prop = smiles_prop
         m.smiles_deprop = smiles_deprop
