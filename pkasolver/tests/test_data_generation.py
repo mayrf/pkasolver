@@ -163,7 +163,7 @@ def test_exp_sets_generation():
             "python",
             f"scripts/04_2_prepare_rest.py",
             "--input",
-            f"pkasolver/tests/testdata/04_split_exp_dataset_with_pka.sdf",
+            f"pkasolver/tests/testdata/00_experimental_training_datasets_subset.sdf",
             "--output",
             f"pkasolver/tests/testdata/exp_training_dataset.pkl",
         ],
@@ -233,7 +233,7 @@ def test_data_preprocessing_for_baltruschat():
     f = pickle.load(open("pkasolver/tests/testdata/test.pkl", "rb"))
     print(f)
 
-    assert len(f) == 16
+    assert len(f) == 340
 
     # first mol
     entry = f[0]

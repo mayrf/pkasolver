@@ -332,7 +332,7 @@ def make_pyg_dataset_from_dataframe(
                 selected_node_features,
                 selected_edge_features,
             )
-            m.x = torch.tensor([df.pKa[i]], dtype=torch.float32)
+            m.reference_value = torch.tensor([df.pKa[i]], dtype=torch.float32)
             m.ID = df.ID[i]
             m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
@@ -357,7 +357,7 @@ def make_pyg_dataset_from_dataframe(
                 )
             else:
                 raise RuntimeError()
-            m.x = torch.tensor([df.pKa[i]], dtype=torch.float32)
+            m.reference_value = torch.tensor([df.pKa[i]], dtype=torch.float32)
             m.ID = df.ID[i]
             m.to(device=DEVICE)  # NOTE: put everything on the GPU
             dataset.append(m)
