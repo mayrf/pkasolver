@@ -17,3 +17,5 @@ dependencies:
   - pytest
   - pytest-cov
   - codecov
+pip:
+  - p_tqdm

@@ -44,6 +44,49 @@ def calculate_performance_of_model_on_data(model, loader):
             .reshape(-1)
             .detach()
         )
+        ref = data.reference_value
+        y_dataset.extend(ref.tolist())
+
+    return np.array(x_dataset), np.array(y_dataset)
+
+def predict(model, loader):
+    model.eval()
+    results = []
+    for data in loader:  # Iterate in batches over the training dataset.
+        data.to(device=DEVICE)
+        y_pred = (
+            model(
+                x_p=data.x_p,
+                x_d=data.x_d,
+                edge_attr_p=data.edge_attr_p,
+                edge_attr_d=data.edge_attr_d,
+                data=data,
+            )
+            .reshape(-1)
+            .detach()
+        )
+
+        results.extend(y_pred.tolist())
+
+    return np.array(results)
+
+def calculate_performance_of_model_on_data_old(model, loader):
+    model.eval()
+    y_dataset, x_dataset = [], []
+    for data in loader:  # Iterate in batches over the training dataset.
+
+        data.to(device=DEVICE)
+        y_pred = (
+            model(
+                x_p=data.x_p,
+                x_d=data.x_d,
+                edge_attr_p=data.edge_attr_p,
+                edge_attr_d=data.edge_attr_d,
+                data=data,
+            )
+            .reshape(-1)
+            .detach()
+        )
 
         y_dataset.extend(y_pred.tolist())
         x_dataset.extend(data.y.tolist())

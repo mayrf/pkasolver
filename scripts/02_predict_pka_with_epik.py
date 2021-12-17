@@ -37,7 +37,10 @@ def main():
             "14.0",
             "-lowest_pka",
             "0.0",
-            "-WAIT",
+            "-SUBHOST",
+            "localhost:14",
+            "-NJOBS",
+            "14",
         ]
     )
     o.check_returncode()

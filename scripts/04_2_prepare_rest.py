@@ -63,7 +63,11 @@ def iterate_over_acids(
         if skipping_acids == 0:  # if a acid was skipped, all further acids are skipped
             try:
                 new_mol = create_conjugate(
-                    partner_mol, acid_prop["atom_idx"], acid_prop["pka_value"], pH=PH,
+                    partner_mol,
+                    acid_prop["atom_idx"],
+                    acid_prop["pka_value"],
+                    pH=PH,
+                    ignore_danger=True,
                 )
                 Chem.SanitizeMol(new_mol)
                 # new_mol = s.standardize(new_mol)
@@ -126,7 +130,11 @@ def iterate_over_bases(
         if skipping_bases == 0:  # if a base was skipped, all further bases are skipped
             try:
                 new_mol = create_conjugate(
-                    partner_mol, basic_prop["atom_idx"], basic_prop["pka_value"], pH=PH,
+                    partner_mol,
+                    basic_prop["atom_idx"],
+                    basic_prop["pka_value"],
+                    pH=PH,
+                    ignore_danger=True,
                 )
 
                 Chem.SanitizeMol(new_mol)
@@ -192,42 +200,36 @@ def processing(suppl, args):
             print(e)
             continue
 
-        nr_of_protonation_states = len([s for s in props.keys() if "r_epik_pKa" in s])
-
         pkas = []
 
-        for i in range(nr_of_protonation_states):
-            pkas.append(
-                {
-                    "pka_value": float(props[f"r_epik_pKa_{i+1}"]),
-                    "atom_idx": int(props[f"i_epik_pKa_atom_{i+1}"]) - 1,
-                    "chembl_id": props[f"chembl_id"],
-                }
-            )
+        pkas.append(
+            {
+                "pka_value": float(props[f"pKa"]),
+                "atom_idx": int(props[f"marvin_atom"]),
+                "chembl_id": f"mol{nr_of_mols}",
+            }
+        )
 
         print(pkas)
 
         # calculate number of acidic and basic pka values
-        upper_pka_limit = 13.8
-        lower_pka_limit = 0.2
         nr_of_acids = sum(
-            pka["pka_value"] <= PH and pka["pka_value"] > lower_pka_limit
-            for pka in pkas
+            pka["pka_value"] <= PH and pka["pka_value"] > 0.5 for pka in pkas
         )
         nr_of_bases = sum(
-            pka["pka_value"] > PH and pka["pka_value"] < upper_pka_limit for pka in pkas
+            pka["pka_value"] > PH and pka["pka_value"] < 13.5 for pka in pkas
         )
         assert nr_of_acids + nr_of_bases <= len(pkas)
 
         acidic_mols_properties = [
             mol_pka
             for mol_pka in pkas
-            if mol_pka["pka_value"] <= PH and mol_pka["pka_value"] > lower_pka_limit
+            if mol_pka["pka_value"] <= PH and mol_pka["pka_value"] > 0.5
         ]
         basic_mols_properties = [
             mol_pka
             for mol_pka in pkas
-            if mol_pka["pka_value"] > PH and mol_pka["pka_value"] < upper_pka_limit
+            if mol_pka["pka_value"] > PH and mol_pka["pka_value"] < 13.5
         ]
 
         if len(acidic_mols_properties) != nr_of_acids:
@@ -244,7 +246,7 @@ def processing(suppl, args):
         smiles_list = []
         counter_list = []
 
-        # add mol at pH=7.4
+        # add mol at pH=PH
         mol_at_ph7 = mol
         print(Chem.MolToSmiles(mol_at_ph7))
         acidic_mols = []

@@ -13,7 +13,7 @@ def test_conjugates():
         mol_unchanged = Chem.Mol(df.ROMol[i])
         index = int(df.marvin_atom[i])
         pka = float(df.marvin_pKa[i])
-        mol_new = create_conjugate(mol_unchanged, index, pka)
+        mol_new = create_conjugate(mol_unchanged, index, pka, ignore_danger=True)
         print(
             mol_unchanged.GetNumHeavyAtoms()
             - mol_unchanged.GetNumAtoms(onlyExplicit=False),
