@@ -578,8 +578,9 @@ class GINProt(GINpKa):
         )
         print(f"Attention pooling: {attention}")
         self.lins = GINpKa._return_lin(
-            input_dim=out_channels, nr_of_lin_layers=2, embeding_size=hidden_channels
+            input_dim=out_channels, nr_of_lin_layers=3, embeding_size=hidden_channels
         )
+        self.final_lin = Linear(hidden_channels, 1, device=DEVICE)
 
     def forward(self, x_p, x_d, edge_attr_p, edge_attr_d, data):
         x_p_batch = data.x_p_batch.to(device=DEVICE)
@@ -589,7 +590,8 @@ class GINProt(GINpKa):
         x = global_mean_pool(x, x_p_batch)  # [batch_size, hidden_channels]
         # run through linear layer
         x = forward_lins(x, self.lins)
-        return x
+
+        return self.final_lin(F.relu(x))
 
 
 class GATPair(GATpKa):
