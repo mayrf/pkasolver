@@ -45,9 +45,11 @@ def calculate_performance_of_model_on_data(model, loader):
             .detach()
         )
         ref = data.reference_value
-        y_dataset.extend(ref.tolist())
+        y_dataset.extend(y_pred.tolist())
+        x_dataset.extend(ref.detach().tolist())
 
     return np.array(x_dataset), np.array(y_dataset)
+
 
 def predict(model, loader):
     model.eval()
@@ -69,6 +71,7 @@ def predict(model, loader):
         results.extend(y_pred.tolist())
 
     return np.array(results)
+
 
 def calculate_performance_of_model_on_data_old(model, loader):
     model.eval()
