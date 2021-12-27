@@ -208,8 +208,8 @@ def processing(suppl, args):
         print(pkas)
 
         # calculate number of acidic and basic pka values
-        upper_pka_limit = 13.8
-        lower_pka_limit = 0.2
+        upper_pka_limit = 16
+        lower_pka_limit = -2
         nr_of_acids = sum(
             pka["pka_value"] <= PH and pka["pka_value"] > lower_pka_limit
             for pka in pkas

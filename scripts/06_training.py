@@ -6,7 +6,7 @@ import torch
 from pkasolver.constants import DEVICE
 from pkasolver.data import calculate_nr_of_features
 from pkasolver.ml import dataset_to_dataloader
-from pkasolver.ml_architecture import GINPairV3, GINPairV1, gcn_full_training
+from pkasolver.ml_architecture import GINProt, GINPairV3, GINPairV1, gcn_full_training
 
 node_feat_list = [
     "element",
@@ -30,8 +30,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="training set filename")
     parser.add_argument("--val", nargs="?", default="", help="validation set filename")
+    parser.add_argument(
+        "--reg", nargs="?", default="", help="regularization set filename"
+    )
     parser.add_argument("-r", action="store_true", help="retraining run")
-    parser.add_argument("--model_name", help="either GINPairV2 or GINPairV1")
+    parser.add_argument("--model_name", help="either GINProt, GINPairV3 or GINPairV1")
     parser.add_argument("--model", help="training directory")
     parser.add_argument(
         "--epochs",
@@ -53,14 +56,21 @@ def main():
         model_name, model_class = "GINPairV1", GINPairV1
     elif args.model_name == "GINPairV3":
         model_name, model_class = "GINPairV3", GINPairV3
+    elif args.model_name == "GINProt":
+        model_name, model_class = "GINProt", GINProt
     else:
         raise RuntimeError()
     # where to save training progress
     print(f"Used model: {model_name}")
+    if args.r:
+        print("THIS IS A FINE TUNING RUN")
     # decide wheter to split training set or use explicit validation set
     print(f"load training dataset from: {args.input}")
     if args.val:
         print(f"load validation dataset from: {args.val}")
+    elif args.reg:
+        reg = args.reg
+        print(f"load regularization dataset from: {args.reg}")
     else:
         print(f"random 90:10 split is used to generate validation set.")
 
@@ -100,9 +110,17 @@ def main():
 
     train_loader = dataset_to_dataloader(train_dataset, BATCH_SIZE, shuffle=True)
     val_loader = dataset_to_dataloader(validation_dataset, BATCH_SIZE, shuffle=True)
+    if args.r:
+        with open(args.reg, "rb") as f:
+            reg_dataset = pickle.load(f)
+        reg_loader = dataset_to_dataloader(reg_dataset, 1024, shuffle=True)
+    else:
+        reg_loader = None
 
     # only load model when in retraining mode, otherwise generate new one
-    if parameter_size == "hp":
+    if parameter_size == "hp" and args.model_name == "GINProt":
+        hidden_channels = 128
+    elif parameter_size == "hp" and args.model_name != "GINProt":
         hidden_channels = 96
     else:
         hidden_channels = 64
@@ -115,15 +133,15 @@ def main():
     if args.r:
         checkpoint = torch.load(f"{args.model}/pretrained_best_model.pt")
         model.load_state_dict(checkpoint["model_state_dict"])
-        prefix = "retrained_last_two_layers"
+        prefix = "reg_everything_"
         parms = []
-        print("Attention: RELOADING model and extracting only last two linear layers")
+        print("Attention: RELOADING model and extracting all layers")
         # parms.extend(model.get_submodule("lins.0").parameters())
         # parms.extend(model.get_submodule("lins.1").parameters())
-        parms.extend(model.get_submodule("lins.2").parameters())
-        print("####################")
-        parms.extend(model.get_submodule("final_lin").parameters())
-        # parms = model.parameters()
+        # parms.extend(model.get_submodule("lins.2").parameters())
+        # print("####################")
+        # parms.extend(model.get_submodule("final_lin").parameters())
+        parms = model.parameters()
         optimizer = torch.optim.AdamW(parms, lr=LEARNING_RATE,)
 
     else:
@@ -131,10 +149,6 @@ def main():
         optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE,)
 
     model.train()
-    # only use models that are not frozen in optimization
-    # optimizer = torch.optim.AdamW(
-    #    filter(lambda p: p.requires_grad, model.parameters()), lr=LEARNING_RATE,
-    # )
     print(
         "Number of parameters: ",
         sum(p.numel() for p in model.parameters() if p.requires_grad == True),
@@ -155,6 +169,7 @@ def main():
         NUM_EPOCHS=NUM_EPOCHS,
         path=args.model,
         prefix=prefix,
+        reg_loader=reg_loader,
     )
 
 
