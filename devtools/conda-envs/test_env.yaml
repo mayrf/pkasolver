@@ -17,5 +17,9 @@ dependencies:
   - pytest
   - pytest-cov
   - codecov
+  - numpy
+  - scipy
+  - scikit-learn
+  - tqdm
 pip:
   - p_tqdm
