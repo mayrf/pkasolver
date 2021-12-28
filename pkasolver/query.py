@@ -45,9 +45,35 @@ num_edge_features = calculate_nr_of_features(edge_feat_list)
 selected_node_features = make_features_dicts(NODE_FEATURES, node_feat_list)
 selected_edge_features = make_features_dicts(EDGE_FEATURES, edge_feat_list)
 
-model_path = "/data/shared/projects/pkasolver-data-clean/trained_models_v0/training_with_GINPairV1_v0_hp/retrained_all_lin_layers_best_model.pt"
+model_path = "/data/shared/projects/pkasolver-data-clean/trained_models_v1/training_with_GINPairV1_v1_hp/reg_everything_best_model.pt"
 
-# helper functions
+class QueryModel:
+    
+    def __init__(self, path):
+        self.path = path
+        self.model_init()
+
+    def model_init(self):
+        self.model_name, self.model_class = "GINPairV1", GINPairV1
+        self.model = self.model_class(
+                    num_node_features, num_edge_features, hidden_channels=96
+                )
+        self.checkpoint = torch.load(self.path)
+        self.model.load_state_dict(self.checkpoint["model_state_dict"])
+        self.model.eval()
+        self.model.to(device = DEVICE)
+    
+
+    def set_path(self, new_path):
+        self.path = new_path
+        self.model_init()
+
+query_model = QueryModel(model_path)
+
+    # helper functions
+
+def set_model_path(new_path, query_model=query_model):
+    query_model.set_path(new_path)
 
 def split_acid_base_pattern(smarts_file): # from molGpka
     df_smarts = pd.read_csv(smarts_file, sep="\t")
@@ -121,14 +147,7 @@ def get_ionization_aid(mol, acid_or_base=None):     # from molGpka
         return acid_matches
     else:
         return base_matches
-model_name, model_class = "GINPairV1", GINPairV1
-model = model_class(
-            num_node_features, num_edge_features, hidden_channels=96
-        )
-checkpoint = torch.load(model_path)
-model.load_state_dict(checkpoint["model_state_dict"])
-model.eval()
-model.to(device = DEVICE)
+
 
 df_smarts_acid, df_smarts_base = split_acid_base_pattern(smarts_file)
 
@@ -188,7 +207,7 @@ def match_pka(pair_tuples, model):
 def acid_sequence(acid_pairs, mols, pkas, atoms):
     # determine pka for protonatable groups
     if len(acid_pairs) > 0:
-        acid_pkas = list(match_pka(acid_pairs, model))
+        acid_pkas = list(match_pka(acid_pairs, query_model.model))
         pka = max(acid_pkas)    # determining closest protonation pka
         pkas.insert(0, pka)     # prepending pka to global pka list
         mols.insert(0, acid_pairs[acid_pkas.index(pka)][0]) # prepending protonated molcule to global mol list 
@@ -198,21 +217,14 @@ def acid_sequence(acid_pairs, mols, pkas, atoms):
 def base_sequence(base_pairs, mols, pkas, atoms):
     # determine pka for deprotonatable groups
     if len(base_pairs) > 0:
-        base_pkas = list(match_pka(base_pairs, model))
+        base_pkas = list(match_pka(base_pairs, query_model.model))
         pka = min(base_pkas)    # determining closest deprotonation pka   
         pkas.append(pka)        # appending pka to global pka list    
         mols.append(base_pairs[base_pkas.index(pka)][1]) # appending protonated molcule to global mol list 
         atoms.append(base_pairs[base_pkas.index(pka)][2]) # appending protonated molcule to global mol list 
     return mols, pkas, atoms
 
-def query(input):
-
-    if type(input) == Chem.rdchem.Mol:
-        mol = input
-    elif Chem.MolFromSmiles(input):
-        mol = Chem.MolFromSmiles(input)
-    elif Chem.MolFromInchi(input):
-        mol = Chem.MolFromInchi(input)
+def mol_query(mol: Chem.rdchem.Mol):
 
     mols = [mol]
     pkas = []
@@ -230,9 +242,34 @@ def query(input):
         mols, pkas, atoms = base_sequence(base_pairs, mols, pkas, atoms)
         if inital_length >= len(pkas):
             break
+    
+    mol_tuples = []
+    for i in range(len(mols)-1):
+        mol_tuples.append((mols[i],mols[i+1]))
+    mols = mol_tuples
+
     return mols, pkas, atoms
 
-def query_sdf(input_path, output_path):
+def smiles_query(smi, output_smiles = False):
+    mols, pkas, atoms = mol_query(Chem.MolFromSmiles(smi))
+    if output_smiles == True:
+        smiles = []
+        for mol in mols:
+            smiles.append((Chem.MolToSmiles(mol[0]),Chem.MolToSmiles(mol[1])))
+        mols = smiles
+    return mols, pkas, atoms
+
+def inchi_query(ini, output_inchi = False):
+    # return mol_query(Chem.MolFromInchi(ini))
+    mols, pkas, atoms = mol_query(Chem.MolFromInchi(ini))
+    if output_inchi == True:
+        inchi = []
+        for mol in mols:
+            inchi.append((Chem.MolToInchi(mol[0]),Chem.MolToInchi(mol[1])))
+        mols = inchi 
+    return mols, pkas, atoms
+
+def sdf_query(input_path, output_path, merged_output=False):
     print(f"opening .sdf file at {input_path} and computing pkas...")
     with open(input_path, "rb") as fh:
         with open(output_path, "w") as sdf_zip:
@@ -245,38 +282,53 @@ def query_sdf(input_path, output_path):
                     props = mol.GetPropsAsDict()
                     for prop in props.keys():
                         mol.ClearProp(prop)
-                    mols, pkas, atoms = query(mol)
-                    for ii, (mol, pka, atom) in enumerate(zip(mols, pkas, atoms)):
-                        count += 1
+                    mols, pkas, atoms = mol_query(mol)
+                    if merged_output == True:
+                        mol = mols[0][0]
                         mol.SetProp("ID", f"{mol.GetProp('_Name')}")
-                        mol.SetProp("pka", f"{pka}")
-                        mol.SetProp("atom_idx", f"{atom}")
-                        mol.SetProp("pka-number", f"{ii}")
-                        # print(mol.GetPropsAsDict())
-                        writer.write(mol)
+                        for ii, (pka, atom) in enumerate(zip(pkas, atoms)):
+                            count += 1
+                            mol.SetProp(f"pka_{ii}", f"{pka}")
+                            mol.SetProp(f"atom_idx_{ii}", f"{atom}")
+                            writer.write(mol)
+                    else:   
+                        for ii, (mol, pka, atom) in enumerate(zip(mols, pkas, atoms)):
+                            count += 1
+                            mol = mol[0]
+                            mol.SetProp("ID", f"{mol.GetProp('_Name')}_{ii}")
+                            mol.SetProp("pka", f"{pka}")
+                            mol.SetProp("atom_idx", f"{atom}")
+                            mol.SetProp("pka-number", f"{ii}")
+                            # print(mol.GetPropsAsDict())
+                            writer.write(mol)
                 print(f"{count} pkas for {i} molecules predicted and saved at \n{output_path}")
 
+def draw_pka_map(mols, pkas, atoms, size=(450,450)):
+    mol = mols[0][0]
+    for atom, pka in zip(atoms, pkas):
+        mol.GetAtomWithIdx(atom).SetProp('atomNote', f"{pka:.2f}" )
+    return Draw.MolToImage(mol, size=size)
 
-def query_sdf_to_img(input_path):
+def draw_pka_reactions(mols, pkas, atoms):
+    draw_pairs = [] 
+    pair_atoms = []
+    pair_pkas = []
+    for i in range(len(mols)):
+        draw_pairs.extend([mols[i][0], mols[i][1]])
+        pair_atoms.extend([[atoms[i]], [atoms[i]]])
+        pair_pkas.extend([pkas[i], pkas[i]])
+    return Draw.MolsToGridImage(draw_pairs, molsPerRow=2, subImgSize=(250, 250), highlightAtomLists=pair_atoms, legends=[f"pka = {pair_pkas[i]:.2f}" for i in range(12)])
+
+def draw_sdf_mols(input_path, range_list = []):
     print(f"opening .sdf file at {input_path} and computing pkas...")
     with open(input_path, "rb") as fh:
         count = 0
         for i, mol in enumerate(Chem.ForwardSDMolSupplier(fh, removeHs=True)):
-            # if i > 10: 
-            #     break
-            # clear porps
+            if range_list and i not in range_list:
+                continue
             props = mol.GetPropsAsDict()
-            # print(props)
             for prop in props.keys():
                 mol.ClearProp(prop)
-            mols, pkas, atoms = query(mol)
-
-            mol = mols[0]
-            IPythonConsole.molSize = 800,800
-            for atom, pka in zip(atoms, pkas):
-                mol.GetAtomWithIdx(atom).SetProp('atomNote', f"{pka:.2f}" )
+            mols, pkas, atoms = mol_query(mol)
+            display(draw_pka_map(mols, pkas, atoms))
             print(f"Name: {mol.GetProp('_Name')}")
-            display(Draw.MolToImage(mol, size=(450,450)))
-            count += len(pkas) 
-
-        print(f"{count} pkas for {i} molecules predicted")
