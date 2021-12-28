@@ -278,6 +278,80 @@ def test_only_GINPairV1_and_GINPairV3_models():
         )
 
 
+def test_only_GINProt_models():
+    new_models = [
+        ("GINProt", GINProt),
+    ]
+
+    from pkasolver.ml_architecture import gcn_train, gcn_test
+    from pkasolver.data import (
+        load_data,
+        preprocess,
+        make_pyg_dataset_from_dataframe,
+    )
+    from pkasolver.ml import dataset_to_dataloader
+
+    sdf_filepaths = load_data()
+    df = preprocess(sdf_filepaths["Novartis"])
+
+    # number of node/edge features
+    list_n = [
+        "element",
+        "formal_charge",
+        "hybridization",
+        "total_num_Hs",
+        "aromatic_tag",
+        "total_valence",
+        "total_degree",
+        "is_in_ring",
+        "reaction_center",
+        "smarts",
+    ]
+    list_e = [
+        "bond_type",
+        "is_conjugated",
+        "rotatable",
+    ]  # start with generating datasets based on charge
+
+    # generated PairedData set
+    dataset = make_pyg_dataset_from_dataframe(df, list_n, list_e, paired=True)
+    dataloader = dataset_to_dataloader(dataset, batch_size=64, shuffle=False)
+    # calculate node/edge features
+    num_node_features = calculate_nr_of_features(list_n)
+    num_edge_features = calculate_nr_of_features(list_e)
+
+    for model_name, model_class in new_models:
+        print(model_name)
+        print(model_class)
+        #################
+        # test single models
+
+        model = model_class(
+            num_node_features=num_node_features,
+            num_edge_features=num_edge_features,
+            hidden_channels=128,
+            out_channels=64,
+            attention=False,
+        ).to(device=DEVICE)
+        print(model)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
+
+        gcn_train(model, dataloader, optimizer)
+        gcn_test(model, dataloader)
+        print("####################")
+        print(list(model.named_modules()))
+        print("####################")
+        print(model.get_submodule("lins.2"))
+        print("####################")
+        print(model.get_submodule("final_lin"))
+        print("####################")
+
+        print(
+            "Number of parameters: ",
+            sum(p.numel() for p in model.parameters() if p.requires_grad == True),
+        )
+
+
 def test_count_nr_of_parameters():
 
     import torch.nn.functional as F
