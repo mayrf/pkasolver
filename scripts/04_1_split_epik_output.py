@@ -200,7 +200,8 @@ def processing(suppl, args):
             pkas.append(
                 {
                     "pka_value": float(props[f"r_epik_pKa_{i+1}"]),
-                    "atom_idx": int(props[f"i_epik_pKa_atom_{i+1}"]) - 1,
+                    "atom_idx": int(props[f"i_epik_pKa_atom_{i+1}"])
+                    - 1,  # this is necessary because epik starts counting atoms with 1
                     "chembl_id": props[f"chembl_id"],
                 }
             )
