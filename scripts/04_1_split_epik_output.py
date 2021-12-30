@@ -13,6 +13,12 @@ PH = 7.4
 
 
 def main():
+    """
+    takes sdf file with molcules containing epik pka predictions in their properties
+    and outputs a new sdf where those molecules containing more than one pka
+    get duplicated so that every molecules only contains one pka value.
+    the molecule associated with each pka is the protonted form of the respective pka reaction
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="input filename")
     parser.add_argument("--output", help="output filename")
@@ -63,7 +69,10 @@ def iterate_over_acids(
         if skipping_acids == 0:  # if a acid was skipped, all further acids are skipped
             try:
                 new_mol = create_conjugate(
-                    partner_mol, acid_prop["atom_idx"], acid_prop["pka_value"], pH=PH,
+                    partner_mol,
+                    acid_prop["atom_idx"],
+                    acid_prop["pka_value"],
+                    pH=PH,
                 )
                 Chem.SanitizeMol(new_mol)
                 # new_mol = s.standardize(new_mol)
@@ -126,7 +135,10 @@ def iterate_over_bases(
         if skipping_bases == 0:  # if a base was skipped, all further bases are skipped
             try:
                 new_mol = create_conjugate(
-                    partner_mol, basic_prop["atom_idx"], basic_prop["pka_value"], pH=PH,
+                    partner_mol,
+                    basic_prop["atom_idx"],
+                    basic_prop["pka_value"],
+                    pH=PH,
                 )
 
                 Chem.SanitizeMol(new_mol)

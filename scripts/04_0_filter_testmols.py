@@ -7,6 +7,12 @@ from rdkit.Chem.MolStandardize import rdMolStandardize
 
 
 def main():
+    """
+    takes sdf file of initial training molcules and
+    sdf file of training molecules (both optionally gzipped)
+    and returns only those initial training molcules
+    not contained in the training molecules file as sdf file.
+    """
     RDLogger.DisableLog("rdApp.*")
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="input filename")

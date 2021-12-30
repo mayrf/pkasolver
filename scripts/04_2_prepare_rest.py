@@ -13,6 +13,10 @@ PH = 7.4
 
 
 def main():
+    """
+    takes sdf of molecule set containing pka data and returns a pkl file of the data.
+    ?Precise purpose?
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="input filename")
     parser.add_argument("--output", help="output filename")

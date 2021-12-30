@@ -29,7 +29,8 @@ The Python dependencies are:
 
 ## Usage
 
-The usage of this package is demonstrated by files in the `examples/tesis_run` folder. The juypter notebook `thesis_pipeline.ipynb` that contains the entire workflow of data preprocessing, featurization, model training and testing, except for the cross-validation training.The script `train_script.py` enables parallel computation of all train-test-split and cross-validation models on multiple machines. This can be done by using the script in conjuction with the files test.sh and `run_training.sh`. The global variables are stored and called from the file `config.py` and the code for the neural network architectures as well as the training functions from the file `architecture.py`. 
+The `notebooks` directory contains jupyter notebooks that demonstrate the usage of the pkasolver api for predicting pka values for single or multiple molecules.
+In the `scripts` folder there are a number python scripts to prepare data, train models and benchmark their performance.
 
 ## License
 
@@ -43,7 +44,7 @@ toolset for predicting the pka values of small molecules
 
 ### Copyright
 
-Copyright (c) 2020, Fritz Mayr
+Copyright (c) 2021, Fritz Mayr
 
 
 #### Acknowledgements

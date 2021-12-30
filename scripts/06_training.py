@@ -27,6 +27,20 @@ num_edge_features = calculate_nr_of_features(edge_feat_list)
 
 
 def main():
+    """
+    takes training set as pkl file and trains new model or retrains existing one.
+
+    Parameters:
+    --input: set of training molecules as pyg graphs (pkl)
+    --model_name: name of model architecture used
+
+    optional parameters:
+    --model: path for saving model or containing model for retraing
+    --val: set of validation molecules as pyg graphs (pkl)
+    --epochs: set number of training epochs (default == 1000)
+    --reg: ?
+    -r: flag for retraining model at path give by --model
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="training set filename")
     parser.add_argument("--val", nargs="?", default="", help="validation set filename")
@@ -142,11 +156,17 @@ def main():
         # print("####################")
         # parms.extend(model.get_submodule("final_lin").parameters())
         parms = model.parameters()
-        optimizer = torch.optim.AdamW(parms, lr=LEARNING_RATE,)
+        optimizer = torch.optim.AdamW(
+            parms,
+            lr=LEARNING_RATE,
+        )
 
     else:
         prefix = "pretrained_"
-        optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE,)
+        optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=LEARNING_RATE,
+        )
 
     model.train()
     print(

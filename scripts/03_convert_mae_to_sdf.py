@@ -3,6 +3,9 @@ import argparse
 
 
 def main():
+    """
+    takes schröndiger maestro (mae) file (can be gzipped) and converts it to sdf file.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="input filename")
     parser.add_argument("--output", help="output filename")

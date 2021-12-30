@@ -604,7 +604,13 @@ def test_generate_data_intances():
             assert charge1 == 1
             assert charge2 == 0
 
-            d3 = mol_to_paired_mol_data(prot, deprot, atom_idx, n_feat, e_feat,)
+            d3 = mol_to_paired_mol_data(
+                prot,
+                deprot,
+                atom_idx,
+                n_feat,
+                e_feat,
+            )
             # all of them have the same number of nodes
             assert d1.num_nodes == d2.num_nodes == len(d3.x_p) == len(d3.x_d)
             # but different node features
@@ -629,7 +635,13 @@ def test_generate_data_intances():
 
             d1, charge1 = mol_to_single_mol_data(mol, atom_idx, n_feat, e_feat)
             d2, charge2 = mol_to_single_mol_data(conj, atom_idx, n_feat, e_feat)
-            d3 = mol_to_paired_mol_data(mol, conj, atom_idx, n_feat, e_feat,)
+            d3 = mol_to_paired_mol_data(
+                mol,
+                conj,
+                atom_idx,
+                n_feat,
+                e_feat,
+            )
             assert (
                 Chem.MolToSmiles(mol)
                 == "CCCN(CCC)C(=O)c1cc(C)cc(C(=O)N[C@@H](Cc2cc(F)cc(F)c2)[C@H](O)[C@@H]2[NH2+]CCN(Cc3ccccc3)C2=O)c1"

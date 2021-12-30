@@ -5,6 +5,12 @@ import argparse
 
 
 def main():
+    """
+    Filters the molcules of the chembl database
+    by the specified criteria
+    (e.g. max number of rule of five violation = 1)
+    and outputs them to a gzipped sdf file.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", help="output filename")
     args = parser.parse_args()
