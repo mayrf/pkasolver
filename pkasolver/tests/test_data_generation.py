@@ -71,23 +71,28 @@ def test_eltrombopag_pka_split():
 
     pkas = f[name]["pKa_list"]
     # first eltrombopag species is skipped
-
-    # second eltrombopag species
     smi1, smi2 = f[name]["smiles_list"][0]
     assert np.isclose(float(pkas[0]), 4.05)
     print(smi1)
     assert smi1 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)O)c4)c3O)c2O)cc1C"
     assert smi2 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2O)cc1C"
 
-    # third eltrombopag species
+    # second eltrombopag species
     smi1, smi2 = f[name]["smiles_list"][1]
-    assert np.isclose(float(pkas[1]), 7.449)
+    assert np.isclose(float(pkas[1]), -0.631)
+    print(smi1)
+    assert smi1 == "Cc1ccc(-n2[nH+]c(C)c(N=Nc3cccc(-c4cccc(C(=O)O)c4)c3O)c2O)cc1C"
+    assert smi2 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)O)c4)c3O)c2O)cc1C"
+
+    # third eltrombopag species
+    smi1, smi2 = f[name]["smiles_list"][2]
+    assert np.isclose(float(pkas[2]), 7.449)
     assert smi1 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2O)cc1C"
     assert smi2 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2[O-])cc1C"
 
     # fourth eltrombopag species
-    smi1, smi2 = f[name]["smiles_list"][2]
-    assert np.isclose(float(pkas[2]), 9.894)
+    smi1, smi2 = f[name]["smiles_list"][3]
+    assert np.isclose(float(pkas[3]), 9.894)
     assert smi1 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3O)c2[O-])cc1C"
     assert smi2 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3[O-])c2[O-])cc1C"
 
