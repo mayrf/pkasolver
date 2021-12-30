@@ -22,7 +22,7 @@ The Python dependencies are:
 
 ### Installing
 
-1) Install all dependencies in your python environment. 
+1) Install all dependencies in your python environment. (yaml file in devtools/conda-envs/test_env.yml) 
 2) Download this repo
 3) `cd` into the repo
 3) Install the package by using the terminal command `python setup.py install`
