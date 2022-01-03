@@ -218,6 +218,9 @@ def acid_sequence(acid_pairs, mols, pkas, atoms):
     if len(acid_pairs) > 0:
         acid_pkas = list(match_pka(acid_pairs, query_model.model))
         pka = max(acid_pkas)  # determining closest protonation pka
+        if pka < 0.5:  # do not include pka if lower than 0.5
+            return mols, pkas, atoms
+
         pkas.insert(0, pka)  # prepending pka to global pka list
         mols.insert(
             0, acid_pairs[acid_pkas.index(pka)][0]
@@ -233,6 +236,9 @@ def base_sequence(base_pairs, mols, pkas, atoms):
     if len(base_pairs) > 0:
         base_pkas = list(match_pka(base_pairs, query_model.model))
         pka = min(base_pkas)  # determining closest deprotonation pka
+        if pka > 13.5:  # do not include if pka higher than 13.5
+            return mols, pkas, atoms
+
         pkas.append(pka)  # appending pka to global pka list
         mols.append(
             base_pairs[base_pkas.index(pka)][1]

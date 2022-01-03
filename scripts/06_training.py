@@ -45,7 +45,7 @@ def main():
     parser.add_argument("--input", help="training set filename")
     parser.add_argument("--val", nargs="?", default="", help="validation set filename")
     parser.add_argument(
-        "--reg", nargs="?", default="", help="regularization set filename"
+        "--reg", nargs="?", "", help="regularization set filename"
     )
     parser.add_argument("-r", action="store_true", help="retraining run")
     parser.add_argument("--model_name", help="either GINProt, GINPairV3 or GINPairV1")

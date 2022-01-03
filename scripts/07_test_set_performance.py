@@ -13,6 +13,7 @@ from pkasolver.ml import (
 from pkasolver.ml_architecture import GINPairV1, GINPairV2, gcn_test
 from scipy.stats import t
 from pkasolver.stat import calc_stat_info
+from sklearn.metrics import mean_squared_error
 
 
 def confidence_calculation(sample_list):

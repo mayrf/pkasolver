@@ -1,25 +1,29 @@
-name: test
+name: pka_prediction
 channels:
-  - pytorch
-  - pyg
-  - defaults
-  - conda-forge
+ - pytorch
+ - conda-forge
+ - defaults
 dependencies:
-  - rdkit
-  - matplotlib
-  - pytorch==1.9
-  - cudatoolkit=11.3
-  - torchvision 
-  - torchaudio 
-  - pyg
-  - python
-    # Testing
-  - pytest
-  - pytest-cov
-  - codecov
-  - numpy
-  - scipy
-  - scikit-learn
-  - tqdm
-pip:
-  - p_tqdm
+ - rdkit
+ - matplotlib
+ - pytorch
+ - cudatoolkit
+ - torchvision
+ - torchaudio
+ - python
+   # Testing
+ - pytest
+ - pytest-cov
+ - codecov
+ - numpy
+ - scipy
+ - scikit-learn
+ - tqdm
+ - pip
+ - pip:
+     - torch-geometric
+     - torch-sparse
+     - torch-scatter
+     - molvs
+     - p_tqdm
+     - chembl_webresource_client
