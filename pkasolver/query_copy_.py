@@ -2,7 +2,6 @@
 from pkg_resources import resource_filename
 from os import path
 import pandas as pd
-import numpy as np
 from rdkit import Chem
 from rdkit.Chem.Draw import IPythonConsole
 from rdkit.Chem import AllChem
@@ -163,15 +162,35 @@ def get_ionization_aid(mol, acid_or_base=None):  # from molGpka
         return base_matches
 
 
-def get_possible_reactions(mol):
+def get_possible_reactions(mol):  # used
 
+    # acid_matches, base_matches = get_ionization_aid(mol)
     matches = get_ionization_aid(mol)
     matches = sum(matches, [])  # flatten matches list
 
     acid_pairs = []
+    for match in matches:
+        mol.__sssAtoms = [match]
+        new_mol = deepcopy(mol)
+        # create conjugate
+        atom = new_mol.GetAtomWithIdx(match)
+        charge = atom.GetFormalCharge()
+        Ex_Hs = atom.GetNumExplicitHs()
+        Tot_Hs = atom.GetTotalNumHs()
+        if charge <= 0:
+            # increase H
+            atom.SetFormalCharge(charge + 1)
+            if Tot_Hs == 0 or Ex_Hs > 0:
+                atom.SetNumExplicitHs(Ex_Hs + 1)
+            is_prot = False
+        else:
+            continue
+
+        atom.UpdatePropertyCache()
+        acid_pairs.append((new_mol, mol, match))
+
     base_pairs = []
     for match in matches:
-        is_prot = True
         mol.__sssAtoms = [match]
         new_mol = deepcopy(mol)
         # create conjugate
@@ -184,27 +203,15 @@ def get_possible_reactions(mol):
             atom.SetFormalCharge(charge - 1)
             if Ex_Hs > 0:
                 atom.SetNumExplicitHs(Ex_Hs - 1)
-        # elif (Tot_Hs == 0 and charge <= 0) or charge < 0:
-        elif charge <= 0:
-            # increase H
-            atom.SetFormalCharge(charge + 1)
-            if Tot_Hs == 0 or Ex_Hs > 0:
-                atom.SetNumExplicitHs(Ex_Hs + 1)
-            is_prot = False
+                atom.UpdatePropertyCache()
         else:
             continue
 
-        atom.UpdatePropertyCache()
-
-        # add tuple of conjugates
-        if is_prot:
-            base_pairs.append((mol, new_mol, match))
-        else:
-            acid_pairs.append((new_mol, mol, match))
+        base_pairs.append((mol, new_mol, match))
     return acid_pairs, base_pairs
 
 
-def match_pka(pair_tuples, model):
+def match_pka(pair_tuples, model):  # used
     pair_data = []
     for (prot, deprot, atom_idx) in pair_tuples:
         m = mol_to_paired_mol_data(
@@ -216,10 +223,10 @@ def match_pka(pair_tuples, model):
         )
         pair_data.append(m)
     loader = dataset_to_dataloader(pair_data, 64, shuffle=False)
-    return np.round(predict(model, loader), 3)
+    return predict(model, loader)
 
 
-def acid_sequence(acid_pairs, mols, pkas, atoms):
+def acid_sequence(acid_pairs, mols, pkas, atoms):  # used
     # determine pka for protonatable groups
     if len(acid_pairs) > 0:
         acid_pkas = list(match_pka(acid_pairs, query_model.model))
@@ -237,13 +244,14 @@ def acid_sequence(acid_pairs, mols, pkas, atoms):
     return mols, pkas, atoms
 
 
-def base_sequence(base_pairs, mols, pkas, atoms):
+def base_sequence(base_pairs, mols, pkas, atoms):  # used
     # determine pka for deprotonatable groups
     if len(base_pairs) > 0:
         base_pkas = list(match_pka(base_pairs, query_model.model))
         pka = min(base_pkas)  # determining closest deprotonation pka
         if pka > 13.5:  # do not include if pka higher than 13.5
             return mols, pkas, atoms
+
         pkas.append(pka)  # appending pka to global pka list
         mols.append(
             base_pairs[base_pkas.index(pka)][1]
