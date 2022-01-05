@@ -110,7 +110,7 @@ def main():
 
     train_loader = dataset_to_dataloader(train_dataset, BATCH_SIZE, shuffle=True)
     val_loader = dataset_to_dataloader(validation_dataset, BATCH_SIZE, shuffle=True)
-    if args.r:
+    if args.reg:
         with open(args.reg, "rb") as f:
             reg_dataset = pickle.load(f)
         reg_loader = dataset_to_dataloader(reg_dataset, 1024, shuffle=True)
@@ -133,14 +133,12 @@ def main():
     if args.r:
         checkpoint = torch.load(f"{args.model}/pretrained_best_model.pt")
         model.load_state_dict(checkpoint["model_state_dict"])
-        prefix = "reg_everything_"
+        if args.reg:
+            prefix = "reg_everything_"
+        else:
+            prefix = "everything_"
         parms = []
         print("Attention: RELOADING model and extracting all layers")
-        # parms.extend(model.get_submodule("lins.0").parameters())
-        # parms.extend(model.get_submodule("lins.1").parameters())
-        # parms.extend(model.get_submodule("lins.2").parameters())
-        # print("####################")
-        # parms.extend(model.get_submodule("final_lin").parameters())
         parms = model.parameters()
         optimizer = torch.optim.AdamW(parms, lr=LEARNING_RATE,)
 
