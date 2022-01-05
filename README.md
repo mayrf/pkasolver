@@ -44,7 +44,7 @@ toolset for predicting the pka values of small molecules
 
 ### Copyright
 
-Copyright (c) 2021, Fritz Mayr
+Copyright (c) 2021, Fritz Mayr, Marcus Wieder, Oliver Wieder
 
 
 #### Acknowledgements

@@ -23,6 +23,9 @@ from copy import deepcopy
 from rdkit.Chem import Draw
 from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES, DEVICE
 from rdkit import RDLogger
+import sys
+
+from pkasolver.dimorphite_dl import run_with_mol_list
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -85,122 +88,74 @@ def set_model_path(new_path, query_model=query_model):
     query_model.set_path(new_path)
 
 
-def split_acid_base_pattern(smarts_file):  # from molGpka
-    df_smarts = pd.read_csv(smarts_file, sep="\t")
-    df_smarts_acid = df_smarts[df_smarts.Acid_or_base == "A"]
-    df_smarts_base = df_smarts[df_smarts.Acid_or_base == "B"]
-    return df_smarts_acid, df_smarts_base
+def get_ionization_indices(mol_lst):
+    """Takes a list of mol objects of different protonation states,
+    but identically indexed and returns indices list of ionizable atoms
+
+    that must be identically indexed
+    and differ only in their ionization state.
+
+    :param mol_lst: A list of rdkit.Chem.rdchem.Mol objects.
+    :type mol_lst: list
+    :raises Exception: If the molecules in mol_lst differ in more ways
+        than their protonation states
+    :return: A list of indices of ionizable atoms.
+    :rtype: list
+    """
+
+    assert (
+        len(set([len(mol.GetAtoms()) for mol in mol_lst])) == 1
+    ), "Molecules must only differ in their protonation state"
+
+    ion_idx = []
+    atoms = np.array(
+        [list(atom.GetFormalCharge() for atom in mol.GetAtoms()) for mol in mol_lst]
+    )
+    for i in range(atoms.shape[1]):
+        if len(set(list(atoms[:, i]))) > 1:
+            ion_idx.append(i)
+    return ion_idx
 
 
-def unique_acid_match(matches):  # from molGpka
-    single_matches = list(set([m[0] for m in matches if len(m) == 1]))
-    double_matches = [m for m in matches if len(m) == 2]
-    single_matches = [[j] for j in single_matches]
-    double_matches.extend(single_matches)
-    return double_matches
-
-
-def match_acid(df_smarts_acid, mol):  # from molGpka
-    matches = []
-    for idx, name, smarts, index, acid_base in df_smarts_acid.itertuples():
-        pattern = Chem.MolFromSmarts(smarts)
-        match = mol.GetSubstructMatches(pattern)
-        if len(match) == 0:
-            continue
-        if len(index) > 2:
-            index = index.split(",")
-            index = [int(i) for i in index]
-            for m in match:
-                matches.append([m[index[0]], m[index[1]]])
-        else:
-            index = int(index)
-            for m in match:
-                matches.append([m[index]])
-    matches = unique_acid_match(matches)
-    matches_modify = []
-    for i in matches:
-        for j in i:
-            matches_modify.append(j)
-    return matches_modify
-
-
-def match_base(df_smarts_base, mol):  # from molGpka
-    matches = []
-    for idx, name, smarts, index, acid_base in df_smarts_base.itertuples():
-        pattern = Chem.MolFromSmarts(smarts)
-        match = mol.GetSubstructMatches(pattern)
-        if len(match) == 0:
-            continue
-        if len(index) > 2:
-            index = index.split(",")
-            index = [int(i) for i in index]
-            for m in match:
-                matches.append([m[index[0]], m[index[1]]])
-        else:
-            index = int(index)
-            for m in match:
-                matches.append([m[index]])
-    matches = unique_acid_match(matches)
-    matches_modify = []
-    for i in matches:
-        for j in i:
-            matches_modify.append(j)
-    return matches_modify
-
-
-def get_ionization_aid(mol, acid_or_base=None):  # from molGpka
-    df_smarts_acid, df_smarts_base = split_acid_base_pattern(smarts_file)
-
-    if mol == None:
-        raise RuntimeError("read mol error: {}".format(mol_file))
-    acid_matches = match_acid(df_smarts_acid, mol)
-    base_matches = match_base(df_smarts_base, mol)
-    if acid_or_base == None:
-        return acid_matches, base_matches
-    elif acid_or_base == "acid":
-        return acid_matches
-    else:
-        return base_matches
-
-
-def get_possible_reactions(mol):
-
-    matches = get_ionization_aid(mol)
-    matches = sum(matches, [])  # flatten matches list
-
+def get_possible_reactions(mol, matches):
     acid_pairs = []
     base_pairs = []
     for match in matches:
-        is_prot = True
-        mol.__sssAtoms = [match]
-        new_mol = deepcopy(mol)
+        mol.__sssAtoms = [match]  # not sure if needed
         # create conjugate
+        new_mol = deepcopy(mol)
         atom = new_mol.GetAtomWithIdx(match)
+        element = atom.GetAtomicNum()
         charge = atom.GetFormalCharge()
         Ex_Hs = atom.GetNumExplicitHs()
         Tot_Hs = atom.GetTotalNumHs()
+        if (element == 7 and charge <= 0) or charge < 0:
+            # increase H
+            try:
+                atom.SetFormalCharge(charge + 1)
+                if Tot_Hs == 0 or Ex_Hs > 0:
+                    atom.SetNumExplicitHs(Ex_Hs + 1)
+                atom.UpdatePropertyCache()
+                acid_pairs.append((new_mol, mol, match))
+            except:
+                pass
+
+        # reset changes in case atom can also be deprotonated
+        new_mol = deepcopy(mol)
+        atom = new_mol.GetAtomWithIdx(match)
+        element = atom.GetAtomicNum()
+        charge = atom.GetFormalCharge()
+        Ex_Hs = atom.GetNumExplicitHs()
+        Tot_Hs = atom.GetTotalNumHs()
+
         if Tot_Hs > 0 and charge >= 0:
             # reduce H
             atom.SetFormalCharge(charge - 1)
             if Ex_Hs > 0:
                 atom.SetNumExplicitHs(Ex_Hs - 1)
-        # elif (Tot_Hs == 0 and charge <= 0) or charge < 0:
-        elif charge <= 0:
-            # increase H
-            atom.SetFormalCharge(charge + 1)
-            if Tot_Hs == 0 or Ex_Hs > 0:
-                atom.SetNumExplicitHs(Ex_Hs + 1)
-            is_prot = False
-        else:
-            continue
-
-        atom.UpdatePropertyCache()
-
-        # add tuple of conjugates
-        if is_prot:
+            atom.UpdatePropertyCache()
             base_pairs.append((mol, new_mol, match))
-        else:
-            acid_pairs.append((new_mol, mol, match))
+
     return acid_pairs, base_pairs
 
 
@@ -256,19 +211,30 @@ def base_sequence(base_pairs, mols, pkas, atoms):
 
 def mol_query(mol: Chem.rdchem.Mol):
 
+    try:
+        name = mol.GetProp("_Name")
+        mol = run_with_mol_list([mol], min_ph=7, max_ph=7, pka_precision=0)[0]
+        mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
+        mol.SetProp("_Name", name)
+    except:
+        mol = run_with_mol_list([mol], min_ph=7, max_ph=7, pka_precision=0)[0]
+        mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
+
     mols = [mol]
     pkas = []
     atoms = []
 
+    matches = get_ionization_indices(run_with_mol_list([mol], min_ph=0.5, max_ph=13.5))
+
     while True:
         inital_length = len(pkas)
-        acid_pairs, base_pairs = get_possible_reactions(mols[0])
+        acid_pairs, base_pairs = get_possible_reactions(mols[0], matches)
         mols, pkas, atoms = acid_sequence(acid_pairs, mols, pkas, atoms)
         if inital_length >= len(pkas):
             break
     while True:
         inital_length = len(pkas)
-        acid_pairs, base_pairs = get_possible_reactions(mols[-1])
+        acid_pairs, base_pairs = get_possible_reactions(mols[-1], matches)
         mols, pkas, atoms = base_sequence(base_pairs, mols, pkas, atoms)
         if inital_length >= len(pkas):
             break
