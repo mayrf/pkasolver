@@ -1,5 +1,5 @@
 from rdkit import Chem
-from pkasolver import query
+from pkasolver.query import mol_query
 import numpy as np
 
 input = "pkasolver/tests/testdata/00_chembl_subset.sdf"
@@ -15,7 +15,7 @@ with open(input, "rb") as fh:
 def test_mol_00():
     # 00 Chembl molecule
     mol = mollist[0]
-    molpairs, pkas, atoms = query.mol_query(mollist[0])
+    molpairs, pkas, atoms = mol_query(mollist[0])
     assert (
         Chem.MolToSmiles(molpairs[0][0])
         == "[NH3+]c1cc[n+](Cc2cccc(-c3cccc(C[n+]4ccc([NH3+])c5ccccc54)c3)c2)c2ccccc12"

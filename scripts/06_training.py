@@ -6,7 +6,7 @@ import torch
 from pkasolver.constants import DEVICE
 from pkasolver.data import calculate_nr_of_features
 from pkasolver.ml import dataset_to_dataloader
-from pkasolver.ml_architecture import GINPairV1, GINPairV3, GINProt, gcn_full_training
+from pkasolver.ml_architecture import GINPairV1, gcn_full_training
 
 node_feat_list = [
     "element",
@@ -72,10 +72,6 @@ def main():
 
     if args.model_name == "GINPairV1":
         model_name, model_class = "GINPairV1", GINPairV1
-    elif args.model_name == "GINPairV3":
-        model_name, model_class = "GINPairV3", GINPairV3
-    elif args.model_name == "GINProt":
-        model_name, model_class = "GINProt", GINProt
     else:
         raise RuntimeError()
     # where to save training progress
@@ -155,23 +151,12 @@ def main():
         prefix = "reg_everything_"
         parms = []
         print("Attention: RELOADING model and extracting all layers")
-        # parms.extend(model.get_submodule("lins.0").parameters())
-        # parms.extend(model.get_submodule("lins.1").parameters())
-        # parms.extend(model.get_submodule("lins.2").parameters())
-        # print("####################")
-        # parms.extend(model.get_submodule("final_lin").parameters())
         parms = model.parameters()
-        optimizer = torch.optim.AdamW(
-            parms,
-            lr=LEARNING_RATE,
-        )
+        optimizer = torch.optim.AdamW(parms, lr=LEARNING_RATE,)
 
     else:
         prefix = "pretrained_"
-        optimizer = torch.optim.AdamW(
-            model.parameters(),
-            lr=LEARNING_RATE,
-        )
+        optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE,)
 
     model.train()
     print(

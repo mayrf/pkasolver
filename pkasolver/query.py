@@ -1,32 +1,30 @@
 # imports
-from pkg_resources import resource_filename
 from os import path
-import pandas as pd
+
 import numpy as np
+from IPython.display import display
+from pkg_resources import resource_filename
 from rdkit import Chem
 from rdkit.Chem.Draw import IPythonConsole
-from rdkit.Chem import AllChem
-from IPython.display import display
 
 # IPythonConsole.drawOptions.addAtomIndices = True
 IPythonConsole.molSize = 400, 400
-from pkasolver.ml_architecture import GINPairV1, GINPairV2
-from pkasolver.ml import dataset_to_dataloader, predict
-from pkasolver.data import (
-    calculate_nr_of_features,
-    mol_to_paired_mol_data,
-    make_features_dicts,
-)
+from copy import deepcopy
+
 import torch
 import torch_geometric
-from copy import deepcopy
-from rdkit.Chem import Draw
-from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES, DEVICE
 from rdkit import RDLogger
-import sys
-import pickle
+from rdkit.Chem import Draw
 
-from pkasolver.dimorphite_dl import run_with_mol_list
+from pkasolver.constants import DEVICE, EDGE_FEATURES, NODE_FEATURES
+from pkasolver.data import (
+    calculate_nr_of_features,
+    make_features_dicts,
+    mol_to_paired_mol_data,
+)
+from pkasolver.dimorphite_dl.dimorphite_dl import run_with_mol_list
+from pkasolver.ml import dataset_to_dataloader, predict
+from pkasolver.ml_architecture import GINPairV1
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -51,35 +49,26 @@ num_edge_features = calculate_nr_of_features(edge_feat_list)
 selected_node_features = make_features_dicts(NODE_FEATURES, node_feat_list)
 selected_edge_features = make_features_dicts(EDGE_FEATURES, edge_feat_list)
 
-# model_path = "/data/shared/projects/pkasolver-data-clean/trained_models_v1/training_with_GINPairV1_v1_hp/reg_everything_best_model.pt"
-# model_path = "/data/shared/projects/pkasolver-data-clean-pickled-models/trained_models_v1/training_with_GINPairV1_v1_hp/reg_everything_best_model.pkl"
-model_path = path.join(path.dirname(__file__), "reg_everything_best_model.pkl")
-
 
 class QueryModel:
-    def __init__(self, path):
-        self.path = path
-        self.model_init()
+    def __init__(self, path_to_parameters: str = ""):
 
-    def model_init(self):
+        model_name, model_class = "GINPair", GINPairV1
+        model = model_class(num_node_features, num_edge_features, hidden_channels=96)
 
-        with open(model_path, "rb") as f:
-            self.model = pickle.load(f)
-        self.model.eval()
-        self.model.to(device=DEVICE)
+        if path_to_parameters:
+            checkpoint = torch.load(path_to_parameters)
+        else:
+            base_path = path.dirname(__file__)
+            checkpoint = torch.load(f"{base_path}/trained_model/fine_tuned_model.pt")
 
-    def set_path(self, new_path):
-        self.path = new_path
-        self.model_init()
-
-
-query_model = QueryModel(model_path)
-
-# helper functions
+        model.load_state_dict(checkpoint["model_state_dict"])
+        model.eval()
+        model.to(device=DEVICE)
+        self.model = model
 
 
-def set_model_path(new_path, query_model=query_model):
-    query_model.set_path(new_path)
+query_model = QueryModel()
 
 
 def get_ionization_indices(mol_lst):
@@ -157,11 +146,7 @@ def match_pka(pair_tuples, model):
     pair_data = []
     for (prot, deprot, atom_idx) in pair_tuples:
         m = mol_to_paired_mol_data(
-            prot,
-            deprot,
-            atom_idx,
-            selected_node_features,
-            selected_edge_features,
+            prot, deprot, atom_idx, selected_node_features, selected_edge_features,
         )
         pair_data.append(m)
     loader = dataset_to_dataloader(pair_data, 64, shuffle=False)
@@ -205,14 +190,11 @@ def base_sequence(base_pairs, mols, pkas, atoms):
 
 def mol_query(mol: Chem.rdchem.Mol):
 
-    try:
-        name = mol.GetProp("_Name")
-        mol = run_with_mol_list([mol], min_ph=7, max_ph=7, pka_precision=0)[0]
-        mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
-        mol.SetProp("_Name", name)
-    except:
-        mol = run_with_mol_list([mol], min_ph=7, max_ph=7, pka_precision=0)[0]
-        mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
+    name = mol.GetProp("_Name")
+
+    mol = run_with_mol_list([mol], min_ph=7, max_ph=7, pka_precision=0)[0]
+    mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
+    mol.SetProp("_Name", name)
 
     mols = [mol]
     pkas = []
