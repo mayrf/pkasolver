@@ -8,16 +8,16 @@ from rdkit.Chem.MolStandardize import rdMolStandardize
 
 def main():
     """
-    takes sdf file of initial training molcules and
+    takes sdf file of initial training molecules and
     sdf file of training molecules (both optionally gzipped)
-    and returns only those initial training molcules
+    and returns only those initial training molecules
     not contained in the training molecules file as sdf file.
     """
     RDLogger.DisableLog("rdApp.*")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", help="input filename")
-    parser.add_argument("--filter", help="filter filename")
-    parser.add_argument("--output", help="output filename")
+    parser.add_argument("--input", help="input filename, type: .sdf.gz or .sdf")
+    parser.add_argument("--filter", help="filter filename, type: .sdf or .sdf.gz")
+    parser.add_argument("--output", help="output filename, type: .sdf.gz or .sdf")
     args = parser.parse_args()
     input_zipped = False
     print("inputfile:", args.input)

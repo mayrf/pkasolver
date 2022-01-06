@@ -1,22 +1,22 @@
-#$ -S /bin/bash
-#$ -M marcus.wieder@univie.ac.at
-#$ -m e
-#$ -j y
-#$ -p -500
-#$ -o /data/shared/projects/SGE_LOG/
-#$ -l gpu=1
-#$ -cwd
-#$ -l h='!(node01|node12)'
-
+#!/bin/sh
+# define conda path
 . /data/shared/software/python_env/anaconda3/etc/profile.d/conda.sh
+# acivate conda environment
 conda activate pkasolver
+
+
 parameter_size='hp'
 model_name='GINPairV1'
+
+# ??
 pwd
 hostname
+# ??
 
 version=$1
 echo ${version}
+
+# path must be changed to working directory
 data_path='/data/shared/projects/pkasolver-data-test'
 
 # start with pretraining on the CHEMBL data

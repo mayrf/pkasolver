@@ -4,13 +4,13 @@ import argparse
 
 def main():
     """
-    takes molecules from schrödinger maestro (mae) file and
-    returns new mae file containing epik pka prediction data
+    takes molecules from Schrödinger maestro (mae) file and
+    returns new mae file containing Epik pka prediction data
     for each molecule.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", help="input filename")
-    parser.add_argument("--output", help="output filename")
+    parser.add_argument("--input", help="input filename, type: .mae.gz or .mae")
+    parser.add_argument("--output", help="output filename, type: .mae.gz or .mae")
     args = parser.parse_args()
 
     print("inputfile:", args.input)

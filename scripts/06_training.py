@@ -6,7 +6,7 @@ import torch
 from pkasolver.constants import DEVICE
 from pkasolver.data import calculate_nr_of_features
 from pkasolver.ml import dataset_to_dataloader
-from pkasolver.ml_architecture import GINProt, GINPairV3, GINPairV1, gcn_full_training
+from pkasolver.ml_architecture import GINPairV1, GINPairV3, GINProt, gcn_full_training
 
 node_feat_list = [
     "element",
@@ -33,22 +33,26 @@ def main():
     Parameters:
     --input: set of training molecules as pyg graphs (pkl)
     --model_name: name of model architecture used
+    --model: path for saving model or containing model for retraining
 
     optional parameters:
-    --model: path for saving model or containing model for retraing
     --val: set of validation molecules as pyg graphs (pkl)
     --epochs: set number of training epochs (default == 1000)
     --reg: ?
     -r: flag for retraining model at path give by --model
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", help="training set filename")
-    parser.add_argument("--val", nargs="?", default="", help="validation set filename")
+    parser.add_argument("--input", help="training set filename, type: .pkl")
     parser.add_argument(
-        "--reg", nargs="?", "", help="regularization set filename"
+        "--val", nargs="?", default="", help="validation set filename: .pkl"
+    )
+    parser.add_argument(
+        "--reg", nargs="?", default="", help="regularization set filename"
     )
     parser.add_argument("-r", action="store_true", help="retraining run")
-    parser.add_argument("--model_name", help="either GINProt, GINPairV3 or GINPairV1")
+    parser.add_argument(
+        "--model_name", help="either GINProt, GINPairV3 or GINPairV1, type: String"
+    )
     parser.add_argument("--model", help="training directory")
     parser.add_argument(
         "--epochs",
@@ -100,8 +104,9 @@ def main():
 
     # if validation argument is not specified randomly split training set
     if not args.val:
-        from sklearn.model_selection import train_test_split
         import random
+
+        from sklearn.model_selection import train_test_split
 
         if os.path.isfile(f"{args.model}/randint.pkl"):
             rs = pickle.load(open(f"{args.model}/randint.pkl", "rb"))

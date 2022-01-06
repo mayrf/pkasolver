@@ -7,6 +7,7 @@ from copy import deepcopy
 import pickle
 from rdkit.Chem import PropertyMol
 
+
 s = Standardizer()
 
 PH = 7.4
@@ -15,20 +16,20 @@ PH = 7.4
 def main():
     """
     takes sdf file with molcules containing epik pka predictions in their properties
-    and outputs a new sdf where those molecules containing more than one pka
+    and outputs a new pkl file where those molecules containing more than one pka
     get duplicated so that every molecules only contains one pka value.
     the molecule associated with each pka is the protonted form of the respective pka reaction
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", help="input filename")
-    parser.add_argument("--output", help="output filename")
+    parser.add_argument("--input", help="input filename, type: .sdf.gz or .sdf")
+    parser.add_argument("--output", help="output filename, type: .pkl")
     args = parser.parse_args()
     input_zipped = False
     print(f"pH splitting used: {PH}")
     print("inputfile:", args.input)
     print("outputfile:", args.output)
 
-    # test if it's gzipped
+    #  test if it's gzipped
     with gzip.open(args.input, "r") as fh:
         try:
             fh.read(1)
@@ -46,7 +47,7 @@ def main():
             processing(suppl, args)
 
 
-# generating the datat for a single molecule for all
+# generating the data for a single molecule for all
 # acidic pKa values
 def iterate_over_acids(
     acidic_mols_properties,

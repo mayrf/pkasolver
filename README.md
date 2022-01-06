@@ -22,25 +22,20 @@ The Python dependencies are:
 
 ### Installing
 
-1) Install all dependencies in your python environment. (yaml file in devtools/conda-envs/test_env.yml) 
-2) Download this repo
+1) Download this repo
+2) Install all dependencies in your python environment. (yaml file is located in devtools/conda-envs/test_env.yml) (Note that the dependencies may take a long time to download) 
 3) `cd` into the repo
-3) Install the package by using the terminal command `python setup.py install`
+4) run `conda activate pkasolver` to activate conda environment
+5) Install the pkasolver package by using the terminal command `python setup.py install`
 
 ## Usage
 
-The `notebooks` directory contains jupyter notebooks that demonstrate the usage of the pkasolver api for predicting pka values for single or multiple molecules.
-In the `scripts` folder there are a number python scripts to prepare data, train models and benchmark their performance.
+The `notebooks` directory contains jupyter notebooks that demonstrate the usage of the pkasolver api for predicting pka values for single or multiple molecules. The model used in the api is included with the package files.
+To generate your own models, see the `scripts` folder which contains a number of python scripts to prepare data, train models and benchmark their performance.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
-
-It uses pyTorch and pyTorch geometrics for handling NN-models and sklearn to deploy other machine learning models that serve as baselines.  for  is inspired by the works of Baltruschat et. al. and 
-
-developed in the course of the master tesis of Fritz Mayr at the 
-
-toolset for predicting the pka values of small molecules
 
 ### Copyright
 
@@ -51,3 +46,5 @@ Copyright (c) 2021, Fritz Mayr, Marcus Wieder, Oliver Wieder
  
 Project based on the 
 [Computational Molecular Science Python Cookiecutter](https://github.com/molssi/cookiecutter-cms) version 1.4.
+This project has been inspired by the works of Baltruschat et. al. (https://f1000research.com/articles/9-113/v2) and Pan et. al. (https://pubs.acs.org/doi/abs/10.1021/acs.jcim.1c00075) and was developed in the course of the master thesis of Fritz Mayr at the group of Dr. Thierry Langer at the Department of Pharmaceutical Sciences of the University of Vienna.
+

@@ -6,19 +6,20 @@ import argparse
 
 def main():
     """
-    Filters the molcules of the chembl database
+    Filters the molecules of the Chembl database
     by the specified criteria
     (e.g. max number of rule of five violation = 1)
     and outputs them to a gzipped sdf file.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", help="output filename")
+    parser.add_argument("--output", help="output filename, type: .sdf.gz")
     args = parser.parse_args()
 
     print("outputfile:", args.output)
 
     molecule = new_client.molecule
-    # mols = molecule.filter(max_phase=4)
+
+    # Filters for chembl query are set here
     mols = molecule.filter(molecule_type="Small molecule").filter(
         molecule_properties__num_ro5_violations=1
     )

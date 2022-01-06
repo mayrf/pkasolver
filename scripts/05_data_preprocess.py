@@ -16,13 +16,13 @@ import multiprocess as mp
 
 def main(selected_node_features: dict, selected_edge_features: dict):
     """
-    takes pkl file of molcules containing pka data and returns 
-    pytorch geometric graph data containing 
+    takes pkl file of molecules containing pka data and returns
+    pytorch geometric graph data containing
     protonated and deprotonated graphs for every pka
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", help="input filename")
-    parser.add_argument("--output", help="output filename")
+    parser.add_argument("--input", help="input filename, type: .pkl")
+    parser.add_argument("--output", help="output filename, type: .pkl")
     args = parser.parse_args()
     input_zipped = False
     print("inputfile:", args.input)

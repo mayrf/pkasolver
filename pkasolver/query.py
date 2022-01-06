@@ -24,16 +24,11 @@ from rdkit.Chem import Draw
 from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES, DEVICE
 from rdkit import RDLogger
 import sys
+import pickle
 
 from pkasolver.dimorphite_dl import run_with_mol_list
 
 RDLogger.DisableLog("rdApp.*")
-
-
-# paths and constants
-smarts_file = "smarts_pattern_impl.tsv"
-smarts_file = path.join(path.dirname(__file__), "smarts_pattern_impl.tsv")
-
 
 node_feat_list = [
     "element",
@@ -56,7 +51,9 @@ num_edge_features = calculate_nr_of_features(edge_feat_list)
 selected_node_features = make_features_dicts(NODE_FEATURES, node_feat_list)
 selected_edge_features = make_features_dicts(EDGE_FEATURES, edge_feat_list)
 
-model_path = "/data/shared/projects/pkasolver-data-clean/trained_models_v1/training_with_GINPairV1_v1_hp/reg_everything_best_model.pt"
+# model_path = "/data/shared/projects/pkasolver-data-clean/trained_models_v1/training_with_GINPairV1_v1_hp/reg_everything_best_model.pt"
+# model_path = "/data/shared/projects/pkasolver-data-clean-pickled-models/trained_models_v1/training_with_GINPairV1_v1_hp/reg_everything_best_model.pkl"
+model_path = path.join(path.dirname(__file__), "reg_everything_best_model.pkl")
 
 
 class QueryModel:
@@ -65,12 +62,9 @@ class QueryModel:
         self.model_init()
 
     def model_init(self):
-        self.model_name, self.model_class = "GINPairV1", GINPairV1
-        self.model = self.model_class(
-            num_node_features, num_edge_features, hidden_channels=96
-        )
-        self.checkpoint = torch.load(self.path)
-        self.model.load_state_dict(self.checkpoint["model_state_dict"])
+
+        with open(model_path, "rb") as f:
+            self.model = pickle.load(f)
         self.model.eval()
         self.model.to(device=DEVICE)
 

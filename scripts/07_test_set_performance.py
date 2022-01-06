@@ -1,18 +1,18 @@
 import argparse
 import pickle
-import torch
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
+import torch
 from pkasolver.constants import DEVICE
 from pkasolver.data import calculate_nr_of_features
 from pkasolver.ml import (
-    dataset_to_dataloader,
     calc_testset_performace,
     calculate_performance_of_model_on_data,
+    dataset_to_dataloader,
 )
 from pkasolver.ml_architecture import GINPairV1, GINPairV2, gcn_test
-from scipy.stats import t
 from pkasolver.stat import calc_stat_info
+from scipy.stats import t
 from sklearn.metrics import mean_squared_error
 
 
@@ -53,8 +53,8 @@ num_node_features = calculate_nr_of_features(node_feat_list)
 num_edge_features = calculate_nr_of_features(edge_feat_list)
 
 
-import seaborn as sns
 import numpy as np
+import seaborn as sns
 
 sns.set_context("paper", font_scale=2)
 
@@ -106,20 +106,17 @@ def plot_results(x_col, y_col, y_error, name):
 def main():
     """
     takes the path to models, a test set as pyg graphs (pkl) and the name for the output file
-    and returns regression plot containing the mean predection of the models for each pka, including error bars.
+    and returns regression plot containing the mean prediction of the models for each pka, including error bars.
     The figures additionally contain the MAE, RMSE and R2 with confidence interval.
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", help="location where models are stored", nargs="+")
-    parser.add_argument("--testset", help="test set filename")
+    parser.add_argument(
+        "--model", help="location where models are stored, type: pkl", nargs="+"
+    )
+    parser.add_argument("--testset", help="test set filename, type: pkl, type: pkl")
     parser.add_argument("--name", help="name for reg-plot")
     args = parser.parse_args()
-
-    if args.model[0].__contains__("GINPairV1"):
-        model_name, model_class = "GINPairV1", GINPairV1
-    if args.model[0].__contains__("GINPairV2"):
-        model_name, model_class = "GINPairV2", GINPairV2
 
     # decide wheter to split training set or use explicit validation set
     print(f"load test dataset from: {args.testset}")
@@ -131,20 +128,10 @@ def main():
     mae, rmse, r2 = [], [], []
     for i, model_path in enumerate(args.model):
 
-        if args.model[0].__contains__("hp"):
-            model = model_class(
-                num_node_features, num_edge_features, hidden_channels=96
-            )
-        if args.model[0].__contains__("lp"):
-            model = model_class(
-                num_node_features, num_edge_features, hidden_channels=64
-            )
-        checkpoint = torch.load(f"{model_path}")
-        model.load_state_dict(checkpoint["model_state_dict"])
+        with open(model_path, "rb") as f:
+            model = pickle.load(f)
         model.eval()
-
         model.to(device=DEVICE)
-        # test_loss = gcn_test(model, test_loader)
 
         MAE, RMSE, R2 = calc_testset_performace(model, test_loader)
         mae.append(MAE)
@@ -164,7 +151,7 @@ def main():
     r2_stats = confidence_calculation(r2)
     rmse_stats = confidence_calculation(rmse)
     print(
-        f"MAE: {confidence_calculation(mae)}, RMSE: {confidence_calculation(rmse)}, R2: {confidence_calculation(r2)}"
+        f"{len(args.model)} Models tested: \nMAE: {confidence_calculation(mae)}, RMSE: {confidence_calculation(rmse)}, R2: {confidence_calculation(r2)}"
     )
 
     g = plot_results(x_array, y_array, y_error, args.name)

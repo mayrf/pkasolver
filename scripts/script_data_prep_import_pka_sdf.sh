@@ -1,22 +1,20 @@
-#$ -S /bin/bash
-#$ -M marcus.wieder@univie.ac.at
-#$ -m e
-#$ -j y
-#$ -p -500
-#$ -o /data/shared/projects/SGE_LOG/
-#$ -l gpu=1
-#$ -cwd
-#$ -l h='!(node01|node12)'
-
+#!/bin/sh
+# define conda path
 . /data/shared/software/python_env/anaconda3/etc/profile.d/conda.sh
+# acivate conda environment
 conda activate pkasolver
-parameter_size='hp'
-model_name='GINPairV3'
+
+# ??
 pwd
 hostname
+# ??
+
+parameter_size='hp'
+model_name='GINPairV3'
 
 version=$1
 echo ${version}
+# path must be changed to working directory
 data_path='/data/shared/projects/pkasolver-data-test'
 
 python 04_2_prepare_rest.py --input ${data_path}/00_novartis_testdata.sdf --output ${data_path}/04_novartis_testdata_mols.pkl

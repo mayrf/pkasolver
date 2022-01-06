@@ -4,11 +4,11 @@ import argparse
 
 def main():
     """
-    takes schröndiger maestro (mae) file (can be gzipped) and converts it to sdf file.
+    takes Schrödinger maestro (mae) file (can be gzipped) and converts it to sdf file.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", help="input filename")
-    parser.add_argument("--output", help="output filename")
+    parser.add_argument("--input", help="input filename, type: .mae.gz or .mae")
+    parser.add_argument("--output", help="output filename, type: .sdf.gz or .sdf")
     args = parser.parse_args()
 
     print("inputfile:", args.input)

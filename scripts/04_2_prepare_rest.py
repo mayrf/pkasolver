@@ -18,8 +18,8 @@ def main():
     ?Precise purpose?
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", help="input filename")
-    parser.add_argument("--output", help="output filename")
+    parser.add_argument("--input", help="input filename, type: .sdf.gz or .sdf")
+    parser.add_argument("--output", help="output filename, type: .pkl")
     args = parser.parse_args()
     input_zipped = False
     print(f"pH splitting used: {PH}")
@@ -44,7 +44,7 @@ def main():
             processing(suppl, args)
 
 
-# generating the datat for a single molecule for all
+# generating the data for a single molecule for all
 # acidic pKa values
 def iterate_over_acids(
     acidic_mols_properties,
