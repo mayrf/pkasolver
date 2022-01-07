@@ -1,5 +1,5 @@
 from rdkit import Chem
-from pkasolver.query import mol_query
+from pkasolver.query import mol_query, smiles_query, inchi_query
 import numpy as np
 
 input = "pkasolver/tests/testdata/00_chembl_subset.sdf"
@@ -8,14 +8,53 @@ with open(input, "rb") as fh:
     suppl = Chem.ForwardSDMolSupplier(fh, removeHs=True)
     for i, mol in enumerate(suppl):
         mollist.append(mol)
-        # if i >= 9:
-        #     break
+
+def test_predict():
+    from pkasolver.data import (
+        make_features_dicts,
+        mol_to_paired_mol_data,
+    )
+    from pkasolver.ml import dataset_to_dataloader, predict
+    from pkasolver.constants import DEVICE, EDGE_FEATURES, NODE_FEATURES
+    from pkasolver.query import QueryModel
+
+    node_feat_list = [
+        "element",
+        "formal_charge",
+        "hybridization",
+        "total_num_Hs",
+        "aromatic_tag",
+        "total_valence",
+        "total_degree",
+        "is_in_ring",
+        "reaction_center",
+        "smarts",
+    ]
+
+    edge_feat_list = ["bond_type", "is_conjugated", "rotatable"]
+    query_model = QueryModel()
+
+    # make dicts from selection list to be used in the processing step
+    selected_node_features = make_features_dicts(NODE_FEATURES, node_feat_list)
+    selected_edge_features = make_features_dicts(EDGE_FEATURES, edge_feat_list)
+    prot = Chem.MolFromSmiles(
+        "Nc1cc[n+](Cc2cccc(-c3cccc(C[n+]4ccc([NH3+])c5ccccc54)c3)c2)c2ccccc12"
+    )
+    deprot = Chem.MolFromSmiles(
+        "Nc1cc[n+](Cc2cccc(-c3cccc(C[n+]4ccc(N)c5ccccc54)c3)c2)c2ccccc12"
+    )
+    m = mol_to_paired_mol_data(
+        prot, deprot, 21, selected_node_features, selected_edge_features,
+    )
+    loader = dataset_to_dataloader([m], 64, shuffle=False)
+    assert np.isclose(predict(query_model.model, loader), 2.39621401)
 
 
 def test_mol_00():
     # 00 Chembl molecule
     mol = mollist[0]
-    molpairs, pkas, atoms = mol_query(mollist[0])
+
+    molpairs, pkas, atoms = mol_query(mol)
     assert (
         Chem.MolToSmiles(molpairs[0][0])
         == "[NH3+]c1cc[n+](Cc2cccc(-c3cccc(C[n+]4ccc([NH3+])c5ccccc54)c3)c2)c2ccccc12"
@@ -57,7 +96,7 @@ def test_mol_00():
 def test_mol_14():
     # 14th Chembl molecule
     mol = Chem.MolToSmiles(mollist[14])
-    molpairs, pkas, atoms = query.smiles_query(mol, output_smiles=True)
+    molpairs, pkas, atoms = smiles_query(mol, output_smiles=True)
 
     assert molpairs[0][0] == "O[NH2+]C1c2cc(O)c(O)cc2-c2cc(O)c(O)cc21"
     assert molpairs[0][1] == "ONC1c2cc(O)c(O)cc2-c2cc(O)c(O)cc21"
@@ -87,8 +126,8 @@ def test_mol_14():
 def test_mol_20():
     # 20th Chembl molecule
     mol = Chem.MolToSmiles(mollist[20])
-    molpairs, pkas, atoms = query.smiles_query(mol, output_smiles=True)
-
+    molpairs, pkas, atoms = smiles_query(mol, output_smiles=True)
+    print(molpairs, pkas, atoms)
     assert (
         molpairs[0][0]
         == "CC1(C)C2=CCC3C4CC[C@H](OC5CC5)[C@@]4(C)CCC3[C@@]2(C)CC[C@@H]1O"
@@ -105,7 +144,7 @@ def test_mol_20():
 def test_mol_42():
     # 42th Chembl molecule
     mol = Chem.MolToInchi(mollist[42])
-    molpairs, pkas, atoms = query.inchi_query(mol, output_inchi=True)
+    molpairs, pkas, atoms = inchi_query(mol, output_inchi=True)
 
     assert (
         molpairs[0][0]
@@ -123,7 +162,7 @@ def test_mol_42():
 def test_mol_47():
     # 47th Chembl molecule
     mol = Chem.MolToInchi(mollist[47])
-    molpairs, pkas, atoms = query.inchi_query(mol, output_inchi=True)
+    molpairs, pkas, atoms = inchi_query(mol, output_inchi=True)
 
     assert (
         molpairs[0][0]
@@ -148,7 +187,7 @@ def test_mol_47():
 def test_mol_53():
     # 53th Chembl molecule
     mol = Chem.MolToInchi(mollist[53])
-    molpairs, pkas, atoms = query.inchi_query(mol, output_inchi=True)
+    molpairs, pkas, atoms = inchi_query(mol, output_inchi=True)
 
     assert (
         molpairs[0][0]
@@ -192,7 +231,7 @@ def test_mol_53():
 def test_mol_58():
     # 58th Chembl molecule
     mol = Chem.MolToSmiles(mollist[58])
-    molpairs, pkas, atoms = query.smiles_query(mol, output_smiles=True)
+    molpairs, pkas, atoms = smiles_query(mol, output_smiles=True)
 
     assert molpairs[0][0] == "CCCCCC[NH+]1CC[NH+]2CC(c3ccccc3)c3ccccc3C2C1"
     assert molpairs[0][1] == "CCCCCCN1CC[NH+]2CC(c3ccccc3)c3ccccc3C2C1"
@@ -207,7 +246,7 @@ def test_mol_58():
 def test_mol_59():
     # 59th Chembl molecule
     mol = Chem.MolToSmiles(mollist[59])
-    molpairs, pkas, atoms = query.smiles_query(mol, output_smiles=True)
+    molpairs, pkas, atoms = smiles_query(mol, output_smiles=True)
 
     assert molpairs[0][0] == "CC/C(=C(\c1ccc(I)cc1)c1ccc(OCC[NH+](C)C)cc1)c1ccccc1"
     assert molpairs[0][1] == "CC/C(=C(\c1ccc(I)cc1)c1ccc(OCCN(C)C)cc1)c1ccccc1"
@@ -219,7 +258,7 @@ def test_mol_59():
 def test_mol_62():
     # 62th Chembl molecule
     mol = Chem.MolToSmiles(mollist[62])
-    molpairs, pkas, atoms = query.smiles_query(mol, output_smiles=True)
+    molpairs, pkas, atoms = smiles_query(mol, output_smiles=True)
 
     assert molpairs[0][0] == "Cc1cc(CCCCCOc2ccc(-c3[nH+]c(C)c(C)o3)cc2)o[nH+]1"
     assert molpairs[0][1] == "Cc1cc(CCCCCOc2ccc(-c3nc(C)c(C)o3)cc2)o[nH+]1"
@@ -234,7 +273,7 @@ def test_mol_62():
 def test_mol_70():
     # 70th Chembl molecule
     mol = Chem.MolToSmiles(mollist[70])
-    molpairs, pkas, atoms = query.smiles_query(mol, output_smiles=True)
+    molpairs, pkas, atoms = smiles_query(mol, output_smiles=True)
 
     assert molpairs[0][0] == "Oc1ccc(/C(=C(/c2ccc(O)cc2)C(F)(F)F)C(F)(F)F)cc1"
     assert molpairs[0][1] == "[O-]c1ccc(/C(=C(/c2ccc(O)cc2)C(F)(F)F)C(F)(F)F)cc1"

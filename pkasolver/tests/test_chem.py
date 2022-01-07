@@ -20,3 +20,24 @@ def test_conjugates():
             mol_new.GetNumHeavyAtoms() - mol_new.GetNumAtoms(onlyExplicit=False),
         )
         assert Chem.MolToSmiles(mol_unchanged) != Chem.MolToSmiles(mol_new)
+
+
+def test_correctness_of_conjugates_for_bases():
+
+    m = Chem.MolFromSmiles(
+        "[NH3+]c1cc[n+](Cc2cccc(-c3cccc(C[n+]4ccc([NH3+])c5ccccc54)c3)c2)c2ccccc12"
+    )
+    mol_new = create_conjugate(m, 21, 10.5, ignore_danger=True)
+    print(Chem.MolToSmiles(mol_new))
+    assert (
+        Chem.MolToSmiles(mol_new)
+        == "Nc1cc[n+](Cc2cccc(-c3cccc(C[n+]4ccc([NH3+])c5ccccc54)c3)c2)c2ccccc12"
+    )
+
+
+def test_correctness_of_conjugates_for_acids():
+
+    m = Chem.MolFromSmiles("CC(=O)[O-]")
+    mol_new = create_conjugate(m, 3, 2.5, ignore_danger=True)
+    print(Chem.MolToSmiles(mol_new))
+    Chem.MolToSmiles(mol_new) == "CC(=O)O"
