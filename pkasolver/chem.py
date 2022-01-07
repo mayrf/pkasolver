@@ -6,13 +6,13 @@ from copy import deepcopy
 
 
 def create_conjugate(
-    mol_initial: Chem.Mol, id: int, pka: float, pH=7.4, ignore_danger: bool = False
+    mol_initial: Chem.Mol, idx: int, pka: float, pH=7.4, ignore_danger: bool = False
 ):
     """Create a new molecule that is the conjugated base/acid to the input molecule."""
     mol = deepcopy(mol_initial)
     mol_changed = Chem.RWMol(mol)
     Chem.SanitizeMol(mol_changed)
-    atom = mol_changed.GetAtomWithIdx(id)
+    atom = mol_changed.GetAtomWithIdx(idx)
     charge = atom.GetFormalCharge()
     Ex_Hs = atom.GetNumExplicitHs()
     Tot_Hs = atom.GetTotalNumHs()
