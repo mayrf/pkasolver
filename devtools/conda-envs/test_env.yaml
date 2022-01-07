@@ -25,5 +25,6 @@ dependencies:
      - torch-sparse
      - torch-scatter
      - molvs
+     - multiprocess
      - p_tqdm
      - chembl_webresource_client

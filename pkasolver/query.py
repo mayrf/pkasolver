@@ -1,32 +1,35 @@
 # imports
-from pkg_resources import resource_filename
 from os import path
-import pandas as pd
+from typing import Tuple
+
 import numpy as np
-from rdkit import Chem
-from rdkit.Chem.Draw import IPythonConsole
-from rdkit.Chem import AllChem
+import pandas as pd
 from IPython.display import display
+from pkg_resources import resource_filename
+from rdkit import Chem
+from rdkit.Chem import AllChem
+from rdkit.Chem.Draw import IPythonConsole
 
 # IPythonConsole.drawOptions.addAtomIndices = True
 IPythonConsole.molSize = 400, 400
-from pkasolver.ml_architecture import GINPairV1, GINPairV2
-from pkasolver.ml import dataset_to_dataloader, predict
-from pkasolver.data import (
-    calculate_nr_of_features,
-    mol_to_paired_mol_data,
-    make_features_dicts,
-)
+import pickle
+import sys
+from copy import deepcopy
+
 import torch
 import torch_geometric
-from copy import deepcopy
-from rdkit.Chem import Draw
-from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES, DEVICE
 from rdkit import RDLogger
-import sys
-import pickle
+from rdkit.Chem import Draw
 
+from pkasolver.constants import DEVICE, EDGE_FEATURES, NODE_FEATURES
+from pkasolver.data import (
+    calculate_nr_of_features,
+    make_features_dicts,
+    mol_to_paired_mol_data,
+)
 from pkasolver.dimorphite_dl import run_with_mol_list
+from pkasolver.ml import dataset_to_dataloader, predict
+from pkasolver.ml_architecture import GINPairV1, GINPairV2
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -51,8 +54,8 @@ num_edge_features = calculate_nr_of_features(edge_feat_list)
 selected_node_features = make_features_dicts(NODE_FEATURES, node_feat_list)
 selected_edge_features = make_features_dicts(EDGE_FEATURES, edge_feat_list)
 
-# model_path = "/data/shared/projects/pkasolver-data-clean/trained_models_v1/training_with_GINPairV1_v1_hp/reg_everything_best_model.pt"
-# model_path = "/data/shared/projects/pkasolver-data-clean-pickled-models/trained_models_v1/training_with_GINPairV1_v1_hp/reg_everything_best_model.pkl"
+# # model_path = "/data/shared/projects/pkasolver-data-clean/trained_models_v1/training_with_GINPairV1_v1_hp/reg_everything_best_model.pt"
+# # model_path = "/data/shared/projects/pkasolver-data-clean-pickled-models/trained_models_v1/training_with_GINPairV1_v1_hp/reg_everything_best_model.pkl"
 model_path = path.join(path.dirname(__file__), "reg_everything_best_model.pkl")
 
 
@@ -78,11 +81,11 @@ query_model = QueryModel(model_path)
 # helper functions
 
 
-def set_model_path(new_path, query_model=query_model):
+def set_model_path(new_path: str, query_model=query_model):
     query_model.set_path(new_path)
 
 
-def get_ionization_indices(mol_lst):
+def get_ionization_indices(mol_lst: list) -> list:
     """Takes a list of mol objects of different protonation states,
     but identically indexed and returns indices list of ionizable atoms
 
@@ -111,7 +114,7 @@ def get_ionization_indices(mol_lst):
     return ion_idx
 
 
-def get_possible_reactions(mol, matches):
+def get_possible_reactions(mol: Chem.rdchem.Mol, matches: list) -> Tuple[list, list]:
     acid_pairs = []
     base_pairs = []
     for match in matches:
@@ -153,7 +156,7 @@ def get_possible_reactions(mol, matches):
     return acid_pairs, base_pairs
 
 
-def match_pka(pair_tuples, model):
+def match_pka(pair_tuples: list, model) -> float:
     pair_data = []
     for (prot, deprot, atom_idx) in pair_tuples:
         m = mol_to_paired_mol_data(
@@ -168,7 +171,9 @@ def match_pka(pair_tuples, model):
     return np.round(predict(model, loader), 3)
 
 
-def acid_sequence(acid_pairs, mols, pkas, atoms):
+def acid_sequence(
+    acid_pairs: list, mols: list, pkas: list, atoms: list
+) -> Tuple[list, list, list]:
     # determine pka for protonatable groups
     if len(acid_pairs) > 0:
         acid_pkas = list(match_pka(acid_pairs, query_model.model))
@@ -186,7 +191,9 @@ def acid_sequence(acid_pairs, mols, pkas, atoms):
     return mols, pkas, atoms
 
 
-def base_sequence(base_pairs, mols, pkas, atoms):
+def base_sequence(
+    base_pairs: list, mols: list, pkas: list, atoms: list
+) -> Tuple[list, list, list]:
     # determine pka for deprotonatable groups
     if len(base_pairs) > 0:
         base_pkas = list(match_pka(base_pairs, query_model.model))
@@ -203,7 +210,7 @@ def base_sequence(base_pairs, mols, pkas, atoms):
     return mols, pkas, atoms
 
 
-def mol_query(mol: Chem.rdchem.Mol):
+def mol_query(mol: Chem.rdchem.Mol) -> Tuple[list, list, list]:
 
     try:
         name = mol.GetProp("_Name")
@@ -241,7 +248,7 @@ def mol_query(mol: Chem.rdchem.Mol):
     return mols, pkas, atoms
 
 
-def smiles_query(smi, output_smiles=False):
+def smiles_query(smi: str, output_smiles: bool = False) -> Tuple[list, list, list]:
     mols, pkas, atoms = mol_query(Chem.MolFromSmiles(smi))
     if output_smiles == True:
         smiles = []
@@ -251,7 +258,7 @@ def smiles_query(smi, output_smiles=False):
     return mols, pkas, atoms
 
 
-def inchi_query(ini, output_inchi=False):
+def inchi_query(ini: str, output_inchi=False) -> Tuple[list, list, list]:
     # return mol_query(Chem.MolFromInchi(ini))
     mols, pkas, atoms = mol_query(Chem.MolFromInchi(ini))
     if output_inchi == True:
@@ -262,7 +269,7 @@ def inchi_query(ini, output_inchi=False):
     return mols, pkas, atoms
 
 
-def sdf_query(input_path, output_path, merged_output=False):
+def sdf_query(input_path: str, output_path: str, merged_output: bool = False):
     print(f"opening .sdf file at {input_path} and computing pkas...")
     with open(input_path, "rb") as fh:
         with open(output_path, "w") as sdf_zip:
@@ -299,14 +306,14 @@ def sdf_query(input_path, output_path, merged_output=False):
                 )
 
 
-def draw_pka_map(mols, pkas, atoms, size=(450, 450)):
+def draw_pka_map(mols: list, pkas: list, atoms: list, size=(450, 450)):
     mol = mols[0][0]
     for atom, pka in zip(atoms, pkas):
         mol.GetAtomWithIdx(atom).SetProp("atomNote", f"{pka:.2f}")
     return Draw.MolToImage(mol, size=size)
 
 
-def draw_pka_reactions(mols, pkas, atoms):
+def draw_pka_reactions(mols: list, pkas: list, atoms: list):
     draw_pairs = []
     pair_atoms = []
     pair_pkas = []
@@ -323,7 +330,7 @@ def draw_pka_reactions(mols, pkas, atoms):
     )
 
 
-def draw_sdf_mols(input_path, range_list=[]):
+def draw_sdf_mols(input_path: str, range_list=[]):
     print(f"opening .sdf file at {input_path} and computing pkas...")
     with open(input_path, "rb") as fh:
         count = 0

@@ -1,113 +1,104 @@
-import numpy as np
-import pandas as pd
-from pkasolver import ml
-
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import mean_squared_error
-
-###############################
+import copy
 
 # Attribution visualisation
 import random
-import torch
-import pandas as pd
-from scipy.linalg import block_diag
-import copy
-import seaborn as sns
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import mean_squared_error
 
-
-def calc_importances(
-    ig, dataset, sample_size, node_feature_names, edge_feature_names=[], device="cpu"
-):
-    """Return a DataFrame with the Attributions of all Features,
-    calculated for a number of random samples of a given dataset.
-    """
-    dataset = copy.deepcopy(dataset)
-    PAIRED = "x2" in str(ig.forward_func)
-    if "NNConv" not in str(ig.forward_func):
-        edge_feature_names = []
-    feature_names = node_feature_names + edge_feature_names
-    if PAIRED:
-        feature_names = feature_names + ["2_" + s for s in feature_names]
-    attr = np.empty((0, len(feature_names)))
-    ids = []
-
-    i = 0
-    for input_data in random.sample(dataset, sample_size):
-        input_data.x_p_batch = torch.zeros(input_data.x_p.shape[0], dtype=int).to(
-            device=device
-        )
-        input_data.x_d_batch = torch.zeros(input_data.x_d.shape[0], dtype=int).to(
-            device=device
-        )
-        if PAIRED and edge_feature_names == []:
-            ids.extend(
-                [input_data.ID] * (input_data.x.shape[0] + input_data.x_d.shape[0])
-            )
-            input1 = (input_data.x_p, input_data.x_d)
-            input2 = (input_data.edge_attr_p, input_data.edge_attr_d, input_data)
-        elif PAIRED and edge_feature_names != []:
-            ids.extend(
-                [input_data.ID]
-                * (
-                    input_data.x_p.shape[0]
-                    + input_data.edge_index_p.shape[1]
-                    + input_data.x_d.shape[0]
-                    + input_data.edge_index_d.shape[1]
-                )
-            )
-            input1 = (
-                input_data.x_p,
-                input_data.x_d,
-                input_data.edge_attr_p,
-                input_data.edge_attr_d,
-            )
-            input2 = input_data
-        elif not PAIRED and edge_feature_names == []:
-            ids.extend([input_data.ID] * (input_data.x_p.shape[0]))
-            input1 = input_data.x_p
-            input2 = (
-                input_data.edge_attr_p,
-                input_data.x_p,
-                input_data.edge_attr_p,
-                input_data,
-            )
-        elif not PAIRED and edge_feature_names != []:
-            ids.extend(
-                [input_data.ID]
-                * (input_data.x_p.shape[0] + input_data.edge_index_p.shape[1])
-            )
-            input1 = (input_data.x_p, input_data.edge_attr_p)
-            input2 = (input_data.x_d, input_data.edge_attr_d, input_data)
-
-        _attr = ig.attribute(
-            input1,
-            additional_forward_args=(input2),
-            internal_batch_size=input_data.x_p.shape[0],
-        )
-        if not PAIRED and edge_feature_names == []:
-            attr_row = _attr.cpu().detach().numpy()
-
-        else:
-            attr_row = block_diag(*[a.cpu().detach().numpy() for a in _attr])
-
-        attr = np.vstack((attr, attr_row))
-
-        if i % 10 == 0:
-            print(f"{i+1} of {sample_size}")
-        i += 1
-    df = pd.DataFrame(attr, columns=feature_names)
-    df.insert(0, "ID", ids)
-    return df
-
-
-from scipy import stats
 import numpy as np
 import pandas as pd
+import seaborn as sns
+import torch
+from scipy import stats
+from scipy.linalg import block_diag
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+from pkasolver import ml
+
+###############################
+
+
+# def calc_importances(
+#     ig, dataset, sample_size, node_feature_names, edge_feature_names=[], device="cpu"
+# ):
+#     """Return a DataFrame with the Attributions of all Features,
+#     calculated for a number of random samples of a given dataset.
+#     """
+#     dataset = copy.deepcopy(dataset)
+#     PAIRED = "x2" in str(ig.forward_func)
+#     if "NNConv" not in str(ig.forward_func):
+#         edge_feature_names = []
+#     feature_names = node_feature_names + edge_feature_names
+#     if PAIRED:
+#         feature_names = feature_names + ["2_" + s for s in feature_names]
+#     attr = np.empty((0, len(feature_names)))
+#     ids = []
+
+#     i = 0
+#     for input_data in random.sample(dataset, sample_size):
+#         input_data.x_p_batch = torch.zeros(input_data.x_p.shape[0], dtype=int).to(
+#             device=device
+#         )
+#         input_data.x_d_batch = torch.zeros(input_data.x_d.shape[0], dtype=int).to(
+#             device=device
+#         )
+#         if PAIRED and edge_feature_names == []:
+#             ids.extend(
+#                 [input_data.ID] * (input_data.x.shape[0] + input_data.x_d.shape[0])
+#             )
+#             input1 = (input_data.x_p, input_data.x_d)
+#             input2 = (input_data.edge_attr_p, input_data.edge_attr_d, input_data)
+#         elif PAIRED and edge_feature_names != []:
+#             ids.extend(
+#                 [input_data.ID]
+#                 * (
+#                     input_data.x_p.shape[0]
+#                     + input_data.edge_index_p.shape[1]
+#                     + input_data.x_d.shape[0]
+#                     + input_data.edge_index_d.shape[1]
+#                 )
+#             )
+#             input1 = (
+#                 input_data.x_p,
+#                 input_data.x_d,
+#                 input_data.edge_attr_p,
+#                 input_data.edge_attr_d,
+#             )
+#             input2 = input_data
+#         elif not PAIRED and edge_feature_names == []:
+#             ids.extend([input_data.ID] * (input_data.x_p.shape[0]))
+#             input1 = input_data.x_p
+#             input2 = (
+#                 input_data.edge_attr_p,
+#                 input_data.x_p,
+#                 input_data.edge_attr_p,
+#                 input_data,
+#             )
+#         elif not PAIRED and edge_feature_names != []:
+#             ids.extend(
+#                 [input_data.ID]
+#                 * (input_data.x_p.shape[0] + input_data.edge_index_p.shape[1])
+#             )
+#             input1 = (input_data.x_p, input_data.edge_attr_p)
+#             input2 = (input_data.x_d, input_data.edge_attr_d, input_data)
+
+#         _attr = ig.attribute(
+#             input1,
+#             additional_forward_args=(input2),
+#             internal_batch_size=input_data.x_p.shape[0],
+#         )
+#         if not PAIRED and edge_feature_names == []:
+#             attr_row = _attr.cpu().detach().numpy()
+
+#         else:
+#             attr_row = block_diag(*[a.cpu().detach().numpy() for a in _attr])
+
+#         attr = np.vstack((attr, attr_row))
+
+#         if i % 10 == 0:
+#             print(f"{i+1} of {sample_size}")
+#         i += 1
+#     df = pd.DataFrame(attr, columns=feature_names)
+#     df.insert(0, "ID", ids)
+#     return df
 
 
 def calc_rmse(pred, true):

@@ -1,14 +1,17 @@
-from torch_geometric.loader import DataLoader
+from typing import Tuple
+
 import numpy as np
 import pandas as pd
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from torch_geometric.loader import DataLoader
+
 from pkasolver.constants import DEVICE
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import mean_squared_error
 
 
 # PyG Dataset to Dataloader
-def dataset_to_dataloader(data, batch_size, shuffle=True):
+def dataset_to_dataloader(
+    data: list, batch_size: int, shuffle: bool = True
+) -> DataLoader:
     """Take a PyG Dataset and return a Dataloader object.
 
     batch_size must be defined.
@@ -19,7 +22,9 @@ def dataset_to_dataloader(data, batch_size, shuffle=True):
     )
 
 
-def test_ml_model(baseline_models, X_data, y_data, dataset_name):
+def test_ml_model(
+    baseline_models: dict, X_data: np.ndarray, y_data: np.ndarray, dataset_name: str
+) -> pd.DataFrame:
     res = {"Dataset": dataset_name, "pKa_true": y_data}
     for name, models in baseline_models.items():
         for mode, model in models.items():
@@ -27,7 +32,9 @@ def test_ml_model(baseline_models, X_data, y_data, dataset_name):
     return pd.DataFrame(res)
 
 
-def calculate_performance_of_model_on_data(model, loader):
+def calculate_performance_of_model_on_data(
+    model, loader
+) -> Tuple[np.ndarray, np.ndarray]:
     model.eval()
     y_dataset, x_dataset = [], []
     for data in loader:  # Iterate in batches over the training dataset.
@@ -51,7 +58,7 @@ def calculate_performance_of_model_on_data(model, loader):
     return np.array(x_dataset), np.array(y_dataset)
 
 
-def predict(model, loader):
+def predict(model, loader) -> np.ndarray:
     model.eval()
     results = []
     for data in loader:  # Iterate in batches over the training dataset.
@@ -73,31 +80,33 @@ def predict(model, loader):
     return np.array(results)
 
 
-def calculate_performance_of_model_on_data_old(model, loader):
-    model.eval()
-    y_dataset, x_dataset = [], []
-    for data in loader:  # Iterate in batches over the training dataset.
+# def calculate_performance_of_model_on_data_old(
+#     model, loader
+# ) -> Tuple[np.ndarray, np.ndarray]:
+#     model.eval()
+#     y_dataset, x_dataset = [], []
+#     for data in loader:  # Iterate in batches over the training dataset.
 
-        data.to(device=DEVICE)
-        y_pred = (
-            model(
-                x_p=data.x_p,
-                x_d=data.x_d,
-                edge_attr_p=data.edge_attr_p,
-                edge_attr_d=data.edge_attr_d,
-                data=data,
-            )
-            .reshape(-1)
-            .detach()
-        )
+#         data.to(device=DEVICE)
+#         y_pred = (
+#             model(
+#                 x_p=data.x_p,
+#                 x_d=data.x_d,
+#                 edge_attr_p=data.edge_attr_p,
+#                 edge_attr_d=data.edge_attr_d,
+#                 data=data,
+#             )
+#             .reshape(-1)
+#             .detach()
+#         )
 
-        y_dataset.extend(y_pred.tolist())
-        x_dataset.extend(data.y.tolist())
+#         y_dataset.extend(y_pred.tolist())
+#         x_dataset.extend(data.y.tolist())
 
-    return np.array(x_dataset), np.array(y_dataset)
+#     return np.array(x_dataset), np.array(y_dataset)
 
 
-def test_graph_model(graph_models, loader, dataset_name):
+def test_graph_model(graph_models, loader, dataset_name: str) -> pd.DataFrame:
     res = {
         "Dataset": dataset_name,
     }
@@ -113,7 +122,7 @@ def test_graph_model(graph_models, loader, dataset_name):
     return pd.DataFrame(res)
 
 
-def calc_testset_performace(model, loader):
+def calc_testset_performace(model, loader) -> Tuple[int, int, int]:
 
     model.to(device=DEVICE)
     x, y = calculate_performance_of_model_on_data(model, loader)

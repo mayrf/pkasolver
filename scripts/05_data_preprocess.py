@@ -1,17 +1,15 @@
 import argparse
 import gzip
 import pickle
+from itertools import repeat
+
+import multiprocess as mp
 import torch
 from p_tqdm import p_umap
 from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
-from pkasolver.data import (
-    make_features_dicts,
-    mol_to_paired_mol_data,
-)
+from pkasolver.data import make_features_dicts, mol_to_paired_mol_data
 from rdkit import Chem
 from rdkit.Chem import PropertyMol
-from itertools import repeat
-import multiprocess as mp
 
 
 def main(selected_node_features: dict, selected_edge_features: dict):
