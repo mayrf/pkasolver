@@ -71,33 +71,49 @@ class QueryModel:
 query_model = QueryModel()
 
 
-def get_ionization_indices(mol_lst):
+def get_ionization_indices(mol_list: list) -> list:
     """Takes a list of mol objects of different protonation states,
-    but identically indexed and returns indices list of ionizable atoms
+    and returns the protonation center index
 
-    that must be identically indexed
-    and differ only in their ionization state.
-
-    :param mol_lst: A list of rdkit.Chem.rdchem.Mol objects.
-    :type mol_lst: list
-    :raises Exception: If the molecules in mol_lst differ in more ways
-        than their protonation states
-    :return: A list of indices of ionizable atoms.
-    :rtype: list
     """
+    from rdkit.Chem import rdFMCS
 
-    assert (
-        len(set([len(mol.GetAtoms()) for mol in mol_lst])) == 1
-    ), "Molecules must only differ in their protonation state"
+    list_of_reaction_centers = []
 
-    ion_idx = []
-    atoms = np.array(
-        [list(atom.GetFormalCharge() for atom in mol.GetAtoms()) for mol in mol_lst]
-    )
-    for i in range(atoms.shape[1]):
-        if len(set(list(atoms[:, i]))) > 1:
-            ion_idx.append(i)
-    return ion_idx
+    for idx, m1 in enumerate(mol_list):
+        if idx == len(mol_list) - 1:
+            # skip last
+            continue
+        m2 = mol_list[idx + 1]
+        assert m1.GetNumAtoms() == m2.GetNumAtoms()
+
+        # find MCS
+        mcs = rdFMCS.FindMCS(
+            [m1, m2],
+            bondCompare=rdFMCS.BondCompare.CompareAny,
+            timeout=120,
+            atomCompare=rdFMCS.AtomCompare.CompareElements,
+            maximizeBonds=True,
+            matchValences=False,
+            completeRingsOnly=True,
+            ringMatchesRingOnly=True,
+        )
+
+        # convert from SMARTS
+        mcsp = Chem.MolFromSmarts(mcs.smartsString, False)
+        print("searching ...")
+        s1 = m1.GetSubstructMatch(mcsp)
+        s2 = m2.GetSubstructMatch(mcsp)
+        for i, j in zip(s1, s2):
+            if (
+                m1.GetAtomWithIdx(i).GetFormalCharge()
+                != m2.GetAtomWithIdx(j).GetFormalCharge()
+            ):
+                list_of_reaction_centers.append(i)
+                print(i)
+    assert len(list_of_reaction_centers) == len(mol_list) - 1
+
+    return list_of_reaction_centers
 
 
 def get_possible_reactions(mol, matches):
@@ -188,32 +204,108 @@ def base_sequence(base_pairs, mols, pkas, atoms):
     return mols, pkas, atoms
 
 
-def mol_query(mol: Chem.rdchem.Mol):
+def _parse_dimorphite_dl_output():
 
-    name = mol.GetProp("_Name")
+    print("parsing ...")
+    mols = []
+    with open("output.smi", "r") as f:
+        for line in f:
+            if line:
+                print(line)
+                mols.append(Chem.MolFromSmiles(line))
+    return mols
 
-    mol = run_with_mol_list([mol], min_ph=7, max_ph=7, pka_precision=0)[0]
-    mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
-    mol.SetProp("_Name", name)
 
-    mols = [mol]
-    pkas = []
-    atoms = []
+def _call_dimorphite_dl(mol: Chem.Mol, min_ph: float, max_ph: float):
+    """calls  dimorphite_dl with parameters"""
+    import subprocess
 
-    matches = get_ionization_indices(run_with_mol_list([mol], min_ph=0.5, max_ph=13.5))
+    # get path to script
+    path_to_script = path.dirname(__file__)
 
-    while True:
-        inital_length = len(pkas)
-        acid_pairs, base_pairs = get_possible_reactions(mols[0], matches)
-        mols, pkas, atoms = acid_sequence(acid_pairs, mols, pkas, atoms)
-        if inital_length >= len(pkas):
-            break
-    while True:
-        inital_length = len(pkas)
-        acid_pairs, base_pairs = get_possible_reactions(mols[-1], matches)
-        mols, pkas, atoms = base_sequence(base_pairs, mols, pkas, atoms)
-        if inital_length >= len(pkas):
-            break
+    smiles = Chem.MolToSmiles(mol, isomericSmiles=True)
+    # save properties
+    props = mol.GetPropsAsDict()
+
+    o = subprocess.run(
+        [
+            "python",
+            f"{path_to_script}/dimorphite_dl/dimorphite_dl.py",  # call dimorphite_dl
+            "--smiles",  # only most probable tautomer generated
+            f"{smiles}",  # don't adjust the ionization state of the molecule
+            "--min_ph",
+            f"{min_ph}",
+            "--max_ph",
+            f"{max_ph}",
+            "--pka_precision",
+            "1.0",
+            "--output_file",
+            "output.smi",
+            "--label_states",
+        ],
+        stderr=subprocess.STDOUT,
+    )
+    o.check_returncode()
+
+    # get list of smiles
+    mols = _parse_dimorphite_dl_output()
+    print(mols)
+
+    # insert properties in newly generated mols
+    for m in mols:
+        for prop, val in props.items():
+            if type(val) is int:
+                m.SetIntProp(prop, val)
+            elif type(val) is float:
+                m.SetDoubleProp(prop, val)
+            elif type(val) is bool:
+                m.SetBoolProp(prop, val)
+            else:
+                m.SetProp(prop, str(val))
+    return mols
+
+
+def mol_query(mol: Chem.rdchem.Mol, only_dimorphite: bool = True):
+    """Enumerate protonation states using a rdkit mol as input"""
+
+    if only_dimorphite:
+        print("Using dimorphite-dl to enumerate protonation states.")
+        all_mols = _call_dimorphite_dl(mol, min_ph=0.5, max_ph=13.5)
+        # sort mols
+        atom_charges = [
+            np.sum([atom.GetFormalCharge() for atom in mol.GetAtoms()])
+            for mol in all_mols
+        ]
+
+        mols_sorted = [
+            x for _, x in sorted(zip(atom_charges, all_mols))
+        ]  # https://stackoverflow.com/questions/6618515/sorting-list-based-on-values-from-another-list
+
+        matches = get_ionization_indices(mols_sorted)
+        print(matches)
+
+    else:
+        print("Using dimorphite-dl to identify protonation sites.")
+        mol_at_ph_7 = _call_dimorphite_dl(mol, min_ph=7.0, max_ph=7.0, pka_precision=0)
+        matches = get_ionization_indices(
+            _call_dimorphite_dl(mol, min_ph=0.5, max_ph=13.5)
+        )
+        mols = [mol]
+        pkas = []
+        atoms = []
+
+        while True:
+            inital_length = len(pkas)
+            acid_pairs, base_pairs = get_possible_reactions(mols[0], matches)
+            mols, pkas, atoms = acid_sequence(acid_pairs, mols, pkas, atoms)
+            if inital_length >= len(pkas):
+                break
+        while True:
+            inital_length = len(pkas)
+            acid_pairs, base_pairs = get_possible_reactions(mols[-1], matches)
+            mols, pkas, atoms = base_sequence(base_pairs, mols, pkas, atoms)
+            if inital_length >= len(pkas):
+                break
 
     mol_tuples = []
     for i in range(len(mols) - 1):
