@@ -1,9 +1,9 @@
 # imports
+import logging
 from os import path
 
 import numpy as np
 from IPython.display import display
-from pkg_resources import resource_filename
 from rdkit import Chem
 from rdkit.Chem.Draw import IPythonConsole
 
@@ -12,19 +12,20 @@ IPythonConsole.molSize = 400, 400
 from copy import deepcopy
 
 import torch
-import torch_geometric
 from rdkit import RDLogger
 from rdkit.Chem import Draw
 
+from pkasolver.chem import create_conjugate
 from pkasolver.constants import DEVICE, EDGE_FEATURES, NODE_FEATURES
 from pkasolver.data import (
     calculate_nr_of_features,
     make_features_dicts,
     mol_to_paired_mol_data,
 )
-from pkasolver.dimorphite_dl.dimorphite_dl import run_with_mol_list
-from pkasolver.ml import dataset_to_dataloader, predict
+from pkasolver.ml import dataset_to_dataloader, predict_pka_value
 from pkasolver.ml_architecture import GINPairV1
+
+logger = logging.getLogger(__name__)
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -68,10 +69,7 @@ class QueryModel:
         self.model = model
 
 
-query_model = QueryModel()
-
-
-def get_ionization_indices(mol_list: list) -> list:
+def get_ionization_indices(mol_list: list, strict: bool = True) -> list:
     """Takes a list of mol objects of different protonation states,
     and returns the protonation center index
 
@@ -90,13 +88,9 @@ def get_ionization_indices(mol_list: list) -> list:
         # find MCS
         mcs = rdFMCS.FindMCS(
             [m1, m2],
-            bondCompare=rdFMCS.BondCompare.CompareAny,
+            bondCompare=rdFMCS.BondCompare.CompareOrder,
             timeout=120,
             atomCompare=rdFMCS.AtomCompare.CompareElements,
-            maximizeBonds=True,
-            matchValences=False,
-            completeRingsOnly=True,
-            ringMatchesRingOnly=True,
         )
 
         # convert from SMARTS
@@ -109,9 +103,14 @@ def get_ionization_indices(mol_list: list) -> list:
                 m1.GetAtomWithIdx(i).GetFormalCharge()
                 != m2.GetAtomWithIdx(j).GetFormalCharge()
             ):
+                if i != j:
+                    logger.warning("Trouble ahead ... different atom indices detected.")
+                    continue
                 list_of_reaction_centers.append(i)
-                print(i)
-    assert len(list_of_reaction_centers) == len(mol_list) - 1
+
+    if strict:
+        print(list_of_reaction_centers)
+        assert len(list_of_reaction_centers) == len(mol_list) - 1
 
     return list_of_reaction_centers
 
@@ -120,6 +119,7 @@ def get_possible_reactions(mol, matches):
     acid_pairs = []
     base_pairs = []
     for match in matches:
+        print(match)
         mol.__sssAtoms = [match]  # not sure if needed
         # create conjugate
         new_mol = deepcopy(mol)
@@ -165,12 +165,14 @@ def match_pka(pair_tuples, model):
             prot, deprot, atom_idx, selected_node_features, selected_edge_features,
         )
         pair_data.append(m)
-    loader = dataset_to_dataloader(pair_data, 64, shuffle=False)
-    return np.round(predict(model, loader), 3)
+    loader = dataset_to_dataloader(pair_data, 1, shuffle=False)
+    return np.round(predict_pka_value(model, loader), 3)
 
 
 def acid_sequence(acid_pairs, mols, pkas, atoms):
     # determine pka for protonatable groups
+    query_model = QueryModel()
+
     if len(acid_pairs) > 0:
         acid_pkas = list(match_pka(acid_pairs, query_model.model))
         pka = max(acid_pkas)  # determining closest protonation pka
@@ -188,6 +190,7 @@ def acid_sequence(acid_pairs, mols, pkas, atoms):
 
 
 def base_sequence(base_pairs, mols, pkas, atoms):
+    query_model = QueryModel()
     # determine pka for deprotonatable groups
     if len(base_pairs) > 0:
         base_pkas = list(match_pka(base_pairs, query_model.model))
@@ -216,7 +219,9 @@ def _parse_dimorphite_dl_output():
     return mols
 
 
-def _call_dimorphite_dl(mol: Chem.Mol, min_ph: float, max_ph: float):
+def _call_dimorphite_dl(
+    mol: Chem.Mol, min_ph: float, max_ph: float, pka_precision: float = 1.0
+):
     """calls  dimorphite_dl with parameters"""
     import subprocess
 
@@ -238,7 +243,7 @@ def _call_dimorphite_dl(mol: Chem.Mol, min_ph: float, max_ph: float):
             "--max_ph",
             f"{max_ph}",
             "--pka_precision",
-            "1.0",
+            f"{pka_precision}",
             "--output_file",
             "output.smi",
             "--label_states",
@@ -265,112 +270,151 @@ def _call_dimorphite_dl(mol: Chem.Mol, min_ph: float, max_ph: float):
     return mols
 
 
-def mol_query(mol: Chem.rdchem.Mol, only_dimorphite: bool = True):
+def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool = True):
     """Enumerate protonation states using a rdkit mol as input"""
+    from operator import itemgetter
 
     if only_dimorphite:
+        query_model = QueryModel()
         print("Using dimorphite-dl to enumerate protonation states.")
         all_mols = _call_dimorphite_dl(mol, min_ph=0.5, max_ph=13.5)
         # sort mols
         atom_charges = [
-            np.sum([atom.GetFormalCharge() for atom in mol.GetAtoms()])
+            np.sum([atom.GetTotalNumHs() for atom in mol.GetAtoms()])
             for mol in all_mols
         ]
 
         mols_sorted = [
-            x for _, x in sorted(zip(atom_charges, all_mols))
+            x for _, x in sorted(zip(atom_charges, all_mols), reverse=True)
         ]  # https://stackoverflow.com/questions/6618515/sorting-list-based-on-values-from-another-list
 
-        matches = get_ionization_indices(mols_sorted)
-        print(matches)
+        reaction_center_atom_idxs = get_ionization_indices(mols_sorted)
+        # return only mol pairs
+        mols = []
+        for nr_of_states, idx in enumerate(reaction_center_atom_idxs):
+            print(Chem.MolToSmiles(mols_sorted[nr_of_states]))
+            print(Chem.MolToSmiles(mols_sorted[nr_of_states + 1]))
+
+            m = mol_to_paired_mol_data(
+                mols_sorted[nr_of_states],
+                mols_sorted[nr_of_states + 1],
+                idx,
+                selected_node_features,
+                selected_edge_features,
+            )
+            loader = dataset_to_dataloader([m], 1)
+            pka = predict_pka_value(query_model.model, loader)
+            pair = (
+                pka,
+                (mols_sorted[nr_of_states], mols_sorted[nr_of_states + 1]),
+                idx,
+            )
+            logger.debug(
+                pka,
+                Chem.MolToSmiles(mols_sorted[nr_of_states]),
+                Chem.MolToSmiles(mols_sorted[nr_of_states + 1]),
+            )
+
+            mols.append(pair)
+
+        print(mols)
 
     else:
         print("Using dimorphite-dl to identify protonation sites.")
-        mol_at_ph_7 = _call_dimorphite_dl(mol, min_ph=7.0, max_ph=7.0, pka_precision=0)
-        matches = get_ionization_indices(
-            _call_dimorphite_dl(mol, min_ph=0.5, max_ph=13.5)
+        mol_at_ph_7 = _call_dimorphite_dl(mol, min_ph=7.0, max_ph=7.0, pka_precision=0)[
+            0
+        ]
+        all_mols = _call_dimorphite_dl(mol, min_ph=0.5, max_ph=13.5)
+
+        reaction_center_atom_idxs = sorted(
+            list(set(get_ionization_indices(all_mols, strict=False)))
         )
-        mols = [mol]
-        pkas = []
-        atoms = []
+        mols = [mol_at_ph_7]
+        query_model = QueryModel()
 
-        while True:
-            inital_length = len(pkas)
-            acid_pairs, base_pairs = get_possible_reactions(mols[0], matches)
-            mols, pkas, atoms = acid_sequence(acid_pairs, mols, pkas, atoms)
-            if inital_length >= len(pkas):
-                break
-        while True:
-            inital_length = len(pkas)
-            acid_pairs, base_pairs = get_possible_reactions(mols[-1], matches)
-            mols, pkas, atoms = base_sequence(base_pairs, mols, pkas, atoms)
-            if inital_length >= len(pkas):
-                break
+        acids = []
+        mol_at_state = deepcopy(mol_at_ph_7)
+        print(f"Mol at pH 7.4: {Chem.MolToSmiles(mol_at_state)}")
 
-    mol_tuples = []
-    for i in range(len(mols) - 1):
-        mol_tuples.append((mols[i], mols[i + 1]))
-    mols = mol_tuples
-
-    return mols, pkas, atoms
-
-
-def smiles_query(smi, output_smiles=False):
-    mols, pkas, atoms = mol_query(Chem.MolFromSmiles(smi))
-    if output_smiles == True:
-        smiles = []
-        for mol in mols:
-            smiles.append((Chem.MolToSmiles(mol[0]), Chem.MolToSmiles(mol[1])))
-        mols = smiles
-    return mols, pkas, atoms
-
-
-def inchi_query(ini, output_inchi=False):
-    # return mol_query(Chem.MolFromInchi(ini))
-    mols, pkas, atoms = mol_query(Chem.MolFromInchi(ini))
-    if output_inchi == True:
-        inchi = []
-        for mol in mols:
-            inchi.append((Chem.MolToInchi(mol[0]), Chem.MolToInchi(mol[1])))
-        mols = inchi
-    return mols, pkas, atoms
-
-
-def sdf_query(input_path, output_path, merged_output=False):
-    print(f"opening .sdf file at {input_path} and computing pkas...")
-    with open(input_path, "rb") as fh:
-        with open(output_path, "w") as sdf_zip:
-            with Chem.SDWriter(sdf_zip) as writer:
-                count = 0
-                for i, mol in enumerate(Chem.ForwardSDMolSupplier(fh, removeHs=True)):
-                    # if i > 10:
-                    #     break
-                    # clear porps
-                    props = mol.GetPropsAsDict()
-                    for prop in props.keys():
-                        mol.ClearProp(prop)
-                    mols, pkas, atoms = mol_query(mol)
-                    if merged_output == True:
-                        mol = mols[0][0]
-                        mol.SetProp("ID", f"{mol.GetProp('_Name')}")
-                        for ii, (pka, atom) in enumerate(zip(pkas, atoms)):
-                            count += 1
-                            mol.SetProp(f"pka_{ii}", f"{pka}")
-                            mol.SetProp(f"atom_idx_{ii}", f"{atom}")
-                            writer.write(mol)
-                    else:
-                        for ii, (mol, pka, atom) in enumerate(zip(mols, pkas, atoms)):
-                            count += 1
-                            mol = mol[0]
-                            mol.SetProp("ID", f"{mol.GetProp('_Name')}_{ii}")
-                            mol.SetProp("pka", f"{pka}")
-                            mol.SetProp("atom_idx", f"{atom}")
-                            mol.SetProp("pka-number", f"{ii}")
-                            # print(mol.GetPropsAsDict())
-                            writer.write(mol)
-                print(
-                    f"{count} pkas for {i} molecules predicted and saved at \n{output_path}"
+        logger.debug("Start with acids ...")
+        for _ in reaction_center_atom_idxs:
+            logger.debug("Acid groups ...")
+            states_per_iteration = []
+            for i in reaction_center_atom_idxs:
+                try:
+                    conj = create_conjugate(mol_at_state, i, 0.0, ignore_danger=False)
+                except:
+                    continue
+                logger.debug(f"{Chem.MolToSmiles(conj)}")
+                m = mol_to_paired_mol_data(
+                    conj,
+                    mol_at_state,
+                    i,
+                    selected_node_features,
+                    selected_edge_features,
                 )
+                loader = dataset_to_dataloader([m], 1)
+                pka = predict_pka_value(query_model.model, loader)
+                if pka < 0.5:
+                    logger.debug("Too low pKa value!")
+                    continue
+                logger.debug(pka, Chem.MolToSmiles(conj))
+                if acids:
+                    if pka < acids[-1][0]:
+                        states_per_iteration.append((pka, (conj, mol_at_state), i))
+                else:
+                    states_per_iteration.append((pka, (conj, mol_at_state), i))
+
+            if not states_per_iteration:
+                # no protonation state left
+                break
+
+            acids.append(max(states_per_iteration, key=itemgetter(0)))
+            mol_at_state = deepcopy(acids[-1][1][0])
+
+        logger.debug(acids)
+
+        bases = []
+        mol_at_state = deepcopy(mol_at_ph_7)
+        logger.debug("Start with bases ...")
+        for _ in reaction_center_atom_idxs:
+            states_per_iteration = []
+            for i in reaction_center_atom_idxs:
+                try:
+                    conj = create_conjugate(mol_at_state, i, 13.5)
+                except:
+                    continue
+                m = mol_to_paired_mol_data(
+                    mol_at_state,
+                    conj,
+                    i,
+                    selected_node_features,
+                    selected_edge_features,
+                )
+                loader = dataset_to_dataloader([m], 1)
+                pka = predict_pka_value(query_model.model, loader)
+                if pka > 13.5:
+                    logger.debug("Too high pKa value!")
+                    continue
+
+                logger.debug(pka, Chem.MolToSmiles(conj))
+                if bases:
+                    if pka > bases[-1][0]:
+                        states_per_iteration.append((pka, (mol_at_state, conj), i))
+                else:
+                    states_per_iteration.append((pka, (mol_at_state, conj), i))
+
+            if not states_per_iteration:
+                # no protonation state left
+                break
+            bases.append(min(states_per_iteration, key=itemgetter(0)))
+            mol_at_state = deepcopy(bases[-1][1][1])
+
+        logger.debug(bases)
+        acids.reverse()
+        mols = bases + acids
+
+    return mols
 
 
 def draw_pka_map(mols, pkas, atoms, size=(450, 450)):
@@ -407,6 +451,6 @@ def draw_sdf_mols(input_path, range_list=[]):
             props = mol.GetPropsAsDict()
             for prop in props.keys():
                 mol.ClearProp(prop)
-            mols, pkas, atoms = mol_query(mol)
+            mols, pkas, atoms = calculate_microstate_pka_values(mol)
             display(draw_pka_map(mols, pkas, atoms))
             print(f"Name: {mol.GetProp('_Name')}")
