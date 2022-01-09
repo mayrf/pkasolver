@@ -23,10 +23,11 @@ The Python dependencies are:
 ### Installing
 
 1) Download this repo
-2) Install all dependencies in your python environment. (yaml file is located in devtools/conda-envs/test_env.yml) (Note that the dependencies may take a long time to download) 
-3) `cd` into the repo
-4) run `conda activate pkasolver` to activate conda environment
-5) Install the pkasolver package by using the terminal command `python setup.py install`
+2) Install all dependencies in your python environment. (yaml file is located in devtools/conda-envs/test_env.yml) (Note that the dependencies may take a long time to download)
+3) run `conda activate pkasolver` to activate conda environment
+
+option a) pip install git+https://github.com/mayrf/pkasolver.git
+option b) `cd` into the repo and install the pkasolver package by using the terminal command `python setup.py install`
 
 ## Usage
 

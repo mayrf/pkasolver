@@ -210,7 +210,7 @@ def base_sequence(
     return mols, pkas, atoms
 
 
-def mol_query(mol: Chem.rdchem.Mol) -> Tuple[list, list, list]:
+def mol_query(mol: Chem.rdchem.Mol) -> dict:
 
     try:
         name = mol.GetProp("_Name")
@@ -245,28 +245,28 @@ def mol_query(mol: Chem.rdchem.Mol) -> Tuple[list, list, list]:
         mol_tuples.append((mols[i], mols[i + 1]))
     mols = mol_tuples
 
-    return mols, pkas, atoms
+    return {"mol": mols, "pka": pkas, "atom": atoms}
 
 
 def smiles_query(smi: str, output_smiles: bool = False) -> Tuple[list, list, list]:
-    mols, pkas, atoms = mol_query(Chem.MolFromSmiles(smi))
+    res = mol_query(Chem.MolFromSmiles(smi))
     if output_smiles == True:
         smiles = []
-        for mol in mols:
+        for mol in res["mol"]:
             smiles.append((Chem.MolToSmiles(mol[0]), Chem.MolToSmiles(mol[1])))
-        mols = smiles
-    return mols, pkas, atoms
+        res["mol"] = smiles
+    return res
 
 
 def inchi_query(ini: str, output_inchi=False) -> Tuple[list, list, list]:
     # return mol_query(Chem.MolFromInchi(ini))
-    mols, pkas, atoms = mol_query(Chem.MolFromInchi(ini))
+    res = mol_query(Chem.MolFromInchi(ini))
     if output_inchi == True:
         inchi = []
-        for mol in mols:
+        for mol in res["mol"]:
             inchi.append((Chem.MolToInchi(mol[0]), Chem.MolToInchi(mol[1])))
-        mols = inchi
-    return mols, pkas, atoms
+        res["mol"] = inchi
+    return res
 
 
 def sdf_query(input_path: str, output_path: str, merged_output: bool = False):
@@ -282,7 +282,10 @@ def sdf_query(input_path: str, output_path: str, merged_output: bool = False):
                     props = mol.GetPropsAsDict()
                     for prop in props.keys():
                         mol.ClearProp(prop)
-                    mols, pkas, atoms = mol_query(mol)
+                    res = mol_query(mol)
+                    mols = res["mol"]
+                    pkas = res["pka"]
+                    atoms = res["atom"]
                     if merged_output == True:
                         mol = mols[0][0]
                         mol.SetProp("ID", f"{mol.GetProp('_Name')}")
@@ -306,14 +309,21 @@ def sdf_query(input_path: str, output_path: str, merged_output: bool = False):
                 )
 
 
-def draw_pka_map(mols: list, pkas: list, atoms: list, size=(450, 450)):
-    mol = mols[0][0]
-    for atom, pka in zip(atoms, pkas):
-        mol.GetAtomWithIdx(atom).SetProp("atomNote", f"{pka:.2f}")
+def draw_pka_map(res: dict, size=(450, 450)):
+    mol = res["mol"][0][0]
+    for idx, pka in zip(res["atom"], res["pka"]):
+        atom = mol.GetAtomWithIdx(idx)
+        try:
+            atom.SetProp("atomNote", f'{atom.GetProp("atomNote")},   {pka:.2f}')
+        except:
+            atom.SetProp("atomNote", f"{pka:.2f}")
     return Draw.MolToImage(mol, size=size)
 
 
-def draw_pka_reactions(mols: list, pkas: list, atoms: list):
+def draw_pka_reactions(res: dict):
+    mols = res["mol"]
+    pkas = res["pka"]
+    atoms = res["atom"]
     draw_pairs = []
     pair_atoms = []
     pair_pkas = []
@@ -326,7 +336,7 @@ def draw_pka_reactions(mols: list, pkas: list, atoms: list):
         molsPerRow=2,
         subImgSize=(250, 250),
         highlightAtomLists=pair_atoms,
-        legends=[f"pka = {pair_pkas[i]:.2f}" for i in range(12)],
+        legends=[f"pka = {pair_pkas[i]:.2f}" for i in range(len(mols) * 2)],
     )
 
 
@@ -340,6 +350,5 @@ def draw_sdf_mols(input_path: str, range_list=[]):
             props = mol.GetPropsAsDict()
             for prop in props.keys():
                 mol.ClearProp(prop)
-            mols, pkas, atoms = mol_query(mol)
-            display(draw_pka_map(mols, pkas, atoms))
+            display(draw_pka_map(mol_query(mol)))
             print(f"Name: {mol.GetProp('_Name')}")
