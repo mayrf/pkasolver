@@ -42,6 +42,10 @@ def create_conjugate(
             f"pka: {pka},charge:{charge},Explicit Hs:{Ex_Hs}, Total Hs:{Tot_Hs}, reaction center atomic number: {atom.GetAtomicNum()}"
         )
     atom.UpdatePropertyCache()
+
+    if atom.GetSymbol() == "O" and atom.GetFormalCharge() == 1:
+        raise RuntimeError("Protonating already protonated oxygen. Aborting.")
+
     Tot_Hs_after = atom.GetTotalNumHs()
     assert Tot_Hs != Tot_Hs_after
     # mol = next(ResonanceMolSupplier(mol))
