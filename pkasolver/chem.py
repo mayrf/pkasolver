@@ -6,7 +6,11 @@ from copy import deepcopy
 
 
 def create_conjugate(
-    mol_initial: Chem.Mol, idx: int, pka: float, pH=7.4, ignore_danger: bool = False
+    mol_initial: Chem.Mol,
+    idx: int,
+    pka: float,
+    pH: float = 7.4,
+    ignore_danger: bool = False,
 ):
     """Create a new molecule that is the conjugated base/acid to the input molecule."""
     mol = deepcopy(mol_initial)
@@ -19,7 +23,7 @@ def create_conjugate(
     danger = False
     # make deprotonated conjugate as pKa > pH with at least one proton or
     # mol charge is positive (otherwise conjugate reaction center would have charge +2 --> highly unlikely)
-    if (pka > pH and Tot_Hs > 0) or charge > 0:
+    if (pka > pH and Tot_Hs > 0):
         atom.SetFormalCharge(charge - 1)
         if Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs - 1)
