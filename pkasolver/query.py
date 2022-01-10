@@ -270,6 +270,33 @@ def _call_dimorphite_dl(
     return mols
 
 
+def _sort_conj(mols: list):
+    """sort mols based on number of hydrogen"""
+
+    assert len(mols) == 2
+    nr_of_hydrogen = [
+        np.sum([atom.GetTotalNumHs() for atom in mol.GetAtoms()]) for mol in mols
+    ]
+    if abs(nr_of_hydrogen[0] - nr_of_hydrogen[1]) != 1:
+        raise RuntimeError(
+            "Neighboring protonation states are only allowed to have a difference of a single hydrogen."
+        )
+    mols_sorted = [
+        x for _, x in sorted(zip(nr_of_hydrogen, mols), reverse=True)
+    ]  # https://stackoverflow.com/questions/6618515/sorting-list-based-on-values-from-another-list
+    return mols_sorted
+
+
+def _check_for_dublicates(states: list):
+    """check whether two states have the same pKa value and remove one of them"""
+    all_r = dict()
+    for state in states:
+        m1, m2 = _sort_conj([state[1][0], state[1][1]])
+        all_r[hash((Chem.MolToSmiles(m1), Chem.MolToSmiles(m2)))] = state
+    logger.debug([all_r[k] for k in sorted(all_r, key=all_r.get)])
+    return [all_r[k] for k in sorted(all_r, key=all_r.get)]
+
+
 def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool = True):
     """Enumerate protonation states using a rdkit mol as input"""
     from operator import itemgetter
@@ -347,19 +374,28 @@ def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool 
                 except:
                     continue
                 logger.debug(f"{Chem.MolToSmiles(conj)}")
+
+                sorted_mols = _sort_conj([conj, mol_at_state])
+
                 m = mol_to_paired_mol_data(
-                    conj,
-                    mol_at_state,
+                    sorted_mols[0],
+                    sorted_mols[1],
                     i,
                     selected_node_features,
                     selected_edge_features,
                 )
                 loader = dataset_to_dataloader([m], 1)
-                pka = predict_pka_value(query_model.model, loader)
+                pka = predict_pka_value(query_model.model, loader)[0]
                 if pka < 0.5:
                     logger.debug("Too low pKa value!")
                     continue
-                logger.debug(pka, Chem.MolToSmiles(conj))
+                print(
+                    "acid: ",
+                    pka,
+                    Chem.MolToSmiles(conj),
+                    i,
+                    Chem.MolToSmiles(mol_at_state),
+                )
                 if acids:
                     if pka < acids[-1][0]:
                         states_per_iteration.append((pka, (conj, mol_at_state), i))
@@ -381,6 +417,7 @@ def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool 
         bases = []
         mol_at_state = deepcopy(mol_at_ph_7)
         logger.debug("Start with bases ...")
+        used_reaction_center_atom_idxs = deepcopy(reaction_center_atom_idxs)
         for _ in reaction_center_atom_idxs:
             states_per_iteration = []
             for i in reaction_center_atom_idxs:
@@ -388,20 +425,27 @@ def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool 
                     conj = create_conjugate(mol_at_state, i, 13.5)
                 except:
                     continue
+                sorted_mols = _sort_conj([conj, mol_at_state])
                 m = mol_to_paired_mol_data(
-                    mol_at_state,
-                    conj,
+                    sorted_mols[0],
+                    sorted_mols[1],
                     i,
                     selected_node_features,
                     selected_edge_features,
                 )
                 loader = dataset_to_dataloader([m], 1)
-                pka = predict_pka_value(query_model.model, loader)
+                pka = predict_pka_value(query_model.model, loader)[0]
                 if pka > 13.5:
                     logger.debug("Too high pKa value!")
                     continue
 
-                logger.debug(pka, Chem.MolToSmiles(conj))
+                print(
+                    "base",
+                    pka,
+                    Chem.MolToSmiles(conj),
+                    i,
+                    Chem.MolToSmiles(mol_at_state),
+                )
                 if bases:
                     if pka > bases[-1][0]:
                         states_per_iteration.append((pka, (mol_at_state, conj), i))
@@ -413,10 +457,15 @@ def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool 
                 break
             bases.append(min(states_per_iteration, key=itemgetter(0)))
             mol_at_state = deepcopy(bases[-1][1][1])
+            used_reaction_center_atom_idxs.remove(
+                bases[-1][2]
+            )  # avoid double deprotonation
 
         logger.debug(bases)
         acids.reverse()
         mols = bases + acids
+
+        mols = _check_for_dublicates(mols)
 
     return mols
 
