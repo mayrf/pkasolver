@@ -11,6 +11,7 @@ def create_conjugate(
     pka: float,
     pH: float = 7.4,
     ignore_danger: bool = False,
+    known_pka_values: bool = True,
 ):
     """Create a new molecule that is the conjugated base/acid to the input molecule."""
     mol = deepcopy(mol_initial)
@@ -23,7 +24,7 @@ def create_conjugate(
     danger = False
     # make deprotonated conjugate as pKa > pH with at least one proton or
     # mol charge is positive (otherwise conjugate reaction center would have charge +2 --> highly unlikely)
-    if (pka > pH and Tot_Hs > 0):
+    if (pka > pH and Tot_Hs > 0) or (charge > 0 and known_pka_values):
         atom.SetFormalCharge(charge - 1)
         if Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs - 1)
@@ -47,7 +48,11 @@ def create_conjugate(
         )
     atom.UpdatePropertyCache()
 
-    if atom.GetSymbol() == "O" and atom.GetFormalCharge() == 1:
+    if (
+        atom.GetSymbol() == "O"
+        and atom.GetFormalCharge() == 1
+        and known_pka_values == False
+    ):
         raise RuntimeError("Protonating already protonated oxygen. Aborting.")
 
     Tot_Hs_after = atom.GetTotalNumHs()

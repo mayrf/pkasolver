@@ -370,7 +370,12 @@ def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool 
             states_per_iteration = []
             for i in used_reaction_center_atom_idxs:
                 try:
-                    conj = create_conjugate(mol_at_state, i, 0.0, ignore_danger=False)
+                    conj = create_conjugate(
+                        mol_at_state,
+                        i,
+                        pka=0.0,
+                        known_pka_values=False,
+                    )
                 except:
                     continue
                 logger.debug(f"{Chem.MolToSmiles(conj)}")
@@ -422,7 +427,9 @@ def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool 
             states_per_iteration = []
             for i in reaction_center_atom_idxs:
                 try:
-                    conj = create_conjugate(mol_at_state, i, 13.5)
+                    conj = create_conjugate(
+                        mol_at_state, i, pka=13.5, known_pka_values=False
+                    )
                 except:
                     continue
                 sorted_mols = _sort_conj([conj, mol_at_state])
@@ -466,6 +473,11 @@ def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool 
         mols = bases + acids
 
         mols = _check_for_dublicates(mols)
+
+    if len(mols) == 0:
+        print('#########################')
+        print ('Could not identify any ionizable group. Aborting.')
+        print('#########################')
 
     return mols
 
