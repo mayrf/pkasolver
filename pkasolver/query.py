@@ -336,11 +336,12 @@ def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool 
         mol_at_state = deepcopy(mol_at_ph_7)
         print(f"Mol at pH 7.4: {Chem.MolToSmiles(mol_at_state)}")
 
+        used_reaction_center_atom_idxs = deepcopy(reaction_center_atom_idxs)
         logger.debug("Start with acids ...")
         for _ in reaction_center_atom_idxs:
             logger.debug("Acid groups ...")
             states_per_iteration = []
-            for i in reaction_center_atom_idxs:
+            for i in used_reaction_center_atom_idxs:
                 try:
                     conj = create_conjugate(mol_at_state, i, 0.0, ignore_danger=False)
                 except:
@@ -370,6 +371,9 @@ def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool 
                 break
 
             acids.append(max(states_per_iteration, key=itemgetter(0)))
+            used_reaction_center_atom_idxs.remove(
+                acids[-1][2]
+            )  # avoid double protonation
             mol_at_state = deepcopy(acids[-1][1][0])
 
         logger.debug(acids)
