@@ -238,7 +238,7 @@ def test_data_preprocessing_for_baltruschat():
     f = pickle.load(open("pkasolver/tests/testdata/test.pkl", "rb"))
     print(f)
 
-    assert len(f) == 340
+    assert len(f) == 334
 
     # first mol
     entry = f[0]
@@ -821,11 +821,16 @@ def test_generate_dataset_from_sdf():
 
     assert nr_of_mols == 11
     assert nr_of_skipped_mols == 0
-    
-    all_protonation_states_enumerated['mol11']['pKa_list'][0] == 7.0
-    all_protonation_states_enumerated['mol11']['smiles_list'][0][0] == 'Brc1ccc(Nc2c3ccccc3[nH+]c3ccccc23)cc1'
-    all_protonation_states_enumerated['mol11']['smiles_list'][0][1] == 'Brc1ccc(Nc2c3ccccc3nc3ccccc23)cc1'
-    all_protonation_states_enumerated['mol11']['counter_list'][0] == '23'
+
+    all_protonation_states_enumerated["mol11"]["pKa_list"][0] == 7.0
+    all_protonation_states_enumerated["mol11"]["smiles_list"][0][
+        0
+    ] == "Brc1ccc(Nc2c3ccccc3[nH+]c3ccccc23)cc1"
+    all_protonation_states_enumerated["mol11"]["smiles_list"][0][
+        1
+    ] == "Brc1ccc(Nc2c3ccccc3nc3ccccc23)cc1"
+    all_protonation_states_enumerated["mol11"]["counter_list"][0] == "23"
+
 
 def test_generate_dataset_from_dataframe():
     """Test that data classes instances are created correctly"""
