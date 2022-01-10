@@ -16,7 +16,7 @@ def test_predict():
         mol_to_paired_mol_data,
     )
     from pkasolver.ml import dataset_to_dataloader, predict_pka_value
-    from pkasolver.constants import DEVICE, EDGE_FEATURES, NODE_FEATURES
+    from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
     from pkasolver.query import QueryModel
 
     node_feat_list = [
@@ -112,6 +112,7 @@ def test_piperidine():
 
     molpairs = calculate_microstate_pka_values(mol, only_dimorphite=False)
     ################################################
+    assert len(molpairs) == 1
     protonation_state = 0
     pka, pair, idx = (
         molpairs[protonation_state][0],
@@ -263,19 +264,9 @@ def test_malic_acid():
         print(pka)
     print("################################")
 
-    protonation_state = 0
-    pka, pair, idx = (
-        molpairs[protonation_state][0],
-        molpairs[protonation_state][1],
-        molpairs[protonation_state][2],
-    )
-
-    assert Chem.MolToSmiles(pair[0]) == "O=C([O-])CC(O)C(=O)[O-]"
-    assert Chem.MolToSmiles(pair[1]) == "O=C([O-])CC([O-])C(=O)[O-]"
-    assert np.isclose(pka, 12.24020576)
-    assert idx == 5
+    assert len(molpairs) == 3
     ################################################
-    protonation_state = 1
+    protonation_state = 0
     pka, pair, idx = (
         molpairs[protonation_state][0],
         molpairs[protonation_state][1],
@@ -286,9 +277,8 @@ def test_malic_acid():
     assert Chem.MolToSmiles(pair[1]) == "O=C(O)CC(O)C(=O)[O-]"
     assert np.isclose(pka, 2.79113841)
     assert idx == 8
-
     ################################################
-    protonation_state = 2
+    protonation_state = 1
     pka, pair, idx = (
         molpairs[protonation_state][0],
         molpairs[protonation_state][1],
@@ -299,6 +289,18 @@ def test_malic_acid():
     assert Chem.MolToSmiles(pair[1]) == "O=C([O-])CC(O)C(=O)[O-]"
     assert np.isclose(pka, 3.86118364)
     assert idx == 2
+    ################################################
+    protonation_state = 2
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+
+    assert Chem.MolToSmiles(pair[0]) == "O=C([O-])CC(O)C(=O)[O-]"
+    assert Chem.MolToSmiles(pair[1]) == "O=C([O-])CC([O-])C(=O)[O-]"
+    assert np.isclose(pka, 12.24020576)
+    assert idx == 5
 
 
 def test_citric_acid():
@@ -308,6 +310,7 @@ def test_citric_acid():
     ################################################
     ################################################
     molpairs = calculate_microstate_pka_values(mol, only_dimorphite=False)
+    assert len(molpairs) == 4
     ################################################
     print("################################")
     for i in range(len(molpairs)):
@@ -320,19 +323,8 @@ def test_citric_acid():
         print(pka)
     print("################################")
 
-    protonation_state = 0
-    pka, pair, idx = (
-        molpairs[protonation_state][0],
-        molpairs[protonation_state][1],
-        molpairs[protonation_state][2],
-    )
-
-    assert Chem.MolToSmiles(pair[0]) == "O=C([O-])CC(O)(CC(=O)[O-])C(=O)[O-]"
-    assert Chem.MolToSmiles(pair[1]) == "O=C([O-])CC([O-])(CC(=O)[O-])C(=O)[O-]"
-    assert np.isclose(pka, 12.02427483)
-    assert idx == 5
     ################################################
-    protonation_state = 1
+    protonation_state = 0
     pka, pair, idx = (
         molpairs[protonation_state][0],
         molpairs[protonation_state][1],
@@ -345,7 +337,7 @@ def test_citric_acid():
     assert idx == 12
 
     ################################################
-    protonation_state = 2
+    protonation_state = 1
     pka, pair, idx = (
         molpairs[protonation_state][0],
         molpairs[protonation_state][1],
@@ -358,7 +350,7 @@ def test_citric_acid():
     assert idx == 2 or idx == 9
 
     ################################################
-    protonation_state = 3
+    protonation_state = 2
     pka, pair, idx = (
         molpairs[protonation_state][0],
         molpairs[protonation_state][1],
@@ -369,6 +361,18 @@ def test_citric_acid():
     assert Chem.MolToSmiles(pair[1]) == "O=C([O-])CC(O)(CC(=O)[O-])C(=O)[O-]"
     assert np.isclose(pka, 4.28753757)
     assert idx == 9 or idx == 2
+    ################################################
+    protonation_state = 3
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+
+    assert Chem.MolToSmiles(pair[0]) == "O=C([O-])CC(O)(CC(=O)[O-])C(=O)[O-]"
+    assert Chem.MolToSmiles(pair[1]) == "O=C([O-])CC([O-])(CC(=O)[O-])C(=O)[O-]"
+    assert np.isclose(pka, 12.02427483)
+    assert idx == 5
 
 
 def test_ascorbic_acid():
@@ -389,8 +393,21 @@ def test_ascorbic_acid():
         print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
         print(pka)
     print("################################")
-
+    ################################################
     protonation_state = 0
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+    print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
+    assert Chem.MolToSmiles(pair[0]) == "O=C1OC(C(O)CO)C(O)=C1O"
+    assert Chem.MolToSmiles(pair[1]) == "O=C1OC(C(O)CO)C([O-])=C1O"
+    assert np.isclose(pka, 3.39439988)
+    assert idx == 9
+
+    ################################################
+    protonation_state = 1
     pka, pair, idx = (
         molpairs[protonation_state][0],
         molpairs[protonation_state][1],
@@ -402,29 +419,17 @@ def test_ascorbic_acid():
     assert np.isclose(pka, 9.08883286)
     assert idx == 7
     ################################################
-    protonation_state = 1
-    pka, pair, idx = (
-        molpairs[protonation_state][0],
-        molpairs[protonation_state][1],
-        molpairs[protonation_state][2],
-    )
-    print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
-    assert Chem.MolToSmiles(pair[0]) == "O=C1OC(C(O)C[O-])C([O-])=C1O"
-    assert Chem.MolToSmiles(pair[1]) == "O=C1OC(C([O-])C[O-])C([O-])=C1O"
-    assert np.isclose(pka, 10.53969193)
-    assert idx == 5
-    ################################################
     protonation_state = 2
     pka, pair, idx = (
         molpairs[protonation_state][0],
         molpairs[protonation_state][1],
         molpairs[protonation_state][2],
     )
-    print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
-    assert Chem.MolToSmiles(pair[0]) == "O=C1OC(C(O)CO)C(O)=C1O"
-    assert Chem.MolToSmiles(pair[1]) == "O=C1OC(C(O)CO)C([O-])=C1O"
-    assert np.isclose(pka, 3.39439988)
-    assert idx == 9
+
+    assert Chem.MolToSmiles(pair[0]) == "O=C1OC(C(O)C[O-])C([O-])=C1O"
+    assert Chem.MolToSmiles(pair[1]) == "O=C1OC(C([O-])C[O-])C([O-])=C1O"
+    assert np.isclose(pka, 10.539691925048828)
+    assert idx == 5
 
 
 def test_quinic_acid():
@@ -446,7 +451,21 @@ def test_quinic_acid():
         print(pka)
     print("################################")
 
+    ################################################
+    ################################################
     protonation_state = 0
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+    print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
+    assert Chem.MolToSmiles(pair[0]) == "O=C(O)[C@]1(O)C[C@@H](O)[C@@H](O)[C@H](O)C1"
+    assert Chem.MolToSmiles(pair[1]) == "O=C([O-])[C@]1(O)C[C@@H](O)[C@@H](O)[C@H](O)C1"
+    assert np.isclose(pka, 3.7188952)
+    assert idx == 2
+    ################################################
+    protonation_state = 1
     pka, pair, idx = (
         molpairs[protonation_state][0],
         molpairs[protonation_state][1],
@@ -460,17 +479,213 @@ def test_quinic_acid():
     assert np.isclose(pka, 12.78168488)
     assert idx == 4
     ################################################
+
+
+def test_cocaine():
+    # https://www.waters.com/nextgen/ca/en/library/application-notes/2020/analysis-of-organic-acids-using-a-mixed-mode-lc-column-and-an-acquity-qda-mass-detector.html
+    mol = Chem.MolFromSmiles("COC(=O)C1C(OC(=O)C2=CC=CC=C2)CC2CCC1N2C")
+
+    ################################################
+    ################################################
+    molpairs = calculate_microstate_pka_values(mol, only_dimorphite=False)
+    ################################################
+    print("################################")
+    for i in range(len(molpairs)):
+        pka, pair, idx = (
+            molpairs[i][0],
+            molpairs[i][1],
+            molpairs[i][2],
+        )
+        print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
+        print(pka)
+    print("################################")
+
+    assert len(molpairs) == 1
+    protonation_state = 0
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+
+    assert Chem.MolToSmiles(pair[0]) == "COC(=O)C1C(OC(=O)c2ccccc2)CC2CCC1[NH+]2C"
+    assert Chem.MolToSmiles(pair[1]) == "COC(=O)C1C(OC(=O)c2ccccc2)CC2CCC1N2C"
+    assert np.isclose(pka, 8.055152893066406)
+    assert idx == 20
+    ################################################
+
+
+def test_tyrosine():
+    # https://chem.libretexts.org/Courses/University_of_Arkansas_Little_Rock/CHEM_4320_5320%3A_Biochemistry_1/01%3A_Amino_Acids/1.4%3A_Reactions_of_Amino_Acids/1.4.1_Acid-base_Chemistry_of_Amino_Acids
+    mol = Chem.MolFromSmiles("NC(CC1=CC=C(O)C=C1)C(=O)O")
+    ################################################
+    ################################################
+    molpairs = calculate_microstate_pka_values(mol, only_dimorphite=False)
+    ################################################
+    print("################################")
+    for i in range(len(molpairs)):
+        pka, pair, idx = (
+            molpairs[i][0],
+            molpairs[i][1],
+            molpairs[i][2],
+        )
+        print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
+        print(pka)
+    print("################################")
+    ################################################
+    assert len(molpairs) == 3
+    ################################################
+    protonation_state = 0
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+
+    assert Chem.MolToSmiles(pair[0]) == "[NH3+]C(Cc1ccc(O)cc1)C(=O)O"
+    assert Chem.MolToSmiles(pair[1]) == "[NH3+]C(Cc1ccc(O)cc1)C(=O)[O-]"
+    assert np.isclose(pka, 2.2737984657287598)
+    assert idx == 12
+    ################################################
     protonation_state = 1
     pka, pair, idx = (
         molpairs[protonation_state][0],
         molpairs[protonation_state][1],
         molpairs[protonation_state][2],
     )
-    print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
-    assert Chem.MolToSmiles(pair[0]) == "O=C(O)[C@]1(O)C[C@@H](O)[C@@H](O)[C@H](O)C1"
-    assert Chem.MolToSmiles(pair[1]) == "O=C([O-])[C@]1(O)C[C@@H](O)[C@@H](O)[C@H](O)C1"
-    assert np.isclose(pka, 3.7188952)
-    assert idx == 2
+
+    assert Chem.MolToSmiles(pair[0]) == "[NH3+]C(Cc1ccc(O)cc1)C(=O)[O-]"
+    assert Chem.MolToSmiles(pair[1]) == "[NH3+]C(Cc1ccc([O-])cc1)C(=O)[O-]"
+    assert np.isclose(pka, 8.993396759033203)
+    assert idx == 7
+    ################################################
+    protonation_state = 2
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+
+    assert Chem.MolToSmiles(pair[0]) == "[NH3+]C(Cc1ccc([O-])cc1)C(=O)[O-]"
+    assert Chem.MolToSmiles(pair[1]) == "NC(Cc1ccc([O-])cc1)C(=O)[O-]"
+    assert np.isclose(pka, 9.486579895019531)
+    assert idx == 0
+    ################################################
+
+
+def test_aspartic_acid():
+    # https://chem.libretexts.org/Courses/University_of_Arkansas_Little_Rock/CHEM_4320_5320%3A_Biochemistry_1/01%3A_Amino_Acids/1.4%3A_Reactions_of_Amino_Acids/1.4.1_Acid-base_Chemistry_of_Amino_Acids
+    mol = Chem.MolFromSmiles("N[C@@H](CC(=O)O)C(=O)O")
+    ################################################
+    ################################################
+    molpairs = calculate_microstate_pka_values(mol, only_dimorphite=False)
+    ################################################
+    print("################################")
+    for i in range(len(molpairs)):
+        pka, pair, idx = (
+            molpairs[i][0],
+            molpairs[i][1],
+            molpairs[i][2],
+        )
+        print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
+        print(pka)
+    print("################################")
+    ################################################
+    assert len(molpairs) == 3
+    ################################################
+    protonation_state = 0
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+
+    assert Chem.MolToSmiles(pair[0]) == "[NH3+][C@@H](CC(=O)O)C(=O)O"
+    assert Chem.MolToSmiles(pair[1]) == "[NH3+][C@@H](CC(=O)O)C(=O)[O-]"
+    assert np.isclose(pka, 2.21097993850708)
+    assert idx == 8
+    ################################################
+    protonation_state = 1
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+
+    assert Chem.MolToSmiles(pair[0]) == "[NH3+][C@@H](CC(=O)O)C(=O)[O-]"
+    assert Chem.MolToSmiles(pair[1]) == "[NH3+][C@@H](CC(=O)[O-])C(=O)[O-]"
+    assert np.isclose(pka, 3.519895076751709)
+    assert idx == 5
+    ################################################
+    protonation_state = 2
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+
+    assert Chem.MolToSmiles(pair[0]) == "[NH3+][C@@H](CC(=O)[O-])C(=O)[O-]"
+    assert Chem.MolToSmiles(pair[1]) == "N[C@@H](CC(=O)[O-])C(=O)[O-]"
+    assert np.isclose(pka, 9.840612411499023)
+    assert idx == 0
+    ################################################
+
+
+def test_arginin():
+    # https://chem.libretexts.org/Courses/University_of_Arkansas_Little_Rock/CHEM_4320_5320%3A_Biochemistry_1/01%3A_Amino_Acids/1.4%3A_Reactions_of_Amino_Acids/1.4.1_Acid-base_Chemistry_of_Amino_Acids
+    mol = Chem.MolFromSmiles("NC(N)=NCCCC(N)C(=O)O")
+    ################################################
+    ################################################
+    molpairs = calculate_microstate_pka_values(mol, only_dimorphite=False)
+    ################################################
+    print("################################")
+    for i in range(len(molpairs)):
+        pka, pair, idx = (
+            molpairs[i][0],
+            molpairs[i][1],
+            molpairs[i][2],
+        )
+        print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
+        print(pka)
+    print("################################")
+    ################################################
+    assert len(molpairs) == 3
+    ################################################
+    protonation_state = 0
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+
+    assert Chem.MolToSmiles(pair[0]) == "NC(N)=[NH+]CCCC([NH3+])C(=O)O"
+    assert Chem.MolToSmiles(pair[1]) == "NC(N)=[NH+]CCCC([NH3+])C(=O)[O-]"
+    assert np.isclose(pka, 2.0857582092285156)
+    assert idx == 11
+    ################################################
+    protonation_state = 1
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+
+    assert Chem.MolToSmiles(pair[0]) == "NC(N)=[NH+]CCCC([NH3+])C(=O)[O-]"
+    assert Chem.MolToSmiles(pair[1]) == "NC(N)=[NH+]CCCC(N)C(=O)[O-]"
+    assert np.isclose(pka, 9.936403274536133)
+    assert idx == 8
+    ################################################
+    protonation_state = 2
+    pka, pair, idx = (
+        molpairs[protonation_state][0],
+        molpairs[protonation_state][1],
+        molpairs[protonation_state][2],
+    )
+
+    assert Chem.MolToSmiles(pair[0]) == "NC(N)=[NH+]CCCC(N)C(=O)[O-]"
+    assert Chem.MolToSmiles(pair[1]) == "NC(N)=NCCCC(N)C(=O)[O-]"
+    assert np.isclose(pka, 11.475444793701172)
+    assert idx == 3
     ################################################
 
 
