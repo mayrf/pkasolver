@@ -62,6 +62,7 @@ class QueryModel:
         else:
             base_path = path.dirname(__file__)
             if torch.cuda.is_available() == False:  # If only CPU is available
+                print("Are you actually called?")
                 checkpoint = torch.load(
                     f"{base_path}/trained_model/fine_tuned_model.pt",
                     map_location=torch.device("cpu"),
