@@ -191,16 +191,17 @@ def _check_for_duplicates(states: list):
 
 
 def calculate_microstate_pka_values(
-    mol: Chem.rdchem.Mol, only_dimorphite: bool = False
+    mol: Chem.rdchem.Mol, only_dimorphite: bool = False, query_model=None
 ):
     """Enumerate protonation states using a rdkit mol as input"""
     from operator import itemgetter
+    if query_model == None:
+        query_model = QueryModel()
 
     if only_dimorphite:
         print(
             "BEWARE! This is experimental and might generate wrong protonation states."
         )
-        query_model = QueryModel()
         print("Using dimorphite-dl to enumerate protonation states.")
         all_mols = _call_dimorphite_dl(mol, min_ph=0.5, max_ph=13.5)
         # sort mols
@@ -256,7 +257,6 @@ def calculate_microstate_pka_values(
             list(set(_get_ionization_indices(all_mols, mol_at_ph_7, strict=False)))
         )
         mols = [mol_at_ph_7]
-        query_model = QueryModel()
 
         acids = []
         mol_at_state = deepcopy(mol_at_ph_7)
