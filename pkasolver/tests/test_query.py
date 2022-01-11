@@ -10,6 +10,14 @@ with open(input, "rb") as fh:
         mollist.append(mol)
 
 
+def test_generate_query():
+    from pkasolver.query import QueryModel
+    import pickle
+
+    q = QueryModel()
+    pickle.dump(q, open("pkasolver/trained_model/trained_model.pickle", "wb"))
+
+
 def test_predict():
     from pkasolver.data import (
         make_features_dicts,
