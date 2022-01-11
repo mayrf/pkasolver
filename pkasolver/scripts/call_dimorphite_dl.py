@@ -1,7 +1,7 @@
-from pkasolver import run_with_mol_list
 import argparse
-import os
 import pickle
+
+from pkasolver import run_with_mol_list
 from rdkit import Chem
 
 parser = argparse.ArgumentParser()
