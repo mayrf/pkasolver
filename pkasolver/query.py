@@ -61,7 +61,15 @@ class QueryModel:
             checkpoint = torch.load(path_to_parameters)
         else:
             base_path = path.dirname(__file__)
-            checkpoint = torch.load(f"{base_path}/trained_model/fine_tuned_model.pt")
+            if torch.cuda.is_available() == "False":  # If only CPU is available
+                checkpoint = torch.load(
+                    f"{base_path}/trained_model/fine_tuned_model.pt",
+                    map_location=torch.device("cpu"),
+                )
+            else:
+                checkpoint = torch.load(
+                    f"{base_path}/trained_model/fine_tuned_model.pt"
+                )
 
         model.load_state_dict(checkpoint["model_state_dict"])
         model.eval()
@@ -371,10 +379,7 @@ def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool 
             for i in used_reaction_center_atom_idxs:
                 try:
                     conj = create_conjugate(
-                        mol_at_state,
-                        i,
-                        pka=0.0,
-                        known_pka_values=False,
+                        mol_at_state, i, pka=0.0, known_pka_values=False,
                     )
                 except:
                     continue
@@ -475,9 +480,9 @@ def calculate_microstate_pka_values(mol: Chem.rdchem.Mol, only_dimorphite: bool 
         mols = _check_for_dublicates(mols)
 
     if len(mols) == 0:
-        print('#########################')
-        print ('Could not identify any ionizable group. Aborting.')
-        print('#########################')
+        print("#########################")
+        print("Could not identify any ionizable group. Aborting.")
+        print("#########################")
 
     return mols
 
