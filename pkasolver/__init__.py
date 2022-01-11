@@ -5,6 +5,7 @@ toolset for predicting the pka values of small molecules
 
 # Add imports here
 from .pkasolver import *
+from .dimorphite_dl.dimorphite_dl import run_with_mol_list
 
 # Handle versioneer
 from ._version import get_versions
