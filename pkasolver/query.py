@@ -77,9 +77,7 @@ class QueryModel:
         self.model = model
 
 
-def _get_ionization_indices(
-    mol_list: list, compare_to: Chem.Mol, strict: bool = True
-) -> list:
+def _get_ionization_indices(mol_list: list, compare_to: Chem.Mol) -> list:
     """Takes a list of mol objects of different protonation states,
     and returns the protonation center index
 
@@ -136,8 +134,7 @@ def _call_dimorphite_dl(
     import subprocess
 
     # get path to script
-    path_to_script = path.dirname(__file__).split("/")[:-1]
-    path_to_script = "/".join(path_to_script)
+    path_to_script = path.dirname(__file__)
     smiles = Chem.MolToSmiles(mol, isomericSmiles=True)
     # save properties
     props = mol.GetPropsAsDict()
@@ -195,6 +192,7 @@ def calculate_microstate_pka_values(
 ):
     """Enumerate protonation states using a rdkit mol as input"""
     from operator import itemgetter
+
     if query_model == None:
         query_model = QueryModel()
 
@@ -254,7 +252,7 @@ def calculate_microstate_pka_values(
 
         # identify protonation sites
         reaction_center_atom_idxs = sorted(
-            list(set(_get_ionization_indices(all_mols, mol_at_ph_7, strict=False)))
+            list(set(_get_ionization_indices(all_mols, mol_at_ph_7)))
         )
         mols = [mol_at_ph_7]
 
