@@ -100,7 +100,6 @@ def _get_ionization_indices(mol_list: list, compare_to: Chem.Mol) -> list:
 
         # convert from SMARTS
         mcsp = Chem.MolFromSmarts(mcs.smartsString, False)
-        print("searching ...")
         s1 = m1.GetSubstructMatch(mcsp)
         s2 = m2.GetSubstructMatch(mcsp)
 
@@ -122,7 +121,6 @@ def _get_ionization_indices(mol_list: list, compare_to: Chem.Mol) -> list:
 def _parse_dimorphite_dl_output():
     import pickle
 
-    print("parsing ...")
     mols = pickle.load(open("test.pkl", "rb"))
     return mols
 
