@@ -385,17 +385,25 @@ def draw_pka_map(res: dict, size=(450, 450)):
     return Draw.MolToImage(mol, size=size)
 
 
-def draw_pka_reactions(mols, pkas, atoms):
-    draw_pairs = []
-    pair_atoms = []
-    pair_pkas = []
-    for i in range(len(mols)):
-        draw_pairs.extend([mols[i][0], mols[i][1]])
-        pair_atoms.extend([[atoms[i]], [atoms[i]]])
-        pair_pkas.extend([pkas[i], pkas[i]])
+def draw_pka_reactions(molpairs: list):
+
+    draw_pairs, pair_atoms, pair_pkas = [], [], []
+    for i in range(len(molpairs)):
+
+        protonation_state = 0
+        pka, pair, idx = (
+            molpairs[protonation_state][0],
+            molpairs[protonation_state][1],
+            molpairs[protonation_state][2],
+        )
+
+        draw_pairs.extend([pair[0], pair[1]])
+        pair_atoms.extend([[idx], [idx]])
+        pair_pkas.extend([pka, pka])
+
     return Draw.MolsToGridImage(
         draw_pairs,
-        molsPerRow=2,
+        molsPerRow=4,
         subImgSize=(250, 250),
         highlightAtomLists=pair_atoms,
         legends=[f"pka = {pair_pkas[i]:.2f}" for i in range(12)],
