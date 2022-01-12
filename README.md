@@ -1,8 +1,8 @@
 pkasolver
 ==============================
 [//]: # (Badges)
-[![GitHub Actions Build Status](https://github.com/MayrF/pkasolver/workflows/CI/badge.svg)](https://github.com/MayrF/pkasolver/actions?query=workflow%3ACI)
-[![codecov](https://codecov.io/gh/MayrF/pkasolver/branch/master/graph/badge.svg)](https://codecov.io/gh/MayrF/pkasolver/branch/master)
+[![GitHub Actions Build Status](https://github.com/mayrf/pkasolver/workflows/CI/badge.svg)](https://github.com/mayrf/pkasolver/actions?query=workflow%3ACI)
+[![codecov](https://codecov.io/gh/mayrf/pkasolver/branch/master/graph/badge.svg)](https://codecov.io/gh/mayrf/pkasolver/branch/master)
 
 pKasolver is a package that enables prediction of pKa values of small molecules via graph convolutional networks. 
 
