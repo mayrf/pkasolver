@@ -1,14 +1,18 @@
-from pkasolver.chem import atom_smarts_query, make_smarts_features, bond_smarts_query
+import logging
+
+from pkasolver.chem import atom_smarts_query, bond_smarts_query, make_smarts_features
+
+logger = logging.getLogger(__name__)
 
 import torch
 
 NUM_THREADS = 1
 torch.set_num_threads(NUM_THREADS)
-print(f"Setting num threads to {NUM_THREADS}")
+logger.debug(f"Setting num threads to {NUM_THREADS}")
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SEED = 42
-print(f"Pytorch will use {DEVICE}")
+logger.debug(f"Pytorch will use {DEVICE}")
 
 rotatable_bond = "[!$(*#*)&!D1]-&!@[!$(*#*)&!D1]"
 rotatable_bond_no_amide = "[!$([NH]!@C(=O))&!D1&!$(*#*)]-&!@[!$([NH]!@C(=O))&!D1&!$(*#*)]"  # any good? https://rdkit-discuss.narkive.com/4o99LqS6/rotatable-bonds-amide-bonds-and-smarts
@@ -86,10 +90,7 @@ node_feat_values = {
 
 NODE_FEATURES = {
     "element": lambda atom, marvin_atom: list(
-        map(
-            lambda s: int(atom.GetAtomicNum() == s),
-            node_feat_values["element"],
-        )
+        map(lambda s: int(atom.GetAtomicNum() == s), node_feat_values["element"],)
     ),  # still missing to mark element that's not in the list
     "formal_charge": lambda atom, marvin_atom: list(
         map(
@@ -106,10 +107,7 @@ NODE_FEATURES = {
         )
     ),
     "total_num_Hs": lambda atom, marvin_atom: list(
-        map(
-            lambda s: int(atom.GetTotalNumHs() == s),
-            node_feat_values["total_num_Hs"],
-        )
+        map(lambda s: int(atom.GetTotalNumHs() == s), node_feat_values["total_num_Hs"],)
     ),
     "aromatic_tag": lambda atom, marvin_atom: atom.GetIsAromatic(),
     "total_valence": lambda atom, marvin_atom: list(
@@ -120,8 +118,7 @@ NODE_FEATURES = {
     ),
     "total_degree": lambda atom, marvin_atom: list(
         map(
-            lambda s: int(atom.GetTotalDegree() == s),
-            node_feat_values["total_degree"],
+            lambda s: int(atom.GetTotalDegree() == s), node_feat_values["total_degree"],
         )
     ),
     "reaction_center": lambda atom, marvin_atom: atom.GetIdx() == int(marvin_atom),

@@ -1062,22 +1062,52 @@ calculate_mse = torch.nn.MSELoss()
 calculate_mae = torch.nn.L1Loss()  # that's the MAE Loss
 
 
-def gcn_train(model, loader, optimizer):
+def gcn_train(model, training_loader, optimizer, reg_loader=None):
     model.train()
-    for data in loader:  # Iterate in batches over the training dataset.
-        data.to(device=DEVICE)
-        out = model(
-            x_p=data.x_p,
-            x_d=data.x_d,
-            edge_attr_p=data.edge_attr_p,
-            edge_attr_d=data.edge_attr_d,
-            data=data,
-        )
-        ref = data.reference_value
-        loss = calculate_mse(out.flatten(), ref)  # Compute the loss.
-        loss.backward()  # Derive gradients.
-        optimizer.step()  # Update parameters based on gradients.
-        optimizer.zero_grad()  # Clear gradients.
+    if reg_loader:
+        for train_data, reg_data in zip(
+            training_loader, reg_loader
+        ):  # Iterate in batches over the training dataset.
+            train_data.to(device=DEVICE)
+            out = model(
+                x_p=train_data.x_p,
+                x_d=train_data.x_d,
+                edge_attr_p=train_data.edge_attr_p,
+                edge_attr_d=train_data.edge_attr_d,
+                data=train_data,
+            )
+            ref = train_data.reference_value
+            loss = calculate_mse(out.flatten(), ref)  # Compute the loss.
+            reg_data.to(device=DEVICE)
+            out = model(
+                x_p=reg_data.x_p,
+                x_d=reg_data.x_d,
+                edge_attr_p=reg_data.edge_attr_p,
+                edge_attr_d=reg_data.edge_attr_d,
+                data=reg_data,
+            )
+            ref = reg_data.reference_value
+            loss += calculate_mse(out.flatten(), ref)  # Compute the loss.
+
+            loss.backward()  # Derive gradients.
+            optimizer.step()  # Update parameters based on gradients.
+            optimizer.zero_grad()  # Clear gradients.
+    else:
+        for data in training_loader:  # Iterate in batches over the training dataset.
+            data.to(device=DEVICE)
+            out = model(
+                x_p=data.x_p,
+                x_d=data.x_d,
+                edge_attr_p=data.edge_attr_p,
+                edge_attr_d=data.edge_attr_d,
+                data=data,
+            )
+            ref = data.reference_value
+            loss = calculate_mse(out.flatten(), ref)  # Compute the loss.
+
+            loss.backward()  # Derive gradients.
+            optimizer.step()  # Update parameters based on gradients.
+            optimizer.zero_grad()  # Clear gradients.
 
 
 def gcn_test(model, loader):
@@ -1141,7 +1171,23 @@ def gcn_full_training(
     path: str = "",
     NUM_EPOCHS: int = 1_000,
     prefix="",
+    reg_loader=None,
 ) -> dict:
+    """Training routine
+
+    Args:
+        model ([type]): [description]
+        train_loader ([type]): [description]
+        val_loader ([type]): [description]
+        optimizer ([type]): [description]
+        path (str, optional): [description]. Defaults to "".
+        NUM_EPOCHS (int, optional): [description]. Defaults to 1_000.
+        prefix (str, optional): [description]. Defaults to "".
+        reg_loader ([type], optional): [description]. Defaults to None.
+
+    Returns:
+        dict: [description]
+    """
     from torch import optim
 
     pbar = tqdm(range(model.checkpoint["epoch"], NUM_EPOCHS + 1), desc="Epoch: ")
@@ -1154,7 +1200,7 @@ def gcn_full_training(
 
     for epoch in pbar:
         if epoch != 0:
-            gcn_train(model, train_loader, optimizer)
+            gcn_train(model, train_loader, optimizer, reg_loader)
         if epoch % 5 == 0:
             train_loss = gcn_test(model, train_loader)
             val_loss = gcn_test(model, val_loader)

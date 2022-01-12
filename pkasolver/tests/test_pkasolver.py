@@ -3,8 +3,6 @@ Unit and regression test for the pkasolver package.
 """
 
 # Import package, test suite, and other packages as needed
-import pkasolver
-import pytest
 import sys
 
 

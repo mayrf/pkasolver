@@ -1,4 +1,4 @@
-#pkasolver
+pkasolver
 ==============================
 [//]: # (Badges)
 [![GitHub Actions Build Status](https://github.com/MayrF/pkasolver/workflows/CI/badge.svg)](https://github.com/MayrF/pkasolver/actions?query=workflow%3ACI)
@@ -8,45 +8,31 @@ pKasolver is a package that enables prediction of pKa values of small molecules 
 
 ## Prerequisites
 
-The Python dependencies are:
-* Python >= 3.7
-* NumPy >= 1.18
-* Scikit-Learn >= 0.22
-* PyTorch >= 1.9
-* PyTorch Geometric >= 1.7.2 
-* RDKit >= 2019.09.3
-* Pandas >= 0.25
-* JupyterLab >= 1.2
-* Matplotlib >= 3.1
-* Seaborn >= 0.9
 
-### Installing
+### Installation
 
-1) Install all dependencies in your python environment. 
-2) Download this repo
-3) `cd` into the repo
-3) Install the package by using the terminal command `python setup.py install`
+We recommend using anaconda to set up a new repository (https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) and installing the dependencies listed in https://github.com/mayrf/pkasolver/blob/main/devtools/conda-envs/test_env.yaml.
+This can be done with `conda env create -f devtools/conda-envs/test_env.yaml` (the conda environment will be called `test` --- if you want a different name change the first line in `test_env.yaml`).
+After activating the conda environment the package can be installed with `python setup.py install`.
 
-## Usage
+## How to use pkasolver to predict microstate pka values
 
-The usage of this package is demonstrated by files in the `examples/tesis_run` folder. The juypter notebook `thesis_pipeline.ipynb` that contains the entire workflow of data preprocessing, featurization, model training and testing, except for the cross-validation training.The script `train_script.py` enables parallel computation of all train-test-split and cross-validation models on multiple machines. This can be done by using the script in conjuction with the files test.sh and `run_training.sh`. The global variables are stored and called from the file `config.py` and the code for the neural network architectures as well as the training functions from the file `architecture.py`. 
+Depending on your needs you can either use the juptyer notebook deposited in the `notebooks` directory which demonstrate the usage of the pkasolver package (this needs a local installation of the pkasolver package).
+Or you can use the provided google colabs that automatically installs everything in a hosted notebook and allows you to use the package for pka prediction without a local installation: https://colab.research.google.com/drive/1-2qvt7nJ7n3jHfJjYPcAnWLkSGmRWjD_?usp=sharing
+
+To generate your own models, take a look at the `scripts` folder in the corresponding data repository: https://github.com/wiederm/pkasolver-data. It contains notebooks to reproduce the plots shwon in [placeholder] and python scripts to prepare the data, train models and visualize their performance.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
 
-It uses pyTorch and pyTorch geometrics for handling NN-models and sklearn to deploy other machine learning models that serve as baselines.  for  is inspired by the works of Baltruschat et. al. and 
-
-developed in the course of the master tesis of Fritz Mayr at the 
-
-toolset for predicting the pka values of small molecules
-
 ### Copyright
 
-Copyright (c) 2020, Fritz Mayr
+Copyright (c) 2021, Fritz Mayr, Oliver Wieder, Marcus Wieder
 
 
 #### Acknowledgements
  
 Project based on the 
 [Computational Molecular Science Python Cookiecutter](https://github.com/molssi/cookiecutter-cms) version 1.4.
+

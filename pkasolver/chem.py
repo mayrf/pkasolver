@@ -6,20 +6,25 @@ from copy import deepcopy
 
 
 def create_conjugate(
-    mol_initial: Chem.Mol, id: int, pka: float, pH=7.4, ignore_danger: bool = False
+    mol_initial: Chem.Mol,
+    idx: int,
+    pka: float,
+    pH: float = 7.4,
+    ignore_danger: bool = False,
+    known_pka_values: bool = True,
 ):
     """Create a new molecule that is the conjugated base/acid to the input molecule."""
     mol = deepcopy(mol_initial)
     mol_changed = Chem.RWMol(mol)
     Chem.SanitizeMol(mol_changed)
-    atom = mol_changed.GetAtomWithIdx(id)
+    atom = mol_changed.GetAtomWithIdx(idx)
     charge = atom.GetFormalCharge()
     Ex_Hs = atom.GetNumExplicitHs()
     Tot_Hs = atom.GetTotalNumHs()
     danger = False
     # make deprotonated conjugate as pKa > pH with at least one proton or
     # mol charge is positive (otherwise conjugate reaction center would have charge +2 --> highly unlikely)
-    if (pka > pH and Tot_Hs > 0) or charge > 0:
+    if (pka > pH and Tot_Hs > 0) or (charge > 0 and known_pka_values):
         atom.SetFormalCharge(charge - 1)
         if Ex_Hs > 0:
             atom.SetNumExplicitHs(Ex_Hs - 1)
@@ -42,6 +47,14 @@ def create_conjugate(
             f"pka: {pka},charge:{charge},Explicit Hs:{Ex_Hs}, Total Hs:{Tot_Hs}, reaction center atomic number: {atom.GetAtomicNum()}"
         )
     atom.UpdatePropertyCache()
+
+    if (
+        atom.GetSymbol() == "O"
+        and atom.GetFormalCharge() == 1
+        and known_pka_values == False
+    ):
+        raise RuntimeError("Protonating already protonated oxygen. Aborting.")
+
     Tot_Hs_after = atom.GetTotalNumHs()
     assert Tot_Hs != Tot_Hs_after
     # mol = next(ResonanceMolSupplier(mol))
@@ -55,31 +68,32 @@ def create_conjugate(
     return mol_changed
 
 
-def generate_morgan_fp_array(df, mol_column, nBits=4096, radius=3, useFeatures=True):
-    """Take Pandas DataFrame, create Morgan fingerprints from the molecules in "mol_column"
-    and return them as numpy array.
-    """
-    length = len(df)
-    i = 0
-    for mol in df[mol_column]:
+# def generate_morgan_fp_array(df, mol_column, nBits=4096, radius=3, useFeatures=True):
+#     """Take Pandas DataFrame, create Morgan fingerprints from the molecules in "mol_column"
+#     and return them as numpy array.
+#     """
+#     length = len(df)
+#     i = 0
+#     for mol in df[mol_column]:
 
-        fp = np.array(
-            GetMorganFingerprintAsBitVect(
-                mol, radius=3, nBits=4096, useFeatures=useFeatures
-            )
-        )
-        if i == 0:
-            array = fp
-        else:
-            array = np.vstack((array, fp))
-        if i % 1000 == 0:
-            print(f"fp:{i} of {length}")
-        i += 1
-    return array
+#         fp = np.array(
+#             GetMorganFingerprintAsBitVect(
+#                 mol, radius=3, nBits=4096, useFeatures=useFeatures
+#             )
+#         )
+#         if i == 0:
+#             array = fp
+#         else:
+#             array = np.vstack((array, fp))
+#         if i % 1000 == 0:
+#             print(f"fp:{i} of {length}")
+#         i += 1
+#     return array
 
 
-# return whether a bond matches a particular smarts query
 def bond_smarts_query(bond, smarts):
+    # return whether a bond matches a particular smarts query
+
     for match in bond.GetOwningMol().GetSubstructMatches(Chem.MolFromSmarts(smarts)):
         if set((bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())) == set(match):
             return True
@@ -104,7 +118,7 @@ def make_smarts_features(atom, smarts_dict):
     return bits
 
 
-def calculate_tanimoto_coefficient(fp1, fp2):
-    set1 = set(fp1.nonzero()[0].tolist())
-    set2 = set(fp2.nonzero()[0].tolist())
-    return len(set1 & set2) / len(set1 | set2)
+# def calculate_tanimoto_coefficient(fp1, fp2):
+#     set1 = set(fp1.nonzero()[0].tolist())
+#     set2 = set(fp2.nonzero()[0].tolist())
+#     return len(set1 & set2) / len(set1 | set2)

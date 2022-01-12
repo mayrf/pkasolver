@@ -1,7 +1,9 @@
 # Imports
-import tqdm
+
+from copy import deepcopy
+
 from rdkit import Chem
-from rdkit.Chem import PandasTools
+from rdkit.Chem import PandasTools, PropertyMol
 from rdkit.Chem.AllChem import Compute2DCoords
 from rdkit.Chem.PandasTools import LoadSDF
 
@@ -11,6 +13,7 @@ import random
 import numpy as np
 import pandas as pd
 import torch
+import tqdm
 from torch_geometric.data import Data
 
 from pkasolver.chem import create_conjugate
@@ -212,8 +215,9 @@ def make_nodes(mol, marvin_atom: int, n_features: dict):
         node = []
         for feat in n_features.values():
             node.append(feat(atom, marvin_atom))
+            # if atom.GetIdx() == int(marvin_atom):
+            #    print(atom.GetSymbol())
         node = list(flatten(node))
-        # node = [int(x) for x in node]
         x.append(node)
     return torch.tensor(np.array([np.array(xi) for xi in x]), dtype=torch.float)
 
@@ -247,21 +251,21 @@ def make_features_dicts(all_features, feat_list):
     return {x: all_features[x] for x in feat_list}
 
 
-def mol_to_features_old(
-    row, n_features: dict, e_features: dict, protonation_state: str
-):
-    if protonation_state == "protonated":
-        node = make_nodes(row.protonated, row.marvin_atom, n_features)
-        edge_index, edge_attr = make_edges_and_attr(row.protonated, e_features)
-        charge = np.sum([a.GetFormalCharge() for a in row.protonated.GetAtoms()])
-        return node, edge_index, edge_attr, charge
-    elif protonation_state == "deprotonated":
-        node = make_nodes(row.deprotonated, row.marvin_atom, n_features)
-        edge_index, edge_attr = make_edges_and_attr(row.deprotonated, e_features)
-        charge = np.sum([a.GetFormalCharge() for a in row.deprotonated.GetAtoms()])
-        return node, edge_index, edge_attr, charge
-    else:
-        raise RuntimeError()
+# def mol_to_features_old(
+#     row, n_features: dict, e_features: dict, protonation_state: str
+# ):
+#     if protonation_state == "protonated":
+#         node = make_nodes(row.protonated, row.marvin_atom, n_features)
+#         edge_index, edge_attr = make_edges_and_attr(row.protonated, e_features)
+#         charge = np.sum([a.GetFormalCharge() for a in row.protonated.GetAtoms()])
+#         return node, edge_index, edge_attr, charge
+#     elif protonation_state == "deprotonated":
+#         node = make_nodes(row.deprotonated, row.marvin_atom, n_features)
+#         edge_index, edge_attr = make_edges_and_attr(row.deprotonated, e_features)
+#         charge = np.sum([a.GetFormalCharge() for a in row.deprotonated.GetAtoms()])
+#         return node, edge_index, edge_attr, charge
+#     else:
+#         raise RuntimeError()
 
 
 def mol_to_features(mol, atom_idx: int, n_features: dict, e_features: dict):
@@ -423,25 +427,133 @@ def make_paired_pyg_data_from_mol(
     return m
 
 
-def slice_list(input_list, size):
-    "take a list and devide its items"
-    input_size = len(input_list)
-    slice_size = input_size // size
-    remain = input_size % size
-    result = []
-    iterator = iter(input_list)
-    for i in range(size):
-        result.append([])
-        for j in range(slice_size):
-            result[i].append(next(iterator))
-        if remain:
-            result[i].append(next(iterator))
-            remain -= 1
-    return result
+def iterate_over_acids(
+    acidic_mols_properties,
+    nr_of_mols: int,
+    partner_mol: Chem.Mol,
+    nr_of_skipped_mols: int,
+    pka_list: list,
+    GLOBAL_COUNTER: int,
+    pH: float,
+    counter_list: list,
+    smiles_list: list,
+):
+
+    acidic_mols = []
+    skipping_acids = 0
+
+    for idx, acid_prop in enumerate(
+        reversed(acidic_mols_properties)
+    ):  # list must be iterated in reverse, in order to protonated the strongest conjugate base first
+
+        if skipping_acids == 0:  # if a acid was skipped, all further acids are skipped
+            try:
+                new_mol = create_conjugate(
+                    partner_mol, acid_prop["atom_idx"], acid_prop["pka_value"], pH=pH,
+                )
+                Chem.SanitizeMol(new_mol)
+                # new_mol = s.standardize(new_mol)
+
+            except Exception as e:
+                print(f"Error at molecule number {nr_of_mols} - acid enumeration")
+                print(e)
+                print(acid_prop)
+                print(acidic_mols_properties)
+                if partner_mol:
+                    print(Chem.MolToSmiles(partner_mol))
+                skipping_acids += 1
+                nr_of_skipped_mols += 1
+                continue  # continue instead of break, will not enter this routine gain since skipping_acids != 0
+
+            pka_list.append(acid_prop["pka_value"])
+            smiles_list.append(
+                (Chem.MolToSmiles(new_mol), Chem.MolToSmiles(partner_mol))
+            )
+
+            for mol in [new_mol, partner_mol]:
+                GLOBAL_COUNTER += 1
+                counter_list.append(GLOBAL_COUNTER)
+                mol.SetProp(f"CHEMBL_ID", str(acid_prop["chembl_id"]))
+                mol.SetProp(f"INTERNAL_ID", str(GLOBAL_COUNTER))
+                mol.SetProp(f"pKa", str(acid_prop["pka_value"]))
+                mol.SetProp(f"epik_atom", str(acid_prop["atom_idx"]))
+                mol.SetProp(f"pKa_number", f"acid_{idx + 1}")
+                mol.SetProp(f"mol-smiles", f"{Chem.MolToSmiles(mol)}")
+
+            # add current mol to list of acidic mol. for next
+            # lower pKa value, this mol is starting structure
+            acidic_mols.append(
+                (
+                    PropertyMol.PropertyMol(new_mol),
+                    PropertyMol.PropertyMol(partner_mol),
+                )
+            )
+            partner_mol = deepcopy(new_mol)
+
+        else:
+            skipping_acids += 1
+    return acidic_mols, nr_of_skipped_mols, GLOBAL_COUNTER, skipping_acids
 
 
-def cross_val_lists(sliced_lists, num):
-    not_flattend = [x for i, x in enumerate(sliced_lists) if i != num]
-    train_list = [item for subl in not_flattend for item in subl]
-    val_list = sliced_lists[num]
-    return train_list, val_list
+def iterate_over_bases(
+    basic_mols_properties,
+    nr_of_mols,
+    partner_mol: Chem.Mol,
+    nr_of_skipped_mols,
+    pka_list: list,
+    GLOBAL_COUNTER: int,
+    pH: float,
+    counter_list: list,
+    smiles_list: list,
+):
+
+    basic_mols = []
+    skipping_bases = 0
+    for idx, basic_prop in enumerate(basic_mols_properties):
+        if skipping_bases == 0:  # if a base was skipped, all further bases are skipped
+            try:
+                new_mol = create_conjugate(
+                    partner_mol, basic_prop["atom_idx"], basic_prop["pka_value"], pH=pH,
+                )
+
+                Chem.SanitizeMol(new_mol)
+                # new_mol = s.standardize(new_mol)
+
+            except Exception as e:
+                # in case error occurs new_mol is not in basic list
+                print(f"Error at molecule number {nr_of_mols} - bases enumeration")
+                print(e)
+                print(basic_prop)
+                print(basic_mols_properties)
+                if partner_mol:
+                    print(Chem.MolToSmiles(partner_mol))
+                skipping_bases += 1
+                nr_of_skipped_mols += 1
+                continue
+
+            pka_list.append(basic_prop["pka_value"])
+            smiles_list.append(
+                (Chem.MolToSmiles(partner_mol), Chem.MolToSmiles(new_mol))
+            )
+
+            for mol in [partner_mol, new_mol]:
+                GLOBAL_COUNTER += 1
+                counter_list.append(GLOBAL_COUNTER)
+                mol.SetProp(f"CHEMBL_ID", str(basic_prop["chembl_id"]))
+                mol.SetProp(f"INTERNAL_ID", str(GLOBAL_COUNTER))
+                mol.SetProp(f"pKa", str(basic_prop["pka_value"]))
+                mol.SetProp(f"epik_atom", str(basic_prop["atom_idx"]))
+                mol.SetProp(f"pKa_number", f"acid_{idx + 1}")
+                mol.SetProp(f"mol-smiles", f"{Chem.MolToSmiles(mol)}")
+
+            # add current mol to list of acidic mol. for next
+            # lower pKa value, this mol is starting structure
+            basic_mols.append(
+                (PropertyMol.PropertyMol(partner_mol), PropertyMol.PropertyMol(new_mol))
+            )
+            partner_mol = deepcopy(new_mol)
+
+        else:
+            skipping_bases += 1
+
+    return basic_mols, nr_of_skipped_mols, GLOBAL_COUNTER, skipping_bases

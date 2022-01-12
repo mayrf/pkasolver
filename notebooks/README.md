@@ -1,0 +1,1 @@
+1. `query_example.ipynb` --gives an overview over the functions of the `query.py` modul, which contains all the functions necessary to use pkasolver to predict pkas from user input with the included fully trained model
