@@ -3,7 +3,6 @@ import logging
 from os import path
 
 import numpy as np
-from IPython.display import display
 from rdkit import Chem
 from rdkit.Chem.Draw import IPythonConsole
 
@@ -114,7 +113,7 @@ def _get_ionization_indices(mol_list: list, compare_to: Chem.Mol) -> list:
                     logger.warning("Trouble ahead ... different atom indices detected.")
                 list_of_reaction_centers.append(i)
 
-    print(set(list_of_reaction_centers))
+    logger.debug(set(list_of_reaction_centers))
     return list_of_reaction_centers
 
 
@@ -410,16 +409,16 @@ def draw_pka_reactions(molpairs: list):
     )
 
 
-def draw_sdf_mols(input_path, range_list=[]):
-    print(f"opening .sdf file at {input_path} and computing pkas...")
-    with open(input_path, "rb") as fh:
-        count = 0
-        for i, mol in enumerate(Chem.ForwardSDMolSupplier(fh, removeHs=True)):
-            if range_list and i not in range_list:
-                continue
-            props = mol.GetPropsAsDict()
-            for prop in props.keys():
-                mol.ClearProp(prop)
-            mols, pkas, atoms = calculate_microstate_pka_values(mol)
-            display(draw_pka_map(mols, pkas, atoms))
-            print(f"Name: {mol.GetProp('_Name')}")
+# def draw_sdf_mols(input_path, range_list=[]):
+#     print(f"opening .sdf file at {input_path} and computing pkas...")
+#     with open(input_path, "rb") as fh:
+#         count = 0
+#         for i, mol in enumerate(Chem.ForwardSDMolSupplier(fh, removeHs=True)):
+#             if range_list and i not in range_list:
+#                 continue
+#             props = mol.GetPropsAsDict()
+#             for prop in props.keys():
+#                 mol.ClearProp(prop)
+#             mols, pkas, atoms = calculate_microstate_pka_values(mol)
+#             display(draw_pka_map(mols, pkas, atoms))
+#             print(f"Name: {mol.GetProp('_Name')}")
