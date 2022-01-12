@@ -343,29 +343,22 @@ def make_edges_and_attr(mol, e_features) -> Tuple[torch.Tensor, torch.Tensor]:
 
 
 # function to select which features to use in the graph data
-def make_features_dicts(all_features, feat_list):
+def make_features_dicts(all_features: dict, feat_list: list) -> dict:
     """Take a dict of all features and a list of strings with all desired features
     and return a dict with these features
 
+    ----------
+    all_features
+        dictionary of all available features and their possible values
+    feat_list
+        list of feature names to be filtered for
+
+    Returns
+    -------
+    dict
+        filtered features dictionary
     """
     return {x: all_features[x] for x in feat_list}
-
-
-# def mol_to_features_old(
-#     row, n_features: dict, e_features: dict, protonation_state: str
-# ):
-#     if protonation_state == "protonated":
-#         node = make_nodes(row.protonated, row.marvin_atom, n_features)
-#         edge_index, edge_attr = make_edges_and_attr(row.protonated, e_features)
-#         charge = np.sum([a.GetFormalCharge() for a in row.protonated.GetAtoms()])
-#         return node, edge_index, edge_attr, charge
-#     elif protonation_state == "deprotonated":
-#         node = make_nodes(row.deprotonated, row.marvin_atom, n_features)
-#         edge_index, edge_attr = make_edges_and_attr(row.deprotonated, e_features)
-#         charge = np.sum([a.GetFormalCharge() for a in row.deprotonated.GetAtoms()])
-#         return node, edge_index, edge_attr, charge
-#     else:
-#         raise RuntimeError()
 
 
 def mol_to_features(
@@ -410,6 +403,23 @@ def mol_to_paired_mol_data(
 ) -> PairData:
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
+
+    ----------
+    prot
+        protonated rdkit mol object
+    deprot
+        deprotonated rdkit mol object
+    atom_idx
+        ionization center atom index
+    n_features
+        dictionary of node features
+    e_features
+        dictionary of edge features
+
+    Returns
+    -------
+    PairData
+        Data object ready for use with Pytorch Geometric models
     """
     node_p, edge_index_p, edge_attr_p, charge_p = mol_to_features(
         prot, atom_idx, n_features, e_features
@@ -439,7 +449,23 @@ def mol_to_single_mol_data(
 ) -> Data:
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch Data object.
+
+    ----------
+    mol
+        rdkit mol object
+    atom_idx
+        ionization center atom index
+    n_features
+        dictionary of node features
+    e_features
+        dictionary of edge features
+
+    Returns
+    -------
+    PairData
+        Data object ready for use with Pytorch Geometric models
     """
+
     node_p, edge_index_p, edge_attr_p, charge = mol_to_features(
         mol, atom_idx, n_features, e_features
     )
@@ -451,6 +477,23 @@ def make_pyg_dataset_from_dataframe(
 ) -> list:
     """Take a Dataframe, a list of strings of node features, a list of strings of edge features
     and return a List of PyG Data objects.
+
+    ----------
+    df
+        DataFrame containing "protonated" and "deprotonated" columns with mol objects, as well as "pKa" and "marvin_atom" columns
+    list_n
+        list of node features to be used
+    list_e
+        list of edge features to be used
+    paired
+        If true, including protonated and deprotonated molecules, if False only the type specified in mode
+    mode
+        if paired id false, use data from columnname == mol
+
+    Returns
+    -------
+    list
+        contains all molecules from df as pyG Graph data
     """
     print(f"Generating data with paired boolean set to: {paired}")
 
@@ -504,8 +547,21 @@ def make_pyg_dataset_from_dataframe(
 def make_paired_pyg_data_from_mol(
     mol: Chem.rdchem.Mol, selected_node_features: dict, selected_edge_features: dict
 ) -> PairData:
-    """Take a rdkit mol and generate a PyG Data object."""
+    """Generate a PyG Data object from an input molecule and feature dictionaries.
 
+    ----------
+    mol
+        input molecule
+    selected_node_features
+        dictionary of selected node features
+    selected_edge_features
+        dictionary of selected edge features
+
+    Returns
+    -------
+    PairData
+        Data object ready for use with Pytorch Geometric models
+    """
     props = mol.GetPropsAsDict()
     try:
         pka = props["pKa"]
@@ -565,7 +621,19 @@ def make_paired_pyg_data_from_mol(
 
 
 def slice_list(input_list: list, size: int) -> list:
-    "take a list and devide its items"
+    """takes a list and devides it into a number of sublist equal to the number of size
+
+    ----------
+    input_list
+        list to sliced
+    size
+        number of parts that list shall to be sliced to
+
+    Returns
+    -------
+    list
+        list of slice list pieces with length equal to size
+    """
     input_size = len(input_list)
     slice_size = input_size // size
     remain = input_size % size
@@ -582,6 +650,21 @@ def slice_list(input_list: list, size: int) -> list:
 
 
 def cross_val_lists(sliced_lists: list, num: int) -> Tuple[list, list]:
+    """returns a list of trainingsubsets and a validationsubset from input
+
+    ----------
+    sliced_lists
+        list of slice list pieces
+    num
+        index of slice that will be returned as validation set
+
+    Returns
+    -------
+    list
+        training set list
+    list
+        validation set list
+    """
     not_flattend = [x for i, x in enumerate(sliced_lists) if i != num]
     train_list = [item for subl in not_flattend for item in subl]
     val_list = sliced_lists[num]

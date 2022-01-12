@@ -60,7 +60,37 @@ model_path = path.join(path.dirname(__file__), "reg_everything_best_model.pkl")
 
 
 class QueryModel:
-    def __init__(self, path):
+    """
+    Class for loading, holding and changing the model used for pka queries.
+    Init takes path to pickled model file and returns Object with prepared model.
+
+    Attributes
+    ----------
+    path : string
+        path to the current model
+    model
+        pytorch geometric model object
+
+    Methods
+    -------
+    init:
+        takes path to pickled model file and returns object (model) with prepared model.
+
+        Parameters
+        ----------
+        new path
+            input molecule
+        e_features
+            dictionary containing functions for edge feature generation
+
+
+
+    Returns
+    -------
+
+    """
+
+    def __init__(self, path: str):
         self.path = path
         self.model_init()
 
@@ -92,12 +122,24 @@ def get_ionization_indices(mol_lst: list) -> list:
     that must be identically indexed
     and differ only in their ionization state.
 
-    :param mol_lst: A list of rdkit.Chem.rdchem.Mol objects.
-    :type mol_lst: list
+    ----------
+
+    mol_lst
+        A list of rdkit.Chem.rdchem.Mol objects.
+    matches
+        p
+
+    Exception:
+    -------
+    excption_type
+        If the molecules in mol_lst differ in more ways than their protonation states
+
+    Returns
+    -------
+    list
+        A list of indices of ionizable atoms.
     :raises Exception: If the molecules in mol_lst differ in more ways
         than their protonation states
-    :return: A list of indices of ionizable atoms.
-    :rtype: list
     """
 
     assert (
@@ -115,6 +157,22 @@ def get_ionization_indices(mol_lst: list) -> list:
 
 
 def get_possible_reactions(mol: Chem.rdchem.Mol, matches: list) -> Tuple[list, list]:
+    """
+
+    ----------
+    mol
+        p
+    matches
+        p
+
+    Returns
+    -------
+    list
+        r
+    list
+        r
+    """
+
     acid_pairs = []
     base_pairs = []
     for match in matches:
@@ -145,7 +203,11 @@ def get_possible_reactions(mol: Chem.rdchem.Mol, matches: list) -> Tuple[list, l
         Ex_Hs = atom.GetNumExplicitHs()
         Tot_Hs = atom.GetTotalNumHs()
 
-        if Tot_Hs > 0 and charge >= 0:
+        if (
+            Tot_Hs > 0
+            and charge >= 0
+            and not (element == 7 and charge == 0 and Tot_Hs == 1)
+        ):
             # reduce H
             atom.SetFormalCharge(charge - 1)
             if Ex_Hs > 0:
@@ -157,6 +219,20 @@ def get_possible_reactions(mol: Chem.rdchem.Mol, matches: list) -> Tuple[list, l
 
 
 def match_pka(pair_tuples: list, model) -> float:
+    """
+
+    ----------
+    pair_tuples
+        p
+    model
+        p
+
+    Returns
+    -------
+    float
+        r
+    """
+
     pair_data = []
     for (prot, deprot, atom_idx) in pair_tuples:
         m = mol_to_paired_mol_data(
@@ -174,6 +250,28 @@ def match_pka(pair_tuples: list, model) -> float:
 def acid_sequence(
     acid_pairs: list, mols: list, pkas: list, atoms: list
 ) -> Tuple[list, list, list]:
+    """
+
+    ----------
+    acid_pairs
+        p
+    mols
+        p
+    pkas
+        p
+    atoms
+        p
+
+    Returns
+    -------
+    int
+        r
+    int
+        r
+    int
+        r
+    """
+
     # determine pka for protonatable groups
     if len(acid_pairs) > 0:
         acid_pkas = list(match_pka(acid_pairs, query_model.model))
@@ -194,6 +292,28 @@ def acid_sequence(
 def base_sequence(
     base_pairs: list, mols: list, pkas: list, atoms: list
 ) -> Tuple[list, list, list]:
+    """
+
+    ----------
+    base_pairs
+        p
+    mol
+        p
+    pkas
+        p
+    atoms
+        p
+
+    Returns
+    -------
+    int
+        r
+    int
+        r
+    int
+        r
+    """
+
     # determine pka for deprotonatable groups
     if len(base_pairs) > 0:
         base_pkas = list(match_pka(base_pairs, query_model.model))
@@ -211,6 +331,17 @@ def base_sequence(
 
 
 def mol_query(mol: Chem.rdchem.Mol) -> dict:
+    """
+
+    ----------
+    mol
+        p
+
+    Returns
+    -------
+    dict
+        r
+    """
 
     try:
         name = mol.GetProp("_Name")
@@ -249,6 +380,18 @@ def mol_query(mol: Chem.rdchem.Mol) -> dict:
 
 
 def smiles_query(smi: str, output_smiles: bool = False) -> Tuple[list, list, list]:
+    """
+
+    ----------
+    p
+        p
+
+    Returns
+    -------
+    r
+        r
+    """
+
     res = mol_query(Chem.MolFromSmiles(smi))
     if output_smiles == True:
         smiles = []
@@ -258,7 +401,21 @@ def smiles_query(smi: str, output_smiles: bool = False) -> Tuple[list, list, lis
     return res
 
 
-def inchi_query(ini: str, output_inchi=False) -> Tuple[list, list, list]:
+def inchi_query(ini: str, output_inchi=False) -> dict:
+    """
+
+    ----------
+    ini
+        p
+    output_inchi
+        p
+
+    Returns
+    -------
+    dict
+        r
+    """
+
     # return mol_query(Chem.MolFromInchi(ini))
     res = mol_query(Chem.MolFromInchi(ini))
     if output_inchi == True:
@@ -270,6 +427,21 @@ def inchi_query(ini: str, output_inchi=False) -> Tuple[list, list, list]:
 
 
 def sdf_query(input_path: str, output_path: str, merged_output: bool = False):
+    """
+
+    ----------
+    input_path
+        p
+    output_path
+        p
+    merged_output
+        p
+
+    Returns
+    -------
+    None
+    """
+
     print(f"opening .sdf file at {input_path} and computing pkas...")
     with open(input_path, "rb") as fh:
         with open(output_path, "w") as sdf_zip:
@@ -310,6 +482,20 @@ def sdf_query(input_path: str, output_path: str, merged_output: bool = False):
 
 
 def draw_pka_map(res: dict, size=(450, 450)):
+    """
+
+    ----------
+    res
+        p
+    size
+        p
+
+    Returns
+    -------
+    img
+        r
+    """
+
     mol = res["mol"][0][0]
     for idx, pka in zip(res["atom"], res["pka"]):
         atom = mol.GetAtomWithIdx(idx)
@@ -321,6 +507,18 @@ def draw_pka_map(res: dict, size=(450, 450)):
 
 
 def draw_pka_reactions(res: dict):
+    """
+
+    ----------
+    res
+        p
+
+    Returns
+    -------
+    img
+        r
+    """
+
     mols = res["mol"]
     pkas = res["pka"]
     atoms = res["atom"]
@@ -341,6 +539,19 @@ def draw_pka_reactions(res: dict):
 
 
 def draw_sdf_mols(input_path: str, range_list=[]):
+    """
+
+    ----------
+    input_path
+        p
+    range_list
+        p
+
+    Returns
+    -------
+    None
+    """
+
     print(f"opening .sdf file at {input_path} and computing pkas...")
     with open(input_path, "rb") as fh:
         count = 0

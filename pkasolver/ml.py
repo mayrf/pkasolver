@@ -12,10 +12,19 @@ from pkasolver.constants import DEVICE
 def dataset_to_dataloader(
     data: list, batch_size: int, shuffle: bool = True
 ) -> DataLoader:
-    """Take a PyG Dataset and return a Dataloader object.
+    """Take a PyG Dataset and return a Dataloader object. batch_size must be defined. Optional shuffle (highly discouraged) can be disabled.
 
-    batch_size must be defined.
-    Optional shuffle can be enabled.
+    ----------
+    data
+        list of PyG Paired Data
+    batch_size
+        size of the batches set in the Dataloader function
+    shuffle
+        if true: shuffles the order of data in every molecule during training to prevent overfitting
+    Returns
+    -------
+    DataLoader
+        input object for training PyG Modells
     """
     return DataLoader(
         data, batch_size=batch_size, shuffle=shuffle, follow_batch=["x_p", "x_d"]
@@ -25,6 +34,24 @@ def dataset_to_dataloader(
 def test_ml_model(
     baseline_models: dict, X_data: np.ndarray, y_data: np.ndarray, dataset_name: str
 ) -> pd.DataFrame:
+    """Returns a Dataframe with empirical data and data predicted from every model in the input list
+
+    ----------
+    baseline_models
+        dictionary containing several models to be used to predict pKas from X_data
+    X_data
+        array of morgan fingerprint data - rows: molecules, columns: bits
+    y_data
+        empirical pKa data corresponding to molecules in X_data
+    dataset_name
+        name of dataset molecules in X_data and y_data belong to
+
+    Returns
+    -------
+    pd.DataFrame
+        Table with predicted and empirical data for every molecule in X_data and every model in baseline_models
+    """
+
     res = {"Dataset": dataset_name, "pKa_true": y_data}
     for name, models in baseline_models.items():
         for mode, model in models.items():
@@ -33,8 +60,24 @@ def test_ml_model(
 
 
 def calculate_performance_of_model_on_data(
-    model, loader
+    model, loader: DataLoader
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """
+
+    ----------
+    model
+        graph model to be used for predictions
+    loader
+        data to be predicted
+
+    Returns
+    -------
+    np.array
+        list of empirical pKa values
+    np.array
+        list of predicted pKa values
+    """
+
     model.eval()
     y_dataset, x_dataset = [], []
     for data in loader:  # Iterate in batches over the training dataset.
@@ -58,7 +101,21 @@ def calculate_performance_of_model_on_data(
     return np.array(x_dataset), np.array(y_dataset)
 
 
-def predict(model, loader) -> np.ndarray:
+def predict(model, loader: DataLoader) -> np.ndarray:
+    """
+
+    ----------
+    model
+        graph model to be used for predictions
+    loader
+        data to be predicted
+
+    Returns
+    -------
+    np.array
+        list of predicted pKa values
+    """
+
     model.eval()
     results = []
     for data in loader:  # Iterate in batches over the training dataset.
@@ -80,33 +137,24 @@ def predict(model, loader) -> np.ndarray:
     return np.array(results)
 
 
-# def calculate_performance_of_model_on_data_old(
-#     model, loader
-# ) -> Tuple[np.ndarray, np.ndarray]:
-#     model.eval()
-#     y_dataset, x_dataset = [], []
-#     for data in loader:  # Iterate in batches over the training dataset.
+def test_graph_model(
+    graph_models: dict, loader: DataLoader, dataset_name: str
+) -> pd.DataFrame:
+    """Returns a Dataframe with empirical data and data predicted from every graph model in the input list
 
-#         data.to(device=DEVICE)
-#         y_pred = (
-#             model(
-#                 x_p=data.x_p,
-#                 x_d=data.x_d,
-#                 edge_attr_p=data.edge_attr_p,
-#                 edge_attr_d=data.edge_attr_d,
-#                 data=data,
-#             )
-#             .reshape(-1)
-#             .detach()
-#         )
+    ----------
+    graph_models
+        dictionary containing several models to be used to predict pKas from loader
+    loader
+        data object containing structure and pka data for prediction
+    dataset_name
+        name of dataset molecules in X_data and y_data belong to
 
-#         y_dataset.extend(y_pred.tolist())
-#         x_dataset.extend(data.y.tolist())
-
-#     return np.array(x_dataset), np.array(y_dataset)
-
-
-def test_graph_model(graph_models, loader, dataset_name: str) -> pd.DataFrame:
+    Returns
+    -------
+    pd.DataFrame
+        Table with predicted and empirical data for every molecule in loader and every model in graph_models
+    """
     res = {
         "Dataset": dataset_name,
     }
@@ -123,6 +171,23 @@ def test_graph_model(graph_models, loader, dataset_name: str) -> pd.DataFrame:
 
 
 def calc_testset_performace(model, loader) -> Tuple[int, int, int]:
+    """
+
+    ----------
+    model
+        graph model to be used for predictions
+    loader
+        data to be predicted
+
+    Returns
+    -------
+    int
+        MAE of predicted data
+    int
+        RMSE of predicted data
+    int
+        R2 of predicted data
+    """
 
     model.to(device=DEVICE)
     x, y = calculate_performance_of_model_on_data(model, loader)

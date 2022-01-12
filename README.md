@@ -1,4 +1,4 @@
-#pkasolver
+# pkasolver
 ==============================
 [//]: # (Badges)
 [![GitHub Actions Build Status](https://github.com/MayrF/pkasolver/workflows/CI/badge.svg)](https://github.com/MayrF/pkasolver/actions?query=workflow%3ACI)
@@ -26,8 +26,8 @@ The Python dependencies are:
 2) Install all dependencies in your python environment. (yaml file is located in devtools/conda-envs/test_env.yml) (Note that the dependencies may take a long time to download)
 3) run `conda activate pkasolver` to activate conda environment
 
-option a) pip install git+https://github.com/mayrf/pkasolver.git
-option b) `cd` into the repo and install the pkasolver package by using the terminal command `python setup.py install`
++ option a) pip install git+https://github.com/mayrf/pkasolver.git
++ option b) `cd` into the repo and install the pkasolver package by using the terminal command `python setup.py install`
 
 ## Usage
 
