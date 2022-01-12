@@ -6,14 +6,42 @@ from copy import deepcopy
 
 
 def create_conjugate(
-    mol_initial: Chem.Mol,
+    mol_initial: Chem.rdchem.Mol,
     idx: int,
     pka: float,
     pH: float = 7.4,
     ignore_danger: bool = False,
     known_pka_values: bool = True,
-):
-    """Create a new molecule that is the conjugated base/acid to the input molecule."""
+) -> Chem.rdchem.Mol:
+
+    """Create the conjugated base/acid of the input molecule depending on if the input molecule is the protonated or
+    deprotonated molecule in the acid-base reaction. This is inferred from the pka and pH input.
+    If the resulting molecule is illegal, e.g. has negative number of protons on a heavy atom, or highly unlikely, 
+    e.g. atom charge of +2 or -2, the opposite ionization state is returned instead
+    
+    Parameters
+    ----------
+    mol_initial
+        molecule from which either a proton is removed or added
+    atom_idx
+        atom index of ionization center of the acid-base reaction
+    pka
+        pka value of the acid-base reaction
+    pH
+        pH of the ionization state of the input molecule
+    ignore_danger
+        If false, runtime error is raised if conjugate molecule is illegal or highly unlikely.
+        If true, opposite conjugate is output, without raising runtime error
+    Raises
+    ------
+    RuntimeError
+        is raised if conjugate molecule is illegal or highly unlikely and ignore_danger is set to False
+    Returns
+    -------
+    Chem.rdchem.Mol
+        conjugated molecule
+    """
+
     mol = deepcopy(mol_initial)
     mol_changed = Chem.RWMol(mol)
     Chem.SanitizeMol(mol_changed)
@@ -68,45 +96,57 @@ def create_conjugate(
     return mol_changed
 
 
-# def generate_morgan_fp_array(df, mol_column, nBits=4096, radius=3, useFeatures=True):
-#     """Take Pandas DataFrame, create Morgan fingerprints from the molecules in "mol_column"
-#     and return them as numpy array.
-#     """
-#     length = len(df)
-#     i = 0
-#     for mol in df[mol_column]:
-
-#         fp = np.array(
-#             GetMorganFingerprintAsBitVect(
-#                 mol, radius=3, nBits=4096, useFeatures=useFeatures
-#             )
-#         )
-#         if i == 0:
-#             array = fp
-#         else:
-#             array = np.vstack((array, fp))
-#         if i % 1000 == 0:
-#             print(f"fp:{i} of {length}")
-#         i += 1
-#     return array
-
-
 def bond_smarts_query(bond, smarts):
-    # return whether a bond matches a particular smarts query
-
+    """Checks if bond is part of a substructure that matches the smarts pattern.
+    Parameters
+    ----------
+    bond
+        bond to be matched with smarts
+    smarts
+        smarts to be matched
+    Returns
+    -------
+    bool
+        returns True if bond is part of a substructure that matches the smarts pattern
+    """
     for match in bond.GetOwningMol().GetSubstructMatches(Chem.MolFromSmarts(smarts)):
         if set((bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())) == set(match):
             return True
     return False
 
 
-def atom_smarts_query(atom, smarts):
+def atom_smarts_query(atom, smarts) -> bool:
+    """Checks if atom is part of a substructure that matches the smarts pattern.
+    Parameters
+    ----------
+    atom
+        atom to be matched with smarts
+    smarts
+        smarts to be matched
+    Returns
+    -------
+    bool
+        returns True if atom is part of a substructure that matches the smarts pattern
+    """
     return atom.GetIdx() in sum(
         atom.GetOwningMol().GetSubstructMatches(Chem.MolFromSmarts(smarts)), ()
     )
 
 
 def make_smarts_features(atom, smarts_dict):
+    """Returns list of bits, one for each smarts string in smarts_dict,
+    indicating whether the input atom is part of a substructure matching the smarts pattern.
+    Parameters
+    ----------
+    atom
+        atom to be matched with smarts pattern
+    smarts_dict
+        dict of smarts strings
+    Returns
+    -------
+    list
+        list of bits indicating smarts pattern matching results
+    """
     bits = []
     for lst in smarts_dict.values():
         i = 0
@@ -116,9 +156,3 @@ def make_smarts_features(atom, smarts_dict):
                 continue
         bits.append(i)
     return bits
-
-
-# def calculate_tanimoto_coefficient(fp1, fp2):
-#     set1 = set(fp1.nonzero()[0].tolist())
-#     set2 = set(fp2.nonzero()[0].tolist())
-#     return len(set1 & set2) / len(set1 | set2)

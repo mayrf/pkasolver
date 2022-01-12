@@ -14,6 +14,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SEED = 42
 logger.debug(f"Pytorch will use {DEVICE}")
 
+# Defining Smarts patterns used to calculate some node and edge features
 rotatable_bond = "[!$(*#*)&!D1]-&!@[!$(*#*)&!D1]"
 rotatable_bond_no_amide = "[!$([NH]!@C(=O))&!D1&!$(*#*)]-&!@[!$([NH]!@C(=O))&!D1&!$(*#*)]"  # any good? https://rdkit-discuss.narkive.com/4o99LqS6/rotatable-bonds-amide-bonds-and-smarts
 amide = "[NX3][CX3](=[OX1])[#6]"
@@ -88,6 +89,7 @@ node_feat_values = {
     "smarts": smarts_dict.keys(),
 }
 
+# defining helper dictionaries for generating one hot encoding of atom features
 NODE_FEATURES = {
     "element": lambda atom, marvin_atom: list(
         map(lambda s: int(atom.GetAtomicNum() == s), node_feat_values["element"],)
@@ -125,12 +127,14 @@ NODE_FEATURES = {
     "smarts": lambda atom, marvin_atom: make_smarts_features(atom, smarts_dict),
 }
 
+# defining possible edge feature values
 edge_feat_values = {
     "bond_type": [1.0, 1.5, 2.0, 3.0],
     "is_conjugated": [1],
     "rotatable": [1],
 }
 
+# defining helper dictionaries for generating one hot encoding of edge features
 EDGE_FEATURES = {
     "bond_type": lambda bond: list(
         map(

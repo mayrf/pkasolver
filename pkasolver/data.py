@@ -6,6 +6,7 @@ from rdkit import Chem
 from rdkit.Chem import PandasTools, PropertyMol
 from rdkit.Chem.AllChem import Compute2DCoords
 from rdkit.Chem.PandasTools import LoadSDF
+from typing import Tuple
 
 PandasTools.RenderImagesInAllDataFrames(images=True)
 import random
@@ -28,8 +29,9 @@ from pkasolver.constants import (
 
 def load_data(base: str = "data/Baltruschat") -> dict:
 
-    """Helper function loading the raw dataset"""
-
+    """Helper function that takes path to working directory and
+    returns a dictionary containing the paths to the training and testsets.
+    """
     sdf_filepath_training = f"{base}/combined_training_datasets_unique.sdf"
     sdf_filepath_novartis = f"{base}/novartis_cleaned_mono_unique_notraindata.sdf"
     sdf_filepath_Literture = f"{base}/AvLiLuMoVe_cleaned_mono_unique_notraindata.sdf"
@@ -42,26 +44,9 @@ def load_data(base: str = "data/Baltruschat") -> dict:
     return datasets
 
 
-def train_validation_set_split(df: pd.DataFrame, ratio: float, seed=42):
-    # splits a Dataframes rows randomly into two new Dataframes with a defined size ratio
-
-    assert ratio > 0.0 and ratio < 1.0
-
-    random.seed(seed)
-    length = len(df)
-    split = round(length * ratio)
-    ids = list(range(length))
-    random.shuffle(ids)
-    train_ids = ids[:split]
-    val_ids = ids[split:]
-    train_df = df.iloc[train_ids, :]
-    val_df = df.iloc[val_ids, :]
-    return train_df, val_df
-
-
 # data preprocessing functions - helpers
-def import_sdf(sdf_filename: str):
-    """Import an sdf file and return a Dataframe with an additional Smiles column."""
+def import_sdf(sdf_filename: str) -> pd.DataFrame:
+    """Imports an sdf file and returns a Dataframe with an additional Smiles column."""
     df = LoadSDF(sdf_filename)
     for mol in df.ROMol:
         Compute2DCoords(mol)
@@ -69,11 +54,22 @@ def import_sdf(sdf_filename: str):
     return df
 
 
-def conjugates_to_dataframe(df: pd.DataFrame):
-    """Take DataFrame and return a DataFrame with a column of calculated conjugated molecules."""
+def conjugates_to_dataframe(df: pd.DataFrame, mol_col: str = "ROMol") -> pd.DataFrame:
+    """Takes DataFrame and returns a DataFrame with a column of calculated conjugated molecules.
+    Parameters
+    ----------
+    df
+        DataFrame object
+    mol_col
+        name of the column containing the Chem.rdchem.Mol objects
+    Returns
+    -------
+    pd.DataFrame
+        input dataframes with additional "Conjugates" column
+    """
     conjugates = []
     for i in tqdm.tqdm(range(len(df.index))):
-        mol = df.ROMol[i]
+        mol = df[mol_col][i]
         index = int(df.marvin_atom[i])
         pka = float(df.marvin_pKa[i])
         try:
@@ -87,17 +83,29 @@ def conjugates_to_dataframe(df: pd.DataFrame):
     return df
 
 
-def sort_conjugates(df):
-    """Take DataFrame, check and correct the protonated and deprotonated molecules columns and return the new Dataframe."""
+def sort_conjugates(
+    df: pd.DataFrame, mol_col_1: str = "ROMol", mol_col_2: str = "Conjugates"
+) -> pd.DataFrame:
+    """Takes DataFrame and sorts the molecules in the two specified columns into two new columns, "protonated" and "deprotonated".
+    Parameters
+    ----------
+    df
+        DataFrame object
+    mol_col_1, mol_col_2
+        name of the columns containing the Chem.rdchem.Mol objects
+    Returns
+    -------
+    pd.DataFrame
+        input dataframes with the two columns specified, replaced by the columns "protonated" and "deprotonated"
+    """
     prot = []
     deprot = []
     for i in range(len(df.index)):
         indx = int(
             df.marvin_atom[i]
         )  # mark reaction center where (de)protonation takes place
-        mol = df.ROMol[i]
-        conj = df.Conjugates[i]
-
+        mol = df[mol_col_1][i]
+        conj = df[mol_col_2][i]
         charge_mol = int(mol.GetAtomWithIdx(indx).GetFormalCharge())
         charge_conj = int(conj.GetAtomWithIdx(indx).GetFormalCharge())
 
@@ -119,8 +127,8 @@ def sort_conjugates(df):
 
 
 # data preprocessing functions - main
-def preprocess(sdf_filename: str):
-    """Take name string and sdf path, process to Dataframe and save it as a pickle file."""
+def preprocess(sdf_filename: str) -> pd.DataFrame:
+    """Takes path of sdf file containing pkadata and returns a dataframe with column for protonated and deprotonated molecules.""" """Take name string and sdf path, process to Dataframe and save it as a pickle file."""
     df = import_sdf(sdf_filename)
     df = conjugates_to_dataframe(df)
     df = sort_conjugates(df)
@@ -129,7 +137,9 @@ def preprocess(sdf_filename: str):
 
 
 def preprocess_all(sdf_files) -> dict:
-    """Take dict of sdf paths, process to Dataframes and save it as a pickle file."""
+    """Takes dictionary of pka data sets containing paths to sdf files, preprocesses them to Dataframes
+    with protonated and deprotonated molecules and returns them in a dictionary.
+    """
     datasets = {}
     for name, sdf_filename in sdf_files.items():
         print(f"{name} : {sdf_filename}")
@@ -138,19 +148,10 @@ def preprocess_all(sdf_files) -> dict:
     return datasets
 
 
-# Random Forrest/ML preparation functions
-def make_stat_variables(df, X_list: list, y_name: list):
-    """Take Pandas DataFrame and and return a Numpy Array of any other specified descriptors
-    with size "Number of Molecules" x "Number of specified descriptors in X_list."
-    """
-    X = np.asfarray(df[X_list], float)
-    y = np.asfarray(df[y_name], float).reshape(-1)
-    return X, y
-
-
 # Neural net data functions - helpers
 class PairData(Data):
-    """Externsion of the Pytorch Geometric Data Class, which additionally takes a conjugated molecules in form of the edge_index2 and x2 input"""
+    """Extension of the Pytorch Geometric Data Class, which additionally
+    takes a conjugated molecules"""
 
     def __init__(
         self,
@@ -192,7 +193,8 @@ class PairData(Data):
 from pandas.core.common import flatten
 
 
-def calculate_nr_of_features(feature_list: list):
+def calculate_nr_of_features(feature_list: list) -> int:
+    """Calculates number of nodes and edge features from input list"""
     i_n = 0
     if all(elem in node_feat_values for elem in feature_list):
         for feat in feature_list:
@@ -205,28 +207,49 @@ def calculate_nr_of_features(feature_list: list):
     return i_n
 
 
-def make_nodes(mol, marvin_atom: int, n_features: dict):
-    """Take a rdkit.Mol, the atom index of the reaction center and a dict of node feature functions.
-
-    Return a torch.tensor with dimensions num_nodes(atoms) x num_node_features.
+def make_nodes(mol: Chem.rdchem.Mol, atom_idx: int, n_features: dict) -> torch.Tensor:
+    """Takes an rdkit.Mol, the atom index of the reaction center and a dictionary of node feature functions
+    and returns a torch.tensor of node features for all atoms of one molecule.
+    Parameters
+    ----------
+    mol
+        input molecule
+    atom_idx
+        atom index of ionization center
+    n_features
+        dictionary containing functions for node feature generation
+    Returns
+    -------
+    torch.Tensor
+        tensor with dimensions num_nodes(atoms) x num_node_features.
     """
     x = []
     for atom in mol.GetAtoms():
         node = []
         for feat in n_features.values():
-            node.append(feat(atom, marvin_atom))
-            # if atom.GetIdx() == int(marvin_atom):
-            #    print(atom.GetSymbol())
+            node.append(feat(atom, atom_idx))
         node = list(flatten(node))
         x.append(node)
     return torch.tensor(np.array([np.array(xi) for xi in x]), dtype=torch.float)
 
 
-def make_edges_and_attr(mol, e_features):
-    """Take a rdkit.Mol and a dict of edge feature functions.
-
-    Return a torch.tensor with dimensions 2 x num_edges
-    and a torch.tensor with dimensions num_edges x num_edge_features.
+def make_edges_and_attr(
+    mol: Chem.rdchem.Mol, e_features
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Takes an rdkit.Mol and a dictionary of edge feature functions
+    and returns one tensor containing adjacency information and one of edge features for all edges of one molecule.
+    Parameters
+    ----------
+    mol
+        input molecule
+    e_features
+        dictionary containing functions for edge feature generation
+    Returns
+    -------
+    edge_index
+        tensor of dimension 2 x num_edges
+    edge_attr
+        tensor with dimensions num_edge) x num_edge_features.
     """
     edges = []
     edge_attr = []
@@ -244,42 +267,77 @@ def make_edges_and_attr(mol, e_features):
     return edge_index, edge_attr
 
 
-def make_features_dicts(all_features, feat_list):
-    """Take a dict of all features and a list of strings with all disered features
+def make_features_dicts(all_features: dict, feat_list: list) -> dict:
+    """Take a dict of all features and a list of strings with all desired features
     and return a dict with these features
+    ----------
+    all_features
+        dictionary of all available features and their possible values
+    feat_list
+        list of feature names to be filtered for
+    Returns
+    -------
+    dict
+        filtered features dictionary
     """
     return {x: all_features[x] for x in feat_list}
 
 
-# def mol_to_features_old(
-#     row, n_features: dict, e_features: dict, protonation_state: str
-# ):
-#     if protonation_state == "protonated":
-#         node = make_nodes(row.protonated, row.marvin_atom, n_features)
-#         edge_index, edge_attr = make_edges_and_attr(row.protonated, e_features)
-#         charge = np.sum([a.GetFormalCharge() for a in row.protonated.GetAtoms()])
-#         return node, edge_index, edge_attr, charge
-#     elif protonation_state == "deprotonated":
-#         node = make_nodes(row.deprotonated, row.marvin_atom, n_features)
-#         edge_index, edge_attr = make_edges_and_attr(row.deprotonated, e_features)
-#         charge = np.sum([a.GetFormalCharge() for a in row.deprotonated.GetAtoms()])
-#         return node, edge_index, edge_attr, charge
-#     else:
-#         raise RuntimeError()
-
-
-def mol_to_features(mol, atom_idx: int, n_features: dict, e_features: dict):
-    node = make_nodes(mol, atom_idx, n_features)
+def mol_to_features(
+    mol: Chem.rdchem.Mol, atom_idx: int, n_features: dict, e_features: dict
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, int]:
+    """Create the node and edge feature tensors from the input molecule
+    Parameters
+    ----------
+    mol
+        input molecule
+    atom_idx
+        atom index of ionization center
+    n_features
+        dictionary containing functions for node feature generation
+    e_features
+        dictionary containing functions for node feature generation
+    Returns
+    -------
+    nodes
+        tensor with dimensions num_nodes(atoms) x num_node_features.
+    edge_index
+        tensor of dimension 2 x num_edges
+    edge_attr
+        tensor with dimensions num_edge) x num_edge_features.
+    charge
+        molecule charge
+    """
+    nodes = make_nodes(mol, atom_idx, n_features)
     edge_index, edge_attr = make_edges_and_attr(mol, e_features)
     charge = np.sum([a.GetFormalCharge() for a in mol.GetAtoms()])
-    return node, edge_index, edge_attr, charge
+    return nodes, edge_index, edge_attr, charge
 
 
 def mol_to_paired_mol_data(
-    prot: Chem.Mol, deprot: Chem.Mol, atom_idx: int, n_features: dict, e_features: dict,
-):
+    prot: Chem.rdchem.Mol,
+    deprot: Chem.rdchem.Mol,
+    atom_idx: int,
+    n_features: dict,
+    e_features: dict,
+) -> PairData:
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch PairData object.
+    ----------
+    prot
+        protonated rdkit mol object
+    deprot
+        deprotonated rdkit mol object
+    atom_idx
+        ionization center atom index
+    n_features
+        dictionary of node features
+    e_features
+        dictionary of edge features
+    Returns
+    -------
+    PairData
+        Data object ready for use with Pytorch Geometric models
     """
     node_p, edge_index_p, edge_attr_p, charge_p = mol_to_features(
         prot, atom_idx, n_features, e_features
@@ -302,10 +360,23 @@ def mol_to_paired_mol_data(
 
 
 def mol_to_single_mol_data(
-    mol, atom_idx: int, n_features: dict, e_features: dict,
+    mol: Chem.rdchem.Mol, atom_idx: int, n_features: dict, e_features: dict,
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch Data object.
+    ----------
+    mol
+        rdkit mol object
+    atom_idx
+        ionization center atom index
+    n_features
+        dictionary of node features
+    e_features
+        dictionary of edge features
+    Returns
+    -------
+    PairData
+        Data object ready for use with Pytorch Geometric models
     """
     node_p, edge_index_p, edge_attr_p, charge = mol_to_features(
         mol, atom_idx, n_features, e_features
@@ -315,9 +386,24 @@ def mol_to_single_mol_data(
 
 def make_pyg_dataset_from_dataframe(
     df: pd.DataFrame, list_n: list, list_e: list, paired=False, mode: str = "all"
-):
+) -> list:
     """Take a Dataframe, a list of strings of node features, a list of strings of edge features
     and return a List of PyG Data objects.
+    ----------
+    df
+        DataFrame containing "protonated" and "deprotonated" columns with mol objects, as well as "pKa" and "marvin_atom" columns
+    list_n
+        list of node features to be used
+    list_e
+        list of edge features to be used
+    paired
+        If true, including protonated and deprotonated molecules, if False only the type specified in mode
+    mode
+        if paired id false, use data from columnname == mol
+    Returns
+    -------
+    list
+        contains all molecules from df as pyG Graph data
     """
     print(f"Generating data with paired boolean set to: {paired}")
 
@@ -369,10 +455,21 @@ def make_pyg_dataset_from_dataframe(
 
 
 def make_paired_pyg_data_from_mol(
-    mol: Chem.Mol, selected_node_features: dict, selected_edge_features: dict
-):
-    """Take a rdkit mol and generate a PyG Data object."""
-
+    mol: Chem.rdmol.Mol, selected_node_features: dict, selected_edge_features: dict
+) -> PairData:
+    """Generate a PyG Data object from an input molecule and feature dictionaries.
+    ----------
+    mol
+        input molecule
+    selected_node_features
+        dictionary of selected node features
+    selected_edge_features
+        dictionary of selected edge features
+    Returns
+    -------
+    PairData
+        Data object ready for use with Pytorch Geometric models
+    """
     props = mol.GetPropsAsDict()
     try:
         pka = props["pKa"]
@@ -428,9 +525,9 @@ def make_paired_pyg_data_from_mol(
 
 
 def iterate_over_acids(
-    acidic_mols_properties,
+    acidic_mols_properties: Chem.rdmol.Mol,
     nr_of_mols: int,
-    partner_mol: Chem.Mol,
+    partner_mol: Chem.rdmol.Mol,
     nr_of_skipped_mols: int,
     pka_list: list,
     GLOBAL_COUNTER: int,
@@ -496,9 +593,9 @@ def iterate_over_acids(
 
 
 def iterate_over_bases(
-    basic_mols_properties,
-    nr_of_mols,
-    partner_mol: Chem.Mol,
+    basic_mols_properties: Chem.rdmol.Mol,
+    nr_of_mols: int,
+    partner_mol: Chem.rdmol.Mol,
     nr_of_skipped_mols,
     pka_list: list,
     GLOBAL_COUNTER: int,
