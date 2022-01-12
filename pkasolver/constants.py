@@ -1,6 +1,7 @@
 import logging
 
-from pkasolver.chem import atom_smarts_query, bond_smarts_query, make_smarts_features
+from pkasolver.chem import (atom_smarts_query, bond_smarts_query,
+                            make_smarts_features)
 
 logger = logging.getLogger(__name__)
 

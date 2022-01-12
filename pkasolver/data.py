@@ -1,12 +1,12 @@
 # Imports
 
 from copy import deepcopy
+from typing import Tuple
 
 from rdkit import Chem
 from rdkit.Chem import PandasTools, PropertyMol
 from rdkit.Chem.AllChem import Compute2DCoords
 from rdkit.Chem.PandasTools import LoadSDF
-from typing import Tuple
 
 PandasTools.RenderImagesInAllDataFrames(images=True)
 import random
@@ -18,13 +18,8 @@ import tqdm
 from torch_geometric.data import Data
 
 from pkasolver.chem import create_conjugate
-from pkasolver.constants import (
-    DEVICE,
-    EDGE_FEATURES,
-    NODE_FEATURES,
-    edge_feat_values,
-    node_feat_values,
-)
+from pkasolver.constants import (DEVICE, EDGE_FEATURES, NODE_FEATURES,
+                                 edge_feat_values, node_feat_values)
 
 
 def load_data(base: str = "data/Baltruschat") -> dict:

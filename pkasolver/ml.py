@@ -1,7 +1,10 @@
-from torch_geometric.loader import DataLoader
-import numpy as np
-from pkasolver.constants import DEVICE
 from typing import Tuple
+
+import numpy as np
+from torch_geometric.loader import DataLoader
+
+from pkasolver.constants import DEVICE
+
 
 # PyG Dataset to Dataloader
 def dataset_to_dataloader(

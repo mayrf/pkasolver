@@ -1,8 +1,6 @@
-import numpy as np
-from rdkit import Chem
-from rdkit.Chem.rdchem import ResonanceMolSupplier
-from rdkit.Chem.AllChem import GetMorganFingerprintAsBitVect
 from copy import deepcopy
+
+from rdkit import Chem
 
 
 def create_conjugate(

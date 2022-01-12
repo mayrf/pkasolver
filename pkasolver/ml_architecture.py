@@ -1,8 +1,10 @@
 import torch
 import torch.nn.functional as F
 from torch.nn import Linear, ModuleList, ReLU, Sequential
-from torch_geometric.nn import GCNConv, GlobalAttention, NNConv, global_mean_pool
+from torch_geometric.nn import (GCNConv, GlobalAttention, NNConv,
+                                global_mean_pool)
 from tqdm import tqdm
+
 from pkasolver.constants import DEVICE, SEED
 
 #####################################

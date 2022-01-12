@@ -1,22 +1,17 @@
 # imports
 import logging
+from copy import deepcopy
 from os import path
 
 import numpy as np
-from rdkit import Chem
-from copy import deepcopy
-
 import torch
-from rdkit import RDLogger
+from rdkit import Chem, RDLogger
 from rdkit.Chem import Draw
 
 from pkasolver.chem import create_conjugate
 from pkasolver.constants import DEVICE, EDGE_FEATURES, NODE_FEATURES
-from pkasolver.data import (
-    calculate_nr_of_features,
-    make_features_dicts,
-    mol_to_paired_mol_data,
-)
+from pkasolver.data import (calculate_nr_of_features, make_features_dicts,
+                            mol_to_paired_mol_data)
 from pkasolver.ml import dataset_to_dataloader, predict_pka_value
 from pkasolver.ml_architecture import GINPairV1
 
