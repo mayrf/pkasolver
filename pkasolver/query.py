@@ -7,12 +7,16 @@ import numpy as np
 import torch
 from rdkit import Chem, RDLogger
 from rdkit.Chem import Draw
+from torch_geometric.loader import DataLoader
 
 from pkasolver.chem import create_conjugate
 from pkasolver.constants import DEVICE, EDGE_FEATURES, NODE_FEATURES
-from pkasolver.data import (calculate_nr_of_features, make_features_dicts,
-                            mol_to_paired_mol_data)
-from pkasolver.ml import dataset_to_dataloader, predict_pka_value
+from pkasolver.data import (
+    calculate_nr_of_features,
+    make_features_dicts,
+    mol_to_paired_mol_data,
+)
+from pkasolver.ml import dataset_to_dataloader
 from pkasolver.ml_architecture import GINPairV1
 
 logger = logging.getLogger(__name__)
@@ -42,18 +46,17 @@ selected_edge_features = make_features_dicts(EDGE_FEATURES, edge_feat_list)
 
 
 class QueryModel:
-    def __init__(self, path_to_parameters: str = ""):
+    def __init__(self):
 
+        self.models = []
         model_name, model_class = "GINPair", GINPairV1
         model = model_class(num_node_features, num_edge_features, hidden_channels=96)
 
-        if path_to_parameters:
-            checkpoint = torch.load(path_to_parameters)
-        else:
+        for i in range(7):
             base_path = path.dirname(__file__)
             if torch.cuda.is_available() == False:  # If only CPU is available
                 checkpoint = torch.load(
-                    f"{base_path}/trained_model/fine_tuned_model.pt",
+                    f"{base_path}/trained_model/fine_tuned_model_{i}.pt",
                     map_location=torch.device("cpu"),
                 )
             else:
@@ -61,10 +64,48 @@ class QueryModel:
                     f"{base_path}/trained_model/fine_tuned_model.pt"
                 )
 
-        model.load_state_dict(checkpoint["model_state_dict"])
-        model.eval()
-        model.to(device=DEVICE)
-        self.model = model
+            model.load_state_dict(checkpoint["model_state_dict"])
+            model.eval()
+            model.to(device=DEVICE)
+            self.models.append(model)
+
+    def predict_pka_value(self, loader: DataLoader) -> np.ndarray:
+        """
+        ----------
+        model
+            graph model to be used for predictions
+        loader
+            data to be predicted
+        Returns
+        -------
+        np.array
+            list of predicted pKa values
+        """
+
+        results = []
+        for data in loader:  # Iterate in batches over the training dataset.
+            data.to(device=DEVICE)
+            consensus_r = []
+            for model in self.models:
+                y_pred = (
+                    model(
+                        x_p=data.x_p,
+                        x_d=data.x_d,
+                        edge_attr_p=data.edge_attr_p,
+                        edge_attr_d=data.edge_attr_d,
+                        data=data,
+                    )
+                    .reshape(-1)
+                    .detach()
+                )
+
+                consensus_r.append(y_pred.tolist())
+            print(consensus_r)
+            results.extend(
+                (np.average(consensus_r, axis=1), np.std(consensus_r, axis=1)),
+            )
+
+        return np.array(results)
 
 
 def _get_ionization_indices(mol_list: list, compare_to: Chem.Mol) -> list:
@@ -216,7 +257,7 @@ def calculate_microstate_pka_values(
                 selected_edge_features,
             )
             loader = dataset_to_dataloader([m], 1)
-            pka = predict_pka_value(query_model.model, loader)
+            pka = query_model.predict_pka_value(loader)
             pair = (
                 pka,
                 (mols_sorted[nr_of_states], mols_sorted[nr_of_states + 1]),
@@ -272,7 +313,7 @@ def calculate_microstate_pka_values(
                     selected_edge_features,
                 )
                 loader = dataset_to_dataloader([m], 1)
-                pka = predict_pka_value(query_model.model, loader)[0]
+                pka, _ = query_model.predict_pka_value(loader)[0]
                 if pka < 0.5:
                     logger.debug("Too low pKa value!")
                     continue
@@ -323,7 +364,7 @@ def calculate_microstate_pka_values(
                     selected_edge_features,
                 )
                 loader = dataset_to_dataloader([m], 1)
-                pka = predict_pka_value(query_model.model, loader)[0]
+                pka, _ = query_model.predict_pka_value(loader)[0]
                 if pka > 13.5:
                     logger.debug("Too high pKa value!")
                     continue
