@@ -373,15 +373,25 @@ def calculate_microstate_pka_values(
     return mols
 
 
-def draw_pka_map(res: dict, size=(450, 450)):
-    mol = res["mol"][0][0]
-    for idx, pka in zip(res["atom"], res["pka"]):
-        atom = mol.GetAtomWithIdx(idx)
+def draw_pka_map(molpairs: list, size=(450, 450)):
+    """draw mol at pH=7.0 and indicate protonation sites with respectiv pKa values"""
+    mol_at_ph_7 = _call_dimorphite_dl(
+        molpairs[0][0], min_ph=7.0, max_ph=7.0, pka_precision=0
+    )
+    for i in range(len(molpairs)):
+
+        protonation_state = i
+        pka, pair, idx = (
+            molpairs[protonation_state][0],
+            molpairs[protonation_state][1],
+            molpairs[protonation_state][2],
+        )
+        atom = mol_at_ph_7.GetAtomWithIdx(idx)
         try:
             atom.SetProp("atomNote", f'{atom.GetProp("atomNote")},   {pka:.2f}')
         except:
             atom.SetProp("atomNote", f"{pka:.2f}")
-    return Draw.MolToImage(mol, size=size)
+    return Draw.MolToImage(mol_at_ph_7, size=size)
 
 
 def draw_pka_reactions(molpairs: list):
@@ -389,7 +399,7 @@ def draw_pka_reactions(molpairs: list):
     draw_pairs, pair_atoms, pair_pkas = [], [], []
     for i in range(len(molpairs)):
 
-        protonation_state = 0
+        protonation_state = i
         pka, pair, idx = (
             molpairs[protonation_state][0],
             molpairs[protonation_state][1],
