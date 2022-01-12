@@ -406,7 +406,7 @@ def draw_pka_reactions(molpairs: list):
         molsPerRow=4,
         subImgSize=(250, 250),
         highlightAtomLists=pair_atoms,
-        legends=[f"pka = {pair_pkas[i]:.2f}" for i in range(12)],
+        legends=[f"pka = {pair_pkas[i]:.2f}" for i in range(len(pair_pkas))],
     )
 
 
