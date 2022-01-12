@@ -20,7 +20,7 @@ dependencies:
  - tqdm
  - pip
  - pip:
-     - torch-geometric
+     - torch-geometric==2.0.1
      - torch-sparse
      - torch-scatter
      - molvs
