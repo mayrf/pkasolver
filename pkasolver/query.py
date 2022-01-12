@@ -100,9 +100,8 @@ class QueryModel:
                 )
 
                 consensus_r.append(y_pred.tolist())
-            print(consensus_r)
             results.extend(
-                (np.average(consensus_r, axis=1), np.std(consensus_r, axis=1)),
+                (np.average(consensus_r, axis=0), np.std(consensus_r, axis=0)),
             )
 
         return np.array(results)
