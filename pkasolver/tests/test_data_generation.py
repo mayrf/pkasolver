@@ -1,23 +1,30 @@
-from rdkit import Chem
-from pkasolver.data import make_features_dicts, make_nodes
-from pkasolver.constants import NODE_FEATURES, EDGE_FEATURES
-from pkasolver.data import make_edges_and_attr, make_nodes, load_data
-import torch
-import subprocess, os
-import numpy as np
 import pickle
+import socket
+import subprocess
+
+import numpy as np
+import pytest
+import torch
+from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
+from pkasolver.data import (load_data, make_edges_and_attr,
+                            make_features_dicts, make_nodes)
+from rdkit import Chem
+
+# for local tests using scripts from pkasolver-data repo
+path_to_pkasolver_data_repo = (
+    "/data/shared/projects/pkasolver-data/pkasolver-datarepo/pkasolver-data"
+)
 
 
+@pytest.mark.skipif(
+    socket.gethostname() != "a7srv2",
+    reason="Skipping tests that cannot pass in github actions",
+)
 def test_aspirin_pka_split():
-    import pkasolver
-
-    # path = os.path.abspath(os.path.join(os.path.dirname(pkasolver.__file__), os.pardir))
-    path = os.path.abspath(os.path.dirname(pkasolver.__file__))
-
     o = subprocess.run(
         [
             "python",
-            f"scripts/04_1_split_epik_output.py",
+            f"{path_to_pkasolver_data_repo}/scripts/04_1_split_epik_output.py",
             "--input",
             f"pkasolver/tests/testdata/03_aspirin_with_pka.sdf",
             "--output",
@@ -42,16 +49,16 @@ def test_aspirin_pka_split():
     assert np.isclose(float(pkas[0]), 3.52)
 
 
+@pytest.mark.skipif(
+    socket.gethostname() != "a7srv2",
+    reason="Skipping tests that cannot pass in github actions",
+)
 def test_eltrombopag_pka_split():
-    import pkasolver
-
-    # path = os.path.abspath(os.path.join(os.path.dirname(pkasolver.__file__), os.pardir))
-    path = os.path.abspath(os.path.dirname(pkasolver.__file__))
 
     o = subprocess.run(
         [
             "python",
-            f"scripts/04_1_split_epik_output.py",
+            f"{path_to_pkasolver_data_repo}/scripts/04_1_split_epik_output.py",
             "--input",
             f"pkasolver/tests/testdata/03_eltrombopag_with_pka.sdf",
             "--output",
@@ -97,17 +104,16 @@ def test_eltrombopag_pka_split():
     assert smi2 == "Cc1ccc(-n2nc(C)c(N=Nc3cccc(-c4cccc(C(=O)[O-])c4)c3[O-])c2[O-])cc1C"
 
 
+@pytest.mark.skipif(
+    socket.gethostname() != "a7srv2",
+    reason="Skipping tests that cannot pass in github actions",
+)
 def test_edta_pka_split():
-    import pkasolver
-    import gzip, shutil
-
-    # path = os.path.abspath(os.path.join(os.path.dirname(pkasolver.__file__), os.pardir))
-    path = os.path.abspath(os.path.dirname(pkasolver.__file__))
 
     o = subprocess.run(
         [
             "python",
-            f"scripts/04_1_split_epik_output.py",
+            f"{path_to_pkasolver_data_repo}/scripts/04_1_split_epik_output.py",
             "--input",
             f"pkasolver/tests/testdata/03_edta_with_pka.sdf",
             "--output",
@@ -157,16 +163,16 @@ def test_edta_pka_split():
     assert smi2 == "O=C([O-])CN(CCN(CC(=O)[O-])CC(=O)[O-])CC(=O)[O-]"
 
 
+@pytest.mark.skipif(
+    socket.gethostname() != "a7srv2",
+    reason="Skipping tests that cannot pass in github actions",
+)
 def test_exp_sets_generation():
-    import pkasolver
-
-    # path = os.path.abspath(os.path.join(os.path.dirname(pkasolver.__file__), os.pardir))
-    path = os.path.abspath(os.path.dirname(pkasolver.__file__))
 
     o = subprocess.run(
         [
             "python",
-            f"scripts/04_2_prepare_rest.py",
+            f"{path_to_pkasolver_data_repo}/scripts/04_2_prepare_rest.py",
             "--input",
             f"pkasolver/tests/testdata/00_experimental_training_datasets_subset.sdf",
             "--output",
@@ -216,15 +222,16 @@ def test_exp_sets_generation():
     assert smi2 == "Brc1ccc(-c2nn[n-]n2)cc1"
 
 
+@pytest.mark.skipif(
+    socket.gethostname() != "a7srv2",
+    reason="Skipping tests that cannot pass in github actions",
+)
 def test_data_preprocessing_for_baltruschat():
-    import pkasolver
-
-    path = os.path.abspath(os.path.dirname(pkasolver.__file__))
 
     o = subprocess.run(
         [
             "python",
-            f"scripts/05_data_preprocess.py",
+            f"{path_to_pkasolver_data_repo}/scripts/05_data_preprocess.py",
             "--input",
             f"pkasolver/tests/testdata/exp_training_dataset.pkl",
             "--output",
@@ -288,8 +295,8 @@ def test_features_dicts():
 
 def test_dataset():
     """what charges are present in the dataset"""
-    from pkasolver.data import preprocess
     import numpy as np
+    from pkasolver.data import preprocess
 
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Training"])
@@ -542,8 +549,8 @@ def test_edges_generation():
 
 def test_use_dataset_for_node_generation():
     """Test that the training dataset can be generated and that prot/deprot are different molecules"""
-    from pkasolver.data import preprocess
     import torch
+    from pkasolver.data import preprocess
 
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Training"])
@@ -563,13 +570,10 @@ def test_use_dataset_for_node_generation():
 
 def test_generate_data_intances():
     """Test that data classes instances are created correctly"""
-    from pkasolver.data import (
-        mol_to_single_mol_data,
-        mol_to_paired_mol_data,
-        make_paired_pyg_data_from_mol,
-    )
-    from pkasolver.chem import create_conjugate
     import torch
+    from pkasolver.chem import create_conjugate
+    from pkasolver.data import (make_paired_pyg_data_from_mol,
+                                mol_to_paired_mol_data, mol_to_single_mol_data)
 
     sdf_filepaths = load_data()
     suppl = Chem.ForwardSDMolSupplier(sdf_filepaths["Training"], removeHs=True)
@@ -661,9 +665,10 @@ def test_generate_data_intances():
 
 def test_generate_dataset_from_sdf():
 
-    from rdkit import Chem
-    from pkasolver.data import iterate_over_acids, iterate_over_bases
     from copy import deepcopy
+
+    from pkasolver.data import iterate_over_acids, iterate_over_bases
+    from rdkit import Chem
 
     # load sdf file and define pH
     sdf_filepaths = load_data()
@@ -834,10 +839,7 @@ def test_generate_dataset_from_sdf():
 
 def test_generate_dataset_from_dataframe():
     """Test that data classes instances are created correctly"""
-    from pkasolver.data import (
-        preprocess,
-        make_pyg_dataset_from_dataframe,
-    )
+    from pkasolver.data import make_pyg_dataset_from_dataframe, preprocess
 
     # setupt dataframe and features
     sdf_filepaths = load_data()
@@ -867,10 +869,7 @@ def test_generate_dataset_from_dataframe():
 
 def test_generate_dataloader():
     """Test that data classes instances are created correctly"""
-    from pkasolver.data import (
-        preprocess,
-        make_pyg_dataset_from_dataframe,
-    )
+    from pkasolver.data import make_pyg_dataset_from_dataframe, preprocess
     from pkasolver.ml import dataset_to_dataloader
 
     # setupt dataframe and features

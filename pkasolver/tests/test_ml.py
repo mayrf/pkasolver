@@ -1,28 +1,11 @@
-from pkasolver.ml_architecture import (
-    GCNPairSingleConv,
-    GCNPairTwoConv,
-    GCNProt,
-    GCNDeprot,
-    NNConvPair,
-    NNConvDeprot,
-    NNConvProt,
-    GINProt,
-    GINPairV1,
-    GINPairV2,
-    GINPairV3,
-    GATProt,
-    GATPair,
-    AttentivePair,
-    AttentivePairV1,
-    gcn_full_training,
-)
 import torch
-from pkasolver.constants import (
-    DEVICE,
-    node_feat_values,
-    edge_feat_values,
-)
+from pkasolver.constants import DEVICE, edge_feat_values
 from pkasolver.data import calculate_nr_of_features
+from pkasolver.ml_architecture import (GATPair, GATProt, GCNDeprot,
+                                       GCNPairSingleConv, GCNPairTwoConv,
+                                       GCNProt, GINPairV1, GINPairV2,
+                                       GINPairV3, GINProt, NNConvDeprot,
+                                       NNConvPair, NNConvProt)
 
 models = [
     ("GCNPairSingleConv", GCNPairSingleConv),
@@ -48,13 +31,10 @@ def test_init_gcn_models():
 
 
 def test_train_gcn_models():
-    from pkasolver.ml_architecture import gcn_train, gcn_test
-    from pkasolver.data import (
-        load_data,
-        preprocess,
-        make_pyg_dataset_from_dataframe,
-    )
+    from pkasolver.data import (load_data, make_pyg_dataset_from_dataframe,
+                                preprocess)
     from pkasolver.ml import dataset_to_dataloader
+    from pkasolver.ml_architecture import gcn_test, gcn_train
 
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Novartis"])
@@ -145,13 +125,10 @@ new_models = [
 
 
 def test_train_new_models():
-    from pkasolver.ml_architecture import gcn_train, gcn_test
-    from pkasolver.data import (
-        load_data,
-        preprocess,
-        make_pyg_dataset_from_dataframe,
-    )
+    from pkasolver.data import (load_data, make_pyg_dataset_from_dataframe,
+                                preprocess)
     from pkasolver.ml import dataset_to_dataloader
+    from pkasolver.ml_architecture import gcn_test, gcn_train
 
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Novartis"])
@@ -208,13 +185,10 @@ new_models = [
 
 
 def test_only_GINPairV1_and_GINPairV3_models():
-    from pkasolver.ml_architecture import gcn_train, gcn_test
-    from pkasolver.data import (
-        load_data,
-        preprocess,
-        make_pyg_dataset_from_dataframe,
-    )
+    from pkasolver.data import (load_data, make_pyg_dataset_from_dataframe,
+                                preprocess)
     from pkasolver.ml import dataset_to_dataloader
+    from pkasolver.ml_architecture import gcn_test, gcn_train
 
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Novartis"])
@@ -283,13 +257,10 @@ def test_only_GINProt_models():
         ("GINProt", GINProt),
     ]
 
-    from pkasolver.ml_architecture import gcn_train, gcn_test
-    from pkasolver.data import (
-        load_data,
-        preprocess,
-        make_pyg_dataset_from_dataframe,
-    )
+    from pkasolver.data import (load_data, make_pyg_dataset_from_dataframe,
+                                preprocess)
     from pkasolver.ml import dataset_to_dataloader
+    from pkasolver.ml_architecture import gcn_test, gcn_train
 
     sdf_filepaths = load_data()
     df = preprocess(sdf_filepaths["Novartis"])

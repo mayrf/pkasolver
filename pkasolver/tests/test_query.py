@@ -1,6 +1,7 @@
-from rdkit import Chem
-from pkasolver.query import calculate_microstate_pka_values, _get_ionization_indices
 import numpy as np
+from pkasolver.query import (_get_ionization_indices,
+                             calculate_microstate_pka_values)
+from rdkit import Chem
 
 input = "pkasolver/tests/testdata/00_chembl_subset.sdf"
 mollist = []
@@ -11,20 +12,18 @@ with open(input, "rb") as fh:
 
 
 def test_generate_query():
-    from pkasolver.query import QueryModel
     import pickle
+
+    from pkasolver.query import QueryModel
 
     q = QueryModel()
     pickle.dump(q, open("pkasolver/trained_model/trained_model.pickle", "wb"))
 
 
 def test_predict():
-    from pkasolver.data import (
-        make_features_dicts,
-        mol_to_paired_mol_data,
-    )
-    from pkasolver.ml import dataset_to_dataloader, predict_pka_value
     from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
+    from pkasolver.data import make_features_dicts, mol_to_paired_mol_data
+    from pkasolver.ml import dataset_to_dataloader, predict_pka_value
     from pkasolver.query import QueryModel
 
     node_feat_list = [
