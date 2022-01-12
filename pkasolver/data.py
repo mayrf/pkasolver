@@ -455,7 +455,7 @@ def make_pyg_dataset_from_dataframe(
 
 
 def make_paired_pyg_data_from_mol(
-    mol: Chem.rdmol.Mol, selected_node_features: dict, selected_edge_features: dict
+    mol: Chem.Mol, selected_node_features: dict, selected_edge_features: dict
 ) -> PairData:
     """Generate a PyG Data object from an input molecule and feature dictionaries.
     ----------
@@ -525,9 +525,9 @@ def make_paired_pyg_data_from_mol(
 
 
 def iterate_over_acids(
-    acidic_mols_properties: Chem.rdmol.Mol,
+    acidic_mols_properties: Chem.Mol,
     nr_of_mols: int,
-    partner_mol: Chem.rdmol.Mol,
+    partner_mol: Chem.Mol,
     nr_of_skipped_mols: int,
     pka_list: list,
     GLOBAL_COUNTER: int,
@@ -593,9 +593,9 @@ def iterate_over_acids(
 
 
 def iterate_over_bases(
-    basic_mols_properties: Chem.rdmol.Mol,
+    basic_mols_properties: Chem.Mol,
     nr_of_mols: int,
-    partner_mol: Chem.rdmol.Mol,
+    partner_mol: Chem.Mol,
     nr_of_skipped_mols,
     pka_list: list,
     GLOBAL_COUNTER: int,
