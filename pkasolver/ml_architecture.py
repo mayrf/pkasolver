@@ -1110,7 +1110,7 @@ def gcn_train(model, training_loader, optimizer, reg_loader=None):
             optimizer.zero_grad()  # Clear gradients.
 
 
-def gcn_test(model, loader):
+def gcn_test(model, loader) -> float:
     model.eval()
     loss = torch.Tensor([0]).to(device=DEVICE)
     for data in loader:  # Iterate in batches over the training dataset.
