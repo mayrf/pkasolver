@@ -6,7 +6,6 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem.Draw import IPythonConsole
 
-# IPythonConsole.drawOptions.addAtomIndices = True
 IPythonConsole.molSize = 400, 400
 from copy import deepcopy
 
