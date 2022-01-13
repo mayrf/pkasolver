@@ -2,6 +2,7 @@
 import logging
 from copy import deepcopy
 from dataclasses import dataclass
+from operator import attrgetter
 from os import path
 
 import numpy as np
@@ -12,8 +13,11 @@ from torch_geometric.loader import DataLoader
 
 from pkasolver.chem import create_conjugate
 from pkasolver.constants import DEVICE, EDGE_FEATURES, NODE_FEATURES
-from pkasolver.data import (calculate_nr_of_features, make_features_dicts,
-                            mol_to_paired_mol_data)
+from pkasolver.data import (
+    calculate_nr_of_features,
+    make_features_dicts,
+    mol_to_paired_mol_data,
+)
 from pkasolver.ml import dataset_to_dataloader
 from pkasolver.ml_architecture import GINPairV1
 
@@ -58,7 +62,7 @@ class QueryModel:
 
         self.models = []
 
-        for i in range(7):
+        for i in range(9):
             model_name, model_class = "GINPair", GINPairV1
             model = model_class(
                 num_node_features, num_edge_features, hidden_channels=96
@@ -219,18 +223,18 @@ def _sort_conj(mols: list):
 def _check_for_duplicates(states: list):
     """check whether two states have the same pKa value and remove one of them"""
     all_r = dict()
+    logger.debug(states)
     for state in states:
-        m1, m2 = _sort_conj([state[1][0], state[1][1]])
+        m1, m2 = _sort_conj([state.protonated_mol, state.deprotonated_mol])
         all_r[hash((Chem.MolToSmiles(m1), Chem.MolToSmiles(m2)))] = state
-    logger.debug([all_r[k] for k in sorted(all_r, key=all_r.get)])
-    return [all_r[k] for k in sorted(all_r, key=all_r.get)]
+    # logger.debug([all_r[k] for k in sorted(all_r, key=all_r.get)])
+    return sorted([all_r[k] for k in all_r], key=attrgetter("pka"))
 
 
 def calculate_microstate_pka_values(
     mol: Chem.rdchem.Mol, only_dimorphite: bool = False, query_model=None
 ):
     """Enumerate protonation states using a rdkit mol as input"""
-    from operator import attrgetter
 
     if query_model == None:
         query_model = QueryModel()
@@ -329,7 +333,7 @@ def calculate_microstate_pka_values(
                 )
                 # calc pka value
                 loader = dataset_to_dataloader([m], 1)
-                pka, pka_std = query_model.predict_pka_value(loader)[0]
+                pka, pka_std = query_model.predict_pka_value(loader)
                 pair = States(pka, pka_std, sorted_mols[0], sorted_mols[1], i)
 
                 # test if pka is inside pH range
@@ -364,7 +368,7 @@ def calculate_microstate_pka_values(
             used_reaction_center_atom_idxs.remove(
                 acids[-1].reaction_center_idx
             )  # avoid double protonation
-            mol_at_state = deepcopy(acids[-1].deprotonated_mol)
+            mol_at_state = deepcopy(acids[-1].protonated_mol)
 
         logger.debug(acids)
 
@@ -376,11 +380,12 @@ def calculate_microstate_pka_values(
         mol_at_state = deepcopy(mol_at_ph_7)
         logger.debug("Start with bases ...")
         used_reaction_center_atom_idxs = deepcopy(reaction_center_atom_idxs)
+        print(reaction_center_atom_idxs)
         # for each possible protonation state
         for _ in reaction_center_atom_idxs:
             states_per_iteration = []
             # for each possible reaction center
-            for i in reaction_center_atom_idxs:
+            for i in used_reaction_center_atom_idxs:
                 try:
                     conj = create_conjugate(
                         mol_at_state, i, pka=13.5, known_pka_values=False
