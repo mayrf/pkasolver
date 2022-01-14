@@ -26,6 +26,18 @@ def load_data(base: str = "data/Baltruschat") -> dict:
 
     """Helper function that takes path to working directory and
     returns a dictionary containing the paths to the training and testsets.
+    
+    Parameters
+    ----------
+    base
+        path to folder containing dataset sd files
+    
+    Returns
+    ----------
+    dict
+        keys (str): dataset names  
+        values (str): dataset abs. paths
+
     """
     sdf_filepath_training = f"{base}/combined_training_datasets_unique.sdf"
     sdf_filepath_novartis = f"{base}/novartis_cleaned_mono_unique_notraindata.sdf"
@@ -40,9 +52,23 @@ def load_data(base: str = "data/Baltruschat") -> dict:
 
 
 # data preprocessing functions - helpers
-def import_sdf(sdf_filename: str) -> pd.DataFrame:
-    """Imports an sdf file and returns a Dataframe with an additional Smiles column."""
-    df = LoadSDF(sdf_filename)
+def import_sdf(sd_filename: str) -> pd.DataFrame:
+    """Imports an sd file and returns a Dataframe with an additional Smiles column.
+    
+    Parameters
+    ----------
+    sdf_filename
+        dataset path
+    
+    Returns
+    ----------
+    dict
+        keys (str): dataset names  
+        values (str): dataset abs. paths
+    
+    """
+
+    df = LoadSDF(sd_filename)
     for mol in df.ROMol:
         Compute2DCoords(mol)
     df["smiles"] = [Chem.MolToSmiles(m) for m in df["ROMol"]]
