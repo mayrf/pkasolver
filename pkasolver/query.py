@@ -29,6 +29,7 @@ class States:
     protonated_mol: Chem.Mol
     deprotonated_mol: Chem.Mol
     reaction_center_idx: int
+    ph7_mol: Chem.Mol
 
 
 logger = logging.getLogger(__name__)
@@ -244,6 +245,7 @@ def calculate_microstate_pka_values(
             "BEWARE! This is experimental and might generate wrong protonation states."
         )
         print("Using dimorphite-dl to enumerate protonation states.")
+        mol_at_ph_7 = _call_dimorphite_dl(mol, min_ph=7.0, max_ph=7.0, pka_precision=0)
         all_mols = _call_dimorphite_dl(mol, min_ph=0.5, max_ph=13.5)
         # sort mols
         atom_charges = [
@@ -278,6 +280,7 @@ def calculate_microstate_pka_values(
                 mols_sorted[nr_of_states],
                 mols_sorted[nr_of_states + 1],
                 idx,
+                ph7_mol=mol_at_ph_7,
             )
             logger.debug(
                 pka,
@@ -334,7 +337,14 @@ def calculate_microstate_pka_values(
                 # calc pka value
                 loader = dataset_to_dataloader([m], 1)
                 pka, pka_std = query_model.predict_pka_value(loader)
-                pair = States(pka, pka_std, sorted_mols[0], sorted_mols[1], i)
+                pair = States(
+                    pka,
+                    pka_std,
+                    sorted_mols[0],
+                    sorted_mols[1],
+                    reaction_center_idx=i,
+                    ph7_mol=mol_at_ph_7,
+                )
 
                 # test if pka is inside pH range
                 if pka < 0.5:
@@ -403,7 +413,14 @@ def calculate_microstate_pka_values(
                 # calc pka values
                 loader = dataset_to_dataloader([m], 1)
                 pka, pka_std = query_model.predict_pka_value(loader)
-                pair = States(pka, pka_std, sorted_mols[0], sorted_mols[1], i)
+                pair = States(
+                    pka,
+                    pka_std,
+                    sorted_mols[0],
+                    sorted_mols[1],
+                    reaction_center_idx=i,
+                    ph7_mol=mol_at_ph_7,
+                )
 
                 # check if pka is within pH range
                 if pka > 13.5:
@@ -449,62 +466,38 @@ def calculate_microstate_pka_values(
     return mols
 
 
-def draw_pka_map(molpairs: list, size=(450, 450)):
+def draw_pka_map(protonation_states: list, size=(450, 450)):
     """draw mol at pH=7.0 and indicate protonation sites with respectiv pKa values"""
-    mol_at_ph_7 = _call_dimorphite_dl(
-        molpairs[0][0], min_ph=7.0, max_ph=7.0, pka_precision=0
-    )
-    for i in range(len(molpairs)):
+    mol_at_ph_7 = protonation_states[0].ph7_mol
+    for protonation_state in range(len(protonation_states)):
 
-        protonation_state = i
-        pka, pair, idx = (
-            molpairs[protonation_state][0],
-            molpairs[protonation_state][1],
-            molpairs[protonation_state][2],
-        )
-        atom = mol_at_ph_7.GetAtomWithIdx(idx)
+        state = protonation_states[protonation_state]
+        atom = mol_at_ph_7.GetAtomWithIdx(state.reaction_center_idx)
         try:
-            atom.SetProp("atomNote", f'{atom.GetProp("atomNote")},   {pka:.2f}')
+            atom.SetProp("atomNote", f'{atom.GetProp("atomNote")},   {state.pka:.2f}')
         except:
-            atom.SetProp("atomNote", f"{pka:.2f}")
+            atom.SetProp("atomNote", f"{state.pka:.2f}")
     return Draw.MolToImage(mol_at_ph_7, size=size)
+   
 
+def draw_pka_reactions(protonation_states: list):
+    """
+    Draws protonation states.
+    """
+    draw_pairs, pair_atoms, legend = [], [], []
+    for i in range(len(protonation_states)):
 
-def draw_pka_reactions(molpairs: list):
+        state = protonation_states[i]
 
-    draw_pairs, pair_atoms, pair_pkas = [], [], []
-    for i in range(len(molpairs)):
-
-        protonation_state = i
-        pka, pair, idx = (
-            molpairs[protonation_state][0],
-            molpairs[protonation_state][1],
-            molpairs[protonation_state][2],
-        )
-
-        draw_pairs.extend([pair[0], pair[1]])
-        pair_atoms.extend([[idx], [idx]])
-        pair_pkas.extend([pka, pka])
+        draw_pairs.extend([state.protonated_mol, state.deprotonated_mol])
+        pair_atoms.extend([[state.reaction_center_idx], [state.reaction_center_idx]])
+        f = f"pka = {state.pka:.2f} " + r"$\pm$" + f" {state.pka_stddev:.2f}"
+        legend.extend([f, f])
 
     return Draw.MolsToGridImage(
         draw_pairs,
         molsPerRow=4,
         subImgSize=(250, 250),
         highlightAtomLists=pair_atoms,
-        legends=[f"pka = {pair_pkas[i]:.2f}" for i in range(len(pair_pkas))],
+        legends=legend,
     )
-
-
-# def draw_sdf_mols(input_path, range_list=[]):
-#     print(f"opening .sdf file at {input_path} and computing pkas...")
-#     with open(input_path, "rb") as fh:
-#         count = 0
-#         for i, mol in enumerate(Chem.ForwardSDMolSupplier(fh, removeHs=True)):
-#             if range_list and i not in range_list:
-#                 continue
-#             props = mol.GetPropsAsDict()
-#             for prop in props.keys():
-#                 mol.ClearProp(prop)
-#             mols, pkas, atoms = calculate_microstate_pka_values(mol)
-#             display(draw_pka_map(mols, pkas, atoms))
-#             print(f"Name: {mol.GetProp('_Name')}")
