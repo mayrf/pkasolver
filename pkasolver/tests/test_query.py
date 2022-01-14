@@ -1083,161 +1083,179 @@ def test_mol_20():
 def test_mol_58():
     # 58th Chembl molecule
     mol = mollist[58]
-    molpairs = calculate_microstate_pka_values(mol)
+    protonation_states = calculate_microstate_pka_values(mol)
     ################################################
     print("################################")
-    for i in range(len(molpairs)):
-        pka, pair, idx = (
-            molpairs[i][0],
-            molpairs[i][1],
-            molpairs[i][2],
+    for i in range(len(protonation_states)):
+        state = protonation_states[i]
+        print(
+            Chem.MolToSmiles(state.protonated_mol),
+            Chem.MolToSmiles(state.deprotonated_mol),
         )
-        print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
-        print(pka)
+        print(state.pka)
     print("################################")
     ################################################
     protonation_state = 0
-    pka, pair, idx = (
-        molpairs[protonation_state][0],
-        molpairs[protonation_state][1],
-        molpairs[protonation_state][2],
+    state = protonation_states[protonation_state]
+    assert (
+        Chem.MolToSmiles(state.protonated_mol)
+        == "CCCCCC[NH+]1CC[NH+]2CC(c3ccccc3)c3ccccc3C2C1"
     )
-    assert Chem.MolToSmiles(pair[0]) == "CCCCCC[NH+]1CC[NH+]2CC(c3ccccc3)c3ccccc3C2C1"
-    assert Chem.MolToSmiles(pair[1]) == "CCCCCCN1CC[NH+]2CC(c3ccccc3)c3ccccc3C2C1"
+    assert (
+        Chem.MolToSmiles(state.deprotonated_mol)
+        == "CCCCCCN1CC[NH+]2CC(c3ccccc3)c3ccccc3C2C1"
+    )
 
-    assert np.isclose(pka, 5.578260898590088)
+    assert np.isclose(state.pka, 5.111536555820042)
+    assert np.isclose(state.pka_stddev, 0.4876307405371854)
+    assert state.reaction_center_idx == 6
     ################################################
     protonation_state = 1
-    pka, pair, idx = (
-        molpairs[protonation_state][0],
-        molpairs[protonation_state][1],
-        molpairs[protonation_state][2],
+    state = protonation_states[protonation_state]
+    assert (
+        Chem.MolToSmiles(state.protonated_mol)
+        == "CCCCCCN1CC[NH+]2CC(c3ccccc3)c3ccccc3C2C1"
     )
-    assert Chem.MolToSmiles(pair[0]) == "CCCCCCN1CC[NH+]2CC(c3ccccc3)c3ccccc3C2C1"
-    assert Chem.MolToSmiles(pair[1]) == "CCCCCCN1CCN2CC(c3ccccc3)c3ccccc3C2C1"
+    assert (
+        Chem.MolToSmiles(state.deprotonated_mol)
+        == "CCCCCCN1CCN2CC(c3ccccc3)c3ccccc3C2C1"
+    )
 
-    assert np.isclose(pka, 8.16279411315918)
+    assert np.isclose(state.pka, 8.384064144558376)
+    assert np.isclose(state.pka_stddev, 0.17997652727358723)
+    assert state.reaction_center_idx == 9
 
 
 def test_mol_59():
     # 59th Chembl molecule
     mol = mollist[59]
-    molpairs = calculate_microstate_pka_values(mol)
+    protonation_states = calculate_microstate_pka_values(mol)
     ################################################
     print("################################")
-    for i in range(len(molpairs)):
-        pka, pair, idx = (
-            molpairs[i][0],
-            molpairs[i][1],
-            molpairs[i][2],
+    for i in range(len(protonation_states)):
+        state = protonation_states[i]
+        print(
+            Chem.MolToSmiles(state.protonated_mol),
+            Chem.MolToSmiles(state.deprotonated_mol),
         )
-        print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
-        print(pka)
+        print(state.pka)
     print("################################")
+    ################################################
+    assert len(protonation_states) == 1
     ################################################
     protonation_state = 0
-    pka, pair, idx = (
-        molpairs[protonation_state][0],
-        molpairs[protonation_state][1],
-        molpairs[protonation_state][2],
-    )
+    state = protonation_states[protonation_state]
     assert (
-        Chem.MolToSmiles(pair[0])
+        Chem.MolToSmiles(state.protonated_mol)
         == "CC/C(=C(\c1ccc(I)cc1)c1ccc(OCC[NH+](C)C)cc1)c1ccccc1"
     )
     assert (
-        Chem.MolToSmiles(pair[1]) == "CC/C(=C(\c1ccc(I)cc1)c1ccc(OCCN(C)C)cc1)c1ccccc1"
+        Chem.MolToSmiles(state.deprotonated_mol)
+        == "CC/C(=C(\c1ccc(I)cc1)c1ccc(OCCN(C)C)cc1)c1ccccc1"
     )
-    assert np.isclose(pka, 8.48440170288086)
+    assert np.isclose(state.pka, 8.446443027920193)
+    assert np.isclose(state.pka_stddev, 0.10109291819060486)
+    assert state.reaction_center_idx == 18
 
 
 def test_mol_62():
     # 62th Chembl molecule
     mol = mollist[62]
-    molpairs = calculate_microstate_pka_values(mol)
+    protonation_states = calculate_microstate_pka_values(mol)
+    ################################################
+    assert len(protonation_states) == 2
     ################################################
     print("################################")
-    for i in range(len(molpairs)):
-        pka, pair, idx = (
-            molpairs[i][0],
-            molpairs[i][1],
-            molpairs[i][2],
+    for i in range(len(protonation_states)):
+        state = protonation_states[i]
+        print(
+            Chem.MolToSmiles(state.protonated_mol),
+            Chem.MolToSmiles(state.deprotonated_mol),
         )
-        print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
-        print(pka)
+        print(state.pka)
     print("################################")
     ################################################
     protonation_state = 0
-    pka, pair, idx = (
-        molpairs[protonation_state][0],
-        molpairs[protonation_state][1],
-        molpairs[protonation_state][2],
+    state = protonation_states[protonation_state]
+    assert (
+        Chem.MolToSmiles(state.protonated_mol)
+        == "Cc1cc(CCCCCOc2ccc(-c3[nH+]c(C)c(C)o3)cc2)o[nH+]1"
     )
     assert (
-        Chem.MolToSmiles(pair[0]) == "Cc1cc(CCCCCOc2ccc(-c3[nH+]c(C)c(C)o3)cc2)o[nH+]1"
+        Chem.MolToSmiles(state.deprotonated_mol)
+        == "Cc1cc(CCCCCOc2ccc(-c3nc(C)c(C)o3)cc2)o[nH+]1"
     )
-    assert Chem.MolToSmiles(pair[1]) == "Cc1cc(CCCCCOc2ccc(-c3nc(C)c(C)o3)cc2)o[nH+]1"
-    assert np.isclose(pka, 1.4769623279571533)
-    assert idx == 15
+    assert np.isclose(state.pka, 0.9878645141919454)
+    assert np.isclose(state.pka_stddev, 0.24017836755055452)
+    assert state.reaction_center_idx == 15
     ################################################
     protonation_state = 1
-    pka, pair, idx = (
-        molpairs[protonation_state][0],
-        molpairs[protonation_state][1],
-        molpairs[protonation_state][2],
+    state = protonation_states[protonation_state]
+    assert (
+        Chem.MolToSmiles(state.protonated_mol)
+        == "Cc1cc(CCCCCOc2ccc(-c3nc(C)c(C)o3)cc2)o[nH+]1"
     )
-    assert Chem.MolToSmiles(pair[0]) == "Cc1cc(CCCCCOc2ccc(-c3nc(C)c(C)o3)cc2)o[nH+]1"
-    assert Chem.MolToSmiles(pair[1]) == "Cc1cc(CCCCCOc2ccc(-c3nc(C)c(C)o3)cc2)on1"
-    assert np.isclose(pka, 2.3255257606506348)
-    assert idx == 24
+    assert (
+        Chem.MolToSmiles(state.deprotonated_mol)
+        == "Cc1cc(CCCCCOc2ccc(-c3nc(C)c(C)o3)cc2)on1"
+    )
+    assert np.isclose(state.pka, 2.2003875176111856)
+    assert np.isclose(state.pka_stddev, 0.7891234987927331)
+    assert state.reaction_center_idx == 24
 
 
 def test_mol_70():
     # 70th Chembl molecule
     mol = mollist[70]
-    molpairs = calculate_microstate_pka_values(mol)
+    protonation_states = calculate_microstate_pka_values(mol)
+    ################################################
+    assert len(protonation_states) == 2
     ################################################
     print("################################")
-    for i in range(len(molpairs)):
-        pka, pair, idx = (
-            molpairs[i][0],
-            molpairs[i][1],
-            molpairs[i][2],
+    for i in range(len(protonation_states)):
+        state = protonation_states[i]
+        print(
+            Chem.MolToSmiles(state.protonated_mol),
+            Chem.MolToSmiles(state.deprotonated_mol),
         )
-        print(Chem.MolToSmiles(pair[0]), Chem.MolToSmiles(pair[1]))
-        print(pka)
+        print(state.pka)
     print("################################")
     ################################################
     ################################################
     protonation_state = 0
-    pka, pair, idx = (
-        molpairs[protonation_state][0],
-        molpairs[protonation_state][1],
-        molpairs[protonation_state][2],
+    state = protonation_states[protonation_state]
+    assert (
+        Chem.MolToSmiles(state.protonated_mol)
+        == "Oc1ccc(/C(=C(/c2ccc(O)cc2)C(F)(F)F)C(F)(F)F)cc1"
     )
     assert (
-        Chem.MolToSmiles(pair[0]) == "Oc1ccc(/C(=C(/c2ccc(O)cc2)C(F)(F)F)C(F)(F)F)cc1"
-    )
-    assert (
-        Chem.MolToSmiles(pair[1])
+        Chem.MolToSmiles(state.deprotonated_mol)
         == "[O-]c1ccc(/C(=C(/c2ccc(O)cc2)C(F)(F)F)C(F)(F)F)cc1"
     )
-    assert np.isclose(pka, 7.991166591644287)
-    assert idx == 0 or idx == 11
+    assert np.isclose(state.pka, 8.421117199791802)
+    assert np.isclose(state.pka_stddev, 0.2949680779937196)
+    assert state.reaction_center_idx == 0
+
     ################################################
     protonation_state = 1
-    pka, pair, idx = (
-        molpairs[protonation_state][0],
-        molpairs[protonation_state][1],
-        molpairs[protonation_state][2],
-    )
+    state = protonation_states[protonation_state]
     assert (
-        Chem.MolToSmiles(pair[0])
+        Chem.MolToSmiles(state.protonated_mol)
         == "[O-]c1ccc(/C(=C(/c2ccc(O)cc2)C(F)(F)F)C(F)(F)F)cc1"
     )
     assert (
-        Chem.MolToSmiles(pair[1])
+        Chem.MolToSmiles(state.deprotonated_mol)
         == "[O-]c1ccc(/C(=C(/c2ccc([O-])cc2)C(F)(F)F)C(F)(F)F)cc1"
     )
-    assert np.isclose(pka, 9.038616180419922)
-    assert idx == 11 or idx == 0
+    assert np.isclose(state.pka, 9.098628362019857)
+    assert np.isclose(state.pka_stddev, 0.19024451371832968)
+    assert state.reaction_center_idx == 11
+
+
+def test_visualizing():
+    from pkasolver.query import draw_pka_reactions, draw_pka_map
+
+    mol = mollist[70]
+    protonation_states = calculate_microstate_pka_values(mol)
+    draw_pka_reactions(protonation_states)
+    draw_pka_map(protonation_states)
