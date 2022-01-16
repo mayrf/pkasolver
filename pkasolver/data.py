@@ -18,23 +18,28 @@ import tqdm
 from torch_geometric.data import Data
 
 from pkasolver.chem import create_conjugate
-from pkasolver.constants import (DEVICE, EDGE_FEATURES, NODE_FEATURES,
-                                 edge_feat_values, node_feat_values)
+from pkasolver.constants import (
+    DEVICE,
+    EDGE_FEATURES,
+    NODE_FEATURES,
+    edge_feat_values,
+    node_feat_values,
+)
 
 
 def load_data(base: str = "data/Baltruschat") -> dict:
     """Helper function that takes path to working directory and
     returns a dictionary containing the paths to the training and testsets.
-    
+
     Parameters
     ----------
     base
         path to folder containing dataset sd files
-    
+
     Returns
     ----------
     dict
-        keys (str): dataset names  
+        keys (str): dataset names
         values (str): dataset abs. paths
 
     """
@@ -53,17 +58,17 @@ def load_data(base: str = "data/Baltruschat") -> dict:
 # data preprocessing functions - helpers
 def import_sdf(sd_filename: str) -> pd.DataFrame:
     """Imports an sd file and returns a Dataframe with an additional Smiles column.
-    
+
     Parameters
     ----------
     sd_filename
         dataset path
-    
+
     Returns
     ----------
     pd.DataFrame
         DataFrame of dataset with Chem.rdchem.Mol object and molecule properties as columns
-    
+
     """
 
     df = LoadSDF(sd_filename)
@@ -73,7 +78,9 @@ def import_sdf(sd_filename: str) -> pd.DataFrame:
     return df
 
 
-def conjugates_to_dataframe(df: pd.DataFrame, mol_col: str = "ROMol", ph: float = 7.4) -> pd.DataFrame:
+def conjugates_to_dataframe(
+    df: pd.DataFrame, mol_col: str = "ROMol", ph: float = 7.4
+) -> pd.DataFrame:
     """Takes DataFrame and returns a DataFrame with a column of calculated conjugated molecules.
     Molecule properties must contain columns "marvin_atom" and "marvin_pka".
 
@@ -111,7 +118,7 @@ def conjugates_to_dataframe(df: pd.DataFrame, mol_col: str = "ROMol", ph: float 
 def sort_conjugates(
     df: pd.DataFrame, mol_col_1: str = "ROMol", mol_col_2: str = "Conjugates"
 ) -> pd.DataFrame:
-    """Takes DataFrame, sorts the molecules in the two specified columns into 
+    """Takes DataFrame, sorts the molecules in the two specified columns into
     two new columns, "protonated" and "deprotonated" that replace the two old columns.
     Molecule properties must contain columns "marvin_atom".
 
@@ -157,13 +164,13 @@ def sort_conjugates(
 
 
 # data preprocessing functions - main
-def preprocess(sd_filename: str, ph = 7.4) -> pd.DataFrame:
+def preprocess(sd_filename: str, ph=7.4) -> pd.DataFrame:
     """Takes path of sdf file containing pkadata and returns a dataframe with column for protonated and deprotonated molecules.
     Molecule properties must contain columns "marvin_atom" and "marvin_pka".
-    
+
     Parameters
     ----------
-    sd_filename 
+    sd_filename
         dataset path
     ph
         ph of the protonation state of the Chem.rdchem.Mol objects
@@ -172,7 +179,7 @@ def preprocess(sd_filename: str, ph = 7.4) -> pd.DataFrame:
     -------
     pd.DataFrame
         DataFrame with molecule properties and "protonated" and "deprotonated" Chem.rdchem.Mol objects as columns
-    """ 
+    """
     df = import_sdf(sd_filename)
     df = conjugates_to_dataframe(df, ph=ph)
     df = sort_conjugates(df)
@@ -197,7 +204,7 @@ def preprocess_all(sd_files: dict, ph=7.4) -> dict:
     -------
     dict
         keys (str): dataset name
-        values (pd.DataFrame):  DataFrames with molecule properties and "protonated" 
+        values (pd.DataFrame):  DataFrames with molecule properties and "protonated"
                                 and "deprotonated" Chem.rdchem.Mol objects as columns
 
     """
@@ -213,19 +220,19 @@ def preprocess_all(sd_files: dict, ph=7.4) -> dict:
 class PairData(Data):
     """Extension of the Pytorch Geometric Data Class, which additionally
     takes a conjugated molecules.
-    
+
     Attributes
     -------
     edge_index_p (torch.Tensor)
-        
-    x_p, x_d (torch.Tensor) 
+
+    x_p, x_d (torch.Tensor)
         Node feature matrix with shape [num_nodes, num_node_features]
-    edge_index_p, edge_index_d (torch.Tensor) 
+    edge_index_p, edge_index_d (torch.Tensor)
         Graph connectivity in COO format with shape [2, num_edges]
-    edge_attr_p, edge_attr_d (torch.Tensor) 
+    edge_attr_p, edge_attr_d (torch.Tensor)
         Edge feature matrix with shape [num_edges, num_edge_features]
     charge_p, charge_d (int)
-        molecular charge 
+        molecular charge
 
     """
 
@@ -271,7 +278,7 @@ from pandas.core.common import flatten
 
 def calculate_nr_of_features(feature_list: list) -> int:
     """Calculates number of nodes and edge one hot features from input list.
-    
+
     Parameters
     ----------
     features_list
@@ -348,8 +355,22 @@ def make_edges_and_attr(
     edges = []
     edge_attr = []
     for bond in mol.GetBonds():
-        edges.append(np.array([[bond.GetBeginAtomIdx()], [bond.GetEndAtomIdx()],]))
-        edges.append(np.array([[bond.GetEndAtomIdx()], [bond.GetBeginAtomIdx()],]))
+        edges.append(
+            np.array(
+                [
+                    [bond.GetBeginAtomIdx()],
+                    [bond.GetEndAtomIdx()],
+                ]
+            )
+        )
+        edges.append(
+            np.array(
+                [
+                    [bond.GetEndAtomIdx()],
+                    [bond.GetBeginAtomIdx()],
+                ]
+            )
+        )
         edge = []
         for feat in e_features.values():
             edge.append(feat(bond))
@@ -464,7 +485,10 @@ def mol_to_paired_mol_data(
 
 
 def mol_to_single_mol_data(
-    mol: Chem.rdchem.Mol, atom_idx: int, n_features: dict, e_features: dict,
+    mol: Chem.rdchem.Mol,
+    atom_idx: int,
+    n_features: dict,
+    e_features: dict,
 ):
     """Take a DataFrame row, a dict of node feature functions and a dict of edge feature functions
     and return a Pytorch Data object.
@@ -622,7 +646,11 @@ def make_paired_pyg_data_from_mol(
 
     # create PairData object from prot and deprot with the selected node and edge features
     m = mol_to_paired_mol_data(
-        prot, deprot, atom_idx, selected_node_features, selected_edge_features,
+        prot,
+        deprot,
+        atom_idx,
+        selected_node_features,
+        selected_edge_features,
     )
     m.x = torch.tensor(pka, dtype=torch.float32)
 
@@ -649,16 +677,16 @@ def iterate_over_acids(
     pH: float,
     counter_list: list,
     smiles_list: list,
-) -> Tuple[ 1, 2, 3, 4]:
-    """ Processes the acidic pKa values of an Schrödinger EPIK pka query
-    and returns a pair of protonated and deprotonated molecules for every 
-    pKa. Takes and updates global counters and skip trackers. 
+) -> Tuple[list, int, int, int]:
+    """Processes the acidic pKa values of an Schrödinger EPIK pka query
+    and returns a pair of protonated and deprotonated molecules for every
+    pKa. Takes and updates global counters and skip trackers.
 
     Parameters
     ----------
     acidic_mols_properties
-        list of of dictionaries, each containing pka, ionization index 
-        and CHEMBL id of an acidic input molecule   
+        list of of dictionaries, each containing pka, ionization index
+        and CHEMBL id of an acidic input molecule
     nr_of_mols
         index number of molecule
     partner_mol
@@ -666,7 +694,7 @@ def iterate_over_acids(
     nr_of_skipped_mols
         global number of skipped molecules
     pka_list
-        list of all pKas already found for this molecule 
+        list of all pKas already found for this molecule
     GLOBAL_COUNTER
         counts total number of pKas processed
     pH
@@ -678,9 +706,9 @@ def iterate_over_acids(
 
     Returns
     -------
-    acidic_mols (list) 
-        list of tuples of protonated and deprotonated molecules for 
-        every pka in acidic_mols_properties that did not yield an error  
+    acidic_mols (list)
+        list of tuples of protonated and deprotonated molecules for
+        every pka in acidic_mols_properties that did not yield an error
     nr_of_skipped_mols (int)
         global number of skipped molecules
     GLOBAL_COUNTER (int)
@@ -699,7 +727,10 @@ def iterate_over_acids(
         if skipping_acids == 0:  # if a acid was skipped, all further acids are skipped
             try:
                 new_mol = create_conjugate(
-                    partner_mol, acid_prop["atom_idx"], acid_prop["pka_value"], pH=pH,
+                    partner_mol,
+                    acid_prop["atom_idx"],
+                    acid_prop["pka_value"],
+                    pH=pH,
                 )
                 Chem.SanitizeMol(new_mol)
 
@@ -754,16 +785,16 @@ def iterate_over_bases(
     pH: float,
     counter_list: list,
     smiles_list: list,
-):
-    """ Processes the basic pKa values of an Schrödinger EPIK pka query
-    and returns a pair of protonated and deprotonated molecules for every 
-    pKa. Takes and updates global counters and skip trackers. 
+) -> Tuple[list, int, int, int]:
+    """Processes the basic pKa values of an Schrödinger EPIK pka query
+    and returns a pair of protonated and deprotonated molecules for every
+    pKa. Takes and updates global counters and skip trackers.
 
     Parameters
     ----------
     basic_mols_properties
-        list of of dictionaries, each containing pka, ionization index 
-        and CHEMBL id of an basic input molecule   
+        list of of dictionaries, each containing pka, ionization index
+        and CHEMBL id of an basic input molecule
     nr_of_mols
         index number of molecule
     partner_mol
@@ -771,7 +802,7 @@ def iterate_over_bases(
     nr_of_skipped_mols
         global number of skipped molecules
     pka_list
-        list of all pKas already found for this molecule 
+        list of all pKas already found for this molecule
     GLOBAL_COUNTER
         counts total number of pKas processed
     pH
@@ -783,9 +814,9 @@ def iterate_over_bases(
 
     Returns
     -------
-    basic_mols (list) 
-        list of tuples of protonated and deprotonated molecules for 
-        every pka in basic_mols_properties that did not yield an error  
+    basic_mols (list)
+        list of tuples of protonated and deprotonated molecules for
+        every pka in basic_mols_properties that did not yield an error
     nr_of_skipped_mols (int)
         global number of skipped molecules
     GLOBAL_COUNTER (int)
@@ -800,7 +831,10 @@ def iterate_over_bases(
         if skipping_bases == 0:  # if a base was skipped, all further bases are skipped
             try:
                 new_mol = create_conjugate(
-                    partner_mol, basic_prop["atom_idx"], basic_prop["pka_value"], pH=pH,
+                    partner_mol,
+                    basic_prop["atom_idx"],
+                    basic_prop["pka_value"],
+                    pH=pH,
                 )
 
                 Chem.SanitizeMol(new_mol)
