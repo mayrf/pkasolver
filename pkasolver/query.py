@@ -5,8 +5,11 @@ from dataclasses import dataclass
 from operator import attrgetter
 from os import path
 
+import cairosvg
 import numpy as np
+import svgutils.transform as sg
 import torch
+from IPython.display import SVG
 from rdkit import Chem, RDLogger
 from rdkit.Chem import Draw
 from torch_geometric.loader import DataLoader
@@ -317,7 +320,10 @@ def calculate_microstate_pka_values(
             for i in used_reaction_center_atom_idxs:
                 try:
                     conj = create_conjugate(
-                        mol_at_state, i, pka=0.0, known_pka_values=False,
+                        mol_at_state,
+                        i,
+                        pka=0.0,
+                        known_pka_values=False,
                     )
                 except:
                     continue
@@ -468,7 +474,7 @@ def calculate_microstate_pka_values(
 
 def draw_pka_map(protonation_states: list, size=(450, 450)):
     """draw mol at pH=7.0 and indicate protonation sites with respectiv pKa values"""
-    mol_at_ph_7 = protonation_states[0].ph7_mol
+    mol_at_ph_7 = deepcopy(protonation_states[0].ph7_mol)
     for protonation_state in range(len(protonation_states)):
 
         state = protonation_states[protonation_state]
@@ -480,7 +486,7 @@ def draw_pka_map(protonation_states: list, size=(450, 450)):
     return Draw.MolToImage(mol_at_ph_7, size=size)
 
 
-def draw_pka_reactions(protonation_states: list):
+def draw_pka_reactions(protonation_states: list, height=250):
     """
     Draws protonation states.
     """
@@ -491,13 +497,58 @@ def draw_pka_reactions(protonation_states: list):
 
         draw_pairs.extend([state.protonated_mol, state.deprotonated_mol])
         pair_atoms.extend([[state.reaction_center_idx], [state.reaction_center_idx]])
-        f = f"pka = {state.pka:.2f} (stddev: {state.pka_stddev:.2f})"
-        legend.extend([f, f])
+        f = f"pka_{i} = {state.pka:.2f} (stddev: {state.pka_stddev:.2f})"
+        legend.append(f)
 
-    return Draw.MolsToGridImage(
+    s = Draw.MolsToGridImage(
         draw_pairs,
-        molsPerRow=4,
-        subImgSize=(250, 250),
+        molsPerRow=2,
+        subImgSize=(height * 2, height),
         highlightAtomLists=pair_atoms,
-        legends=legend,
+        useSVG=True,
     )
+    s = s.data
+    s = s.replace("svg:", "")
+    fig = sg.fromstring(s)
+    for i, text in enumerate(legend):
+        label = sg.TextElement(
+            height * 2,
+            (height * (i + 1)) - 10,
+            text,
+            size=14,
+            font="sans-serif",
+            anchor="middle",
+        )
+        fig.append(label)
+        h = height * (i + 0.5)
+        w = height * 2
+        fig.append(
+            sg.LineElement(
+                [(w * 0.9, h - height * 0.02), (w * 1.1, h - height * 0.02)],
+                width=2,
+                color="black",
+            )
+        )
+        fig.append(
+            sg.LineElement(
+                [(w * 1.1, h - height * 0.02), (w * 1.07, h - height * 0.04)],
+                width=2,
+                color="black",
+            )
+        )
+        fig.append(
+            sg.LineElement(
+                [(w * 0.9, h + height * 0.02), (w * 1.1, h + height * 0.02)],
+                width=2,
+                color="black",
+            )
+        )
+        fig.append(
+            sg.LineElement(
+                [(w * 0.9, h + height * 0.02), (w * 0.93, h + height * 0.04)],
+                width=2,
+                color="black",
+            )
+        )
+    cairosvg.svg2png(bytestring=fig.to_str(), write_to="svg_test" + ".png", dpi=300)
+    return SVG(fig.to_str())
