@@ -63,7 +63,7 @@ class QueryModel:
 
         self.models = []
 
-        for i in range(9):
+        for i in range(25):
             model_name, model_class = "GINPair", GINPairV1
             model = model_class(
                 num_node_features, num_edge_features, hidden_channels=96
@@ -478,7 +478,7 @@ def draw_pka_map(protonation_states: list, size=(450, 450)):
         except:
             atom.SetProp("atomNote", f"{state.pka:.2f}")
     return Draw.MolToImage(mol_at_ph_7, size=size)
-   
+
 
 def draw_pka_reactions(protonation_states: list):
     """
