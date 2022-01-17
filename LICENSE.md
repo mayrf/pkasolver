@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2021 Fritz Mayr
+Copyright (c) 2021 Fritz Mayr, Marcus Wieder, Oliver Wieder, Thierry Langer
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
