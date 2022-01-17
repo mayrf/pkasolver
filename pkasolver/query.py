@@ -1,19 +1,36 @@
 # imports
 import logging
 from copy import deepcopy
+from dataclasses import dataclass
+from operator import attrgetter
 from os import path
 
 import numpy as np
 import torch
 from rdkit import Chem, RDLogger
 from rdkit.Chem import Draw
+from torch_geometric.loader import DataLoader
 
 from pkasolver.chem import create_conjugate
 from pkasolver.constants import DEVICE, EDGE_FEATURES, NODE_FEATURES
-from pkasolver.data import (calculate_nr_of_features, make_features_dicts,
-                            mol_to_paired_mol_data)
-from pkasolver.ml import dataset_to_dataloader, predict_pka_value
+from pkasolver.data import (
+    calculate_nr_of_features,
+    make_features_dicts,
+    mol_to_paired_mol_data,
+)
+from pkasolver.ml import dataset_to_dataloader
 from pkasolver.ml_architecture import GINPairV1
+
+
+@dataclass
+class States:
+    pka: float
+    pka_stddev: float
+    protonated_mol: Chem.Mol
+    deprotonated_mol: Chem.Mol
+    reaction_center_idx: int
+    ph7_mol: Chem.Mol
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,29 +59,68 @@ selected_edge_features = make_features_dicts(EDGE_FEATURES, edge_feat_list)
 
 
 class QueryModel:
-    def __init__(self, path_to_parameters: str = ""):
+    def __init__(self):
 
-        model_name, model_class = "GINPair", GINPairV1
-        model = model_class(num_node_features, num_edge_features, hidden_channels=96)
+        self.models = []
 
-        if path_to_parameters:
-            checkpoint = torch.load(path_to_parameters)
-        else:
+        for i in range(25):
+            model_name, model_class = "GINPair", GINPairV1
+            model = model_class(
+                num_node_features, num_edge_features, hidden_channels=96
+            )
             base_path = path.dirname(__file__)
             if torch.cuda.is_available() == False:  # If only CPU is available
                 checkpoint = torch.load(
-                    f"{base_path}/trained_model/fine_tuned_model.pt",
+                    f"{base_path}/trained_model/fine_tuned_model_{i}.pt",
                     map_location=torch.device("cpu"),
                 )
             else:
                 checkpoint = torch.load(
-                    f"{base_path}/trained_model/fine_tuned_model.pt"
+                    f"{base_path}/trained_model/fine_tuned_model_{i}.pt"
                 )
 
-        model.load_state_dict(checkpoint["model_state_dict"])
-        model.eval()
-        model.to(device=DEVICE)
-        self.model = model
+            model.load_state_dict(checkpoint["model_state_dict"])
+            model.eval()
+            model.to(device=DEVICE)
+            self.models.append(model)
+
+    def predict_pka_value(self, loader: DataLoader) -> np.ndarray:
+        """
+        ----------
+        loader
+            data to be predicted
+        Returns
+        -------
+        np.array
+            list of predicted pKa values
+        """
+
+        results = []
+        assert len(loader) == 1
+        for data in loader:  # Iterate in batches over the training dataset.
+            data.to(device=DEVICE)
+            consensus_r = []
+            for model in self.models:
+                y_pred = (
+                    model(
+                        x_p=data.x_p,
+                        x_d=data.x_d,
+                        edge_attr_p=data.edge_attr_p,
+                        edge_attr_d=data.edge_attr_d,
+                        data=data,
+                    )
+                    .reshape(-1)
+                    .detach()
+                )
+
+                consensus_r.append(y_pred.tolist())
+            results.extend(
+                (
+                    float(np.average(consensus_r, axis=0)),
+                    float(np.std(consensus_r, axis=0)),
+                )
+            )
+        return results
 
 
 def _get_ionization_indices(mol_list: list, compare_to: Chem.Mol) -> list:
@@ -168,18 +224,18 @@ def _sort_conj(mols: list):
 def _check_for_duplicates(states: list):
     """check whether two states have the same pKa value and remove one of them"""
     all_r = dict()
+    logger.debug(states)
     for state in states:
-        m1, m2 = _sort_conj([state[1][0], state[1][1]])
+        m1, m2 = _sort_conj([state.protonated_mol, state.deprotonated_mol])
         all_r[hash((Chem.MolToSmiles(m1), Chem.MolToSmiles(m2)))] = state
-    logger.debug([all_r[k] for k in sorted(all_r, key=all_r.get)])
-    return [all_r[k] for k in sorted(all_r, key=all_r.get)]
+    # logger.debug([all_r[k] for k in sorted(all_r, key=all_r.get)])
+    return sorted([all_r[k] for k in all_r], key=attrgetter("pka"))
 
 
 def calculate_microstate_pka_values(
     mol: Chem.rdchem.Mol, only_dimorphite: bool = False, query_model=None
 ):
     """Enumerate protonation states using a rdkit mol as input"""
-    from operator import itemgetter
 
     if query_model == None:
         query_model = QueryModel()
@@ -188,7 +244,8 @@ def calculate_microstate_pka_values(
         print(
             "BEWARE! This is experimental and might generate wrong protonation states."
         )
-        print("Using dimorphite-dl to enumerate protonation states.")
+        logger.debug("Using dimorphite-dl to enumerate protonation states.")
+        mol_at_ph_7 = _call_dimorphite_dl(mol, min_ph=7.0, max_ph=7.0, pka_precision=0)
         all_mols = _call_dimorphite_dl(mol, min_ph=0.5, max_ph=13.5)
         # sort mols
         atom_charges = [
@@ -204,8 +261,8 @@ def calculate_microstate_pka_values(
         # return only mol pairs
         mols = []
         for nr_of_states, idx in enumerate(reaction_center_atom_idxs):
-            print(Chem.MolToSmiles(mols_sorted[nr_of_states]))
-            print(Chem.MolToSmiles(mols_sorted[nr_of_states + 1]))
+            logger.debug(Chem.MolToSmiles(mols_sorted[nr_of_states]))
+            logger.debug(Chem.MolToSmiles(mols_sorted[nr_of_states + 1]))
 
             # generated paired data structure
             m = mol_to_paired_mol_data(
@@ -216,11 +273,14 @@ def calculate_microstate_pka_values(
                 selected_edge_features,
             )
             loader = dataset_to_dataloader([m], 1)
-            pka = predict_pka_value(query_model.model, loader)
-            pair = (
+            pka, pka_std = query_model.predict_pka_value(loader)
+            pair = States(
                 pka,
-                (mols_sorted[nr_of_states], mols_sorted[nr_of_states + 1]),
+                pka_std,
+                mols_sorted[nr_of_states],
+                mols_sorted[nr_of_states + 1],
                 idx,
+                ph7_mol=mol_at_ph_7,
             )
             logger.debug(
                 pka,
@@ -229,10 +289,10 @@ def calculate_microstate_pka_values(
             )
 
             mols.append(pair)
-        print(mols)
+        logger.debug(mols)
 
     else:
-        print("Using dimorphite-dl to identify protonation sites.")
+        logger.info("Using dimorphite-dl to identify protonation sites.")
         mol_at_ph_7 = _call_dimorphite_dl(mol, min_ph=7.0, max_ph=7.0, pka_precision=0)
         assert len(mol_at_ph_7) == 1
         mol_at_ph_7 = mol_at_ph_7[0]
@@ -250,9 +310,10 @@ def calculate_microstate_pka_values(
 
         used_reaction_center_atom_idxs = deepcopy(reaction_center_atom_idxs)
         logger.debug("Start with acids ...")
+        # for each possible protonation state
         for _ in reaction_center_atom_idxs:
-            logger.debug("Acid groups ...")
             states_per_iteration = []
+            # for each possible reaction center
             for i in used_reaction_center_atom_idxs:
                 try:
                     conj = create_conjugate(
@@ -260,8 +321,10 @@ def calculate_microstate_pka_values(
                     )
                 except:
                     continue
+
                 logger.debug(f"{Chem.MolToSmiles(conj)}")
 
+                # sort mols (protonated/deprotonated)
                 sorted_mols = _sort_conj([conj, mol_at_state])
 
                 m = mol_to_paired_mol_data(
@@ -271,11 +334,24 @@ def calculate_microstate_pka_values(
                     selected_node_features,
                     selected_edge_features,
                 )
+                # calc pka value
                 loader = dataset_to_dataloader([m], 1)
-                pka = predict_pka_value(query_model.model, loader)[0]
+                pka, pka_std = query_model.predict_pka_value(loader)
+                pair = States(
+                    pka,
+                    pka_std,
+                    sorted_mols[0],
+                    sorted_mols[1],
+                    reaction_center_idx=i,
+                    ph7_mol=mol_at_ph_7,
+                )
+
+                # test if pka is inside pH range
                 if pka < 0.5:
                     logger.debug("Too low pKa value!")
+                    # skip rest
                     continue
+
                 logger.debug(
                     "acid: ",
                     pka,
@@ -283,31 +359,43 @@ def calculate_microstate_pka_values(
                     i,
                     Chem.MolToSmiles(mol_at_state),
                 )
+
+                # if this is NOT the first state found
                 if acids:
-                    if pka < acids[-1][0]:
-                        states_per_iteration.append((pka, (conj, mol_at_state), i))
+                    # check if previous pka value is lower and if yes, add it
+                    if pka < acids[-1].pka:
+                        states_per_iteration.append(pair)
                 else:
-                    states_per_iteration.append((pka, (conj, mol_at_state), i))
+                    # if this is the first state found
+                    states_per_iteration.append(pair)
 
             if not states_per_iteration:
                 # no protonation state left
                 break
 
-            acids.append(max(states_per_iteration, key=itemgetter(0)))
+            # get the protonation state with the highest pka
+            acids.append(max(states_per_iteration, key=attrgetter("pka")))
             used_reaction_center_atom_idxs.remove(
-                acids[-1][2]
+                acids[-1].reaction_center_idx
             )  # avoid double protonation
-            mol_at_state = deepcopy(acids[-1][1][0])
+            mol_at_state = deepcopy(acids[-1].protonated_mol)
 
         logger.debug(acids)
+
+        #######################################################
+        # continue with bases
+        #######################################################
 
         bases = []
         mol_at_state = deepcopy(mol_at_ph_7)
         logger.debug("Start with bases ...")
         used_reaction_center_atom_idxs = deepcopy(reaction_center_atom_idxs)
+        logger.debug(reaction_center_atom_idxs)
+        # for each possible protonation state
         for _ in reaction_center_atom_idxs:
             states_per_iteration = []
-            for i in reaction_center_atom_idxs:
+            # for each possible reaction center
+            for i in used_reaction_center_atom_idxs:
                 try:
                     conj = create_conjugate(
                         mol_at_state, i, pka=13.5, known_pka_values=False
@@ -322,8 +410,19 @@ def calculate_microstate_pka_values(
                     selected_node_features,
                     selected_edge_features,
                 )
+                # calc pka values
                 loader = dataset_to_dataloader([m], 1)
-                pka = predict_pka_value(query_model.model, loader)[0]
+                pka, pka_std = query_model.predict_pka_value(loader)
+                pair = States(
+                    pka,
+                    pka_std,
+                    sorted_mols[0],
+                    sorted_mols[1],
+                    reaction_center_idx=i,
+                    ph7_mol=mol_at_ph_7,
+                )
+
+                # check if pka is within pH range
                 if pka > 13.5:
                     logger.debug("Too high pKa value!")
                     continue
@@ -335,19 +434,22 @@ def calculate_microstate_pka_values(
                     i,
                     Chem.MolToSmiles(mol_at_state),
                 )
+                # if bases already present
                 if bases:
-                    if pka > bases[-1][0]:
-                        states_per_iteration.append((pka, (mol_at_state, conj), i))
+                    # check if previous pka is higher
+                    if pka > bases[-1].pka:
+                        states_per_iteration.append(pair)
                 else:
-                    states_per_iteration.append((pka, (mol_at_state, conj), i))
+                    states_per_iteration.append(pair)
 
             if not states_per_iteration:
                 # no protonation state left
                 break
-            bases.append(min(states_per_iteration, key=itemgetter(0)))
-            mol_at_state = deepcopy(bases[-1][1][1])
+            # take state with lowest pka value
+            bases.append(min(states_per_iteration, key=attrgetter("pka")))
+            mol_at_state = deepcopy(bases[-1].deprotonated_mol)
             used_reaction_center_atom_idxs.remove(
-                bases[-1][2]
+                bases[-1].reaction_center_idx
             )  # avoid double deprotonation
 
         logger.debug(bases)
@@ -364,62 +466,38 @@ def calculate_microstate_pka_values(
     return mols
 
 
-def draw_pka_map(molpairs: list, size=(450, 450)):
+def draw_pka_map(protonation_states: list, size=(450, 450)):
     """draw mol at pH=7.0 and indicate protonation sites with respectiv pKa values"""
-    mol_at_ph_7 = _call_dimorphite_dl(
-        molpairs[0][0], min_ph=7.0, max_ph=7.0, pka_precision=0
-    )
-    for i in range(len(molpairs)):
+    mol_at_ph_7 = protonation_states[0].ph7_mol
+    for protonation_state in range(len(protonation_states)):
 
-        protonation_state = i
-        pka, pair, idx = (
-            molpairs[protonation_state][0],
-            molpairs[protonation_state][1],
-            molpairs[protonation_state][2],
-        )
-        atom = mol_at_ph_7.GetAtomWithIdx(idx)
+        state = protonation_states[protonation_state]
+        atom = mol_at_ph_7.GetAtomWithIdx(state.reaction_center_idx)
         try:
-            atom.SetProp("atomNote", f'{atom.GetProp("atomNote")},   {pka:.2f}')
+            atom.SetProp("atomNote", f'{atom.GetProp("atomNote")},   {state.pka:.2f}')
         except:
-            atom.SetProp("atomNote", f"{pka:.2f}")
+            atom.SetProp("atomNote", f"{state.pka:.2f}")
     return Draw.MolToImage(mol_at_ph_7, size=size)
 
 
-def draw_pka_reactions(molpairs: list):
+def draw_pka_reactions(protonation_states: list):
+    """
+    Draws protonation states.
+    """
+    draw_pairs, pair_atoms, legend = [], [], []
+    for i in range(len(protonation_states)):
 
-    draw_pairs, pair_atoms, pair_pkas = [], [], []
-    for i in range(len(molpairs)):
+        state = protonation_states[i]
 
-        protonation_state = i
-        pka, pair, idx = (
-            molpairs[protonation_state][0],
-            molpairs[protonation_state][1],
-            molpairs[protonation_state][2],
-        )
-
-        draw_pairs.extend([pair[0], pair[1]])
-        pair_atoms.extend([[idx], [idx]])
-        pair_pkas.extend([pka, pka])
+        draw_pairs.extend([state.protonated_mol, state.deprotonated_mol])
+        pair_atoms.extend([[state.reaction_center_idx], [state.reaction_center_idx]])
+        f = f"pka = {state.pka:.2f} (stddev: {state.pka_stddev:.2f})"
+        legend.extend([f, f])
 
     return Draw.MolsToGridImage(
         draw_pairs,
         molsPerRow=4,
         subImgSize=(250, 250),
         highlightAtomLists=pair_atoms,
-        legends=[f"pka = {pair_pkas[i]:.2f}" for i in range(len(pair_pkas))],
+        legends=legend,
     )
-
-
-# def draw_sdf_mols(input_path, range_list=[]):
-#     print(f"opening .sdf file at {input_path} and computing pkas...")
-#     with open(input_path, "rb") as fh:
-#         count = 0
-#         for i, mol in enumerate(Chem.ForwardSDMolSupplier(fh, removeHs=True)):
-#             if range_list and i not in range_list:
-#                 continue
-#             props = mol.GetPropsAsDict()
-#             for prop in props.keys():
-#                 mol.ClearProp(prop)
-#             mols, pkas, atoms = calculate_microstate_pka_values(mol)
-#             display(draw_pka_map(mols, pkas, atoms))
-#             print(f"Name: {mol.GetProp('_Name')}")

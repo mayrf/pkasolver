@@ -67,35 +67,3 @@ def calculate_performance_of_model_on_data(
     return np.array(x_dataset), np.array(y_dataset)
 
 
-def predict_pka_value(model, loader: DataLoader) -> np.ndarray:
-    """
-    ----------
-    model
-        graph model to be used for predictions
-    loader
-        data to be predicted
-    Returns
-    -------
-    np.array
-        list of predicted pKa values
-    """
-
-    model.eval()
-    results = []
-    for data in loader:  # Iterate in batches over the training dataset.
-        data.to(device=DEVICE)
-        y_pred = (
-            model(
-                x_p=data.x_p,
-                x_d=data.x_d,
-                edge_attr_p=data.edge_attr_p,
-                edge_attr_d=data.edge_attr_d,
-                data=data,
-            )
-            .reshape(-1)
-            .detach()
-        )
-
-        results.extend(y_pred.tolist())
-
-    return np.array(results)
