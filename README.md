@@ -11,7 +11,7 @@ pKasolver is a package that enables prediction of pKa values of small molecules 
 
 ### Installation
 
-We recommend using anaconda to set up a new repository (https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) and installing the dependencies listed in https://github.com/mayrf/pkasolver/blob/main/devtools/conda-envs/test_env.yaml.
+We recommend using anaconda to set up a new repository (https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) and installing the dependencies listed in `devtools/conda-envs/test_env.yaml`.
 This can be done with `conda env create -f devtools/conda-envs/test_env.yaml` (the conda environment will be called `test` --- if you want a different name change the first line in `test_env.yaml`).
 After activating the conda environment the package can be installed with `python setup.py install`.
 
