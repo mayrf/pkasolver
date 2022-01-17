@@ -244,7 +244,7 @@ def calculate_microstate_pka_values(
         print(
             "BEWARE! This is experimental and might generate wrong protonation states."
         )
-        print("Using dimorphite-dl to enumerate protonation states.")
+        logger.debug("Using dimorphite-dl to enumerate protonation states.")
         mol_at_ph_7 = _call_dimorphite_dl(mol, min_ph=7.0, max_ph=7.0, pka_precision=0)
         all_mols = _call_dimorphite_dl(mol, min_ph=0.5, max_ph=13.5)
         # sort mols
@@ -261,8 +261,8 @@ def calculate_microstate_pka_values(
         # return only mol pairs
         mols = []
         for nr_of_states, idx in enumerate(reaction_center_atom_idxs):
-            print(Chem.MolToSmiles(mols_sorted[nr_of_states]))
-            print(Chem.MolToSmiles(mols_sorted[nr_of_states + 1]))
+            logger.debug(Chem.MolToSmiles(mols_sorted[nr_of_states]))
+            logger.debug(Chem.MolToSmiles(mols_sorted[nr_of_states + 1]))
 
             # generated paired data structure
             m = mol_to_paired_mol_data(
@@ -289,10 +289,10 @@ def calculate_microstate_pka_values(
             )
 
             mols.append(pair)
-        print(mols)
+        logger.debug(mols)
 
     else:
-        print("Using dimorphite-dl to identify protonation sites.")
+        logger.info("Using dimorphite-dl to identify protonation sites.")
         mol_at_ph_7 = _call_dimorphite_dl(mol, min_ph=7.0, max_ph=7.0, pka_precision=0)
         assert len(mol_at_ph_7) == 1
         mol_at_ph_7 = mol_at_ph_7[0]
@@ -390,7 +390,7 @@ def calculate_microstate_pka_values(
         mol_at_state = deepcopy(mol_at_ph_7)
         logger.debug("Start with bases ...")
         used_reaction_center_atom_idxs = deepcopy(reaction_center_atom_idxs)
-        print(reaction_center_atom_idxs)
+        logger.debug(reaction_center_atom_idxs)
         # for each possible protonation state
         for _ in reaction_center_atom_idxs:
             states_per_iteration = []
@@ -491,7 +491,7 @@ def draw_pka_reactions(protonation_states: list):
 
         draw_pairs.extend([state.protonated_mol, state.deprotonated_mol])
         pair_atoms.extend([[state.reaction_center_idx], [state.reaction_center_idx]])
-        f = f"pka = {state.pka:.2f} " + r"$\pm$" + f" {state.pka_stddev:.2f}"
+        f = f"pka = {state.pka:.2f} (stddev: {state.pka_stddev:.2f})"
         legend.extend([f, f])
 
     return Draw.MolsToGridImage(
