@@ -1,6 +1,9 @@
+import logging
 from copy import deepcopy
 
 from rdkit import Chem
+
+logger = logging.getLogger(__name__)
 
 
 def create_conjugate(
@@ -85,9 +88,9 @@ def create_conjugate(
     assert Tot_Hs != Tot_Hs_after
     # mol = next(ResonanceMolSupplier(mol))
     if danger and not ignore_danger:
-        print(f"Original mol: {Chem.MolToSmiles(mol)}")
-        print(f"Changed mol: {Chem.MolToSmiles(mol_changed)}")
-        print(
+        logger.debug(f"Original mol: {Chem.MolToSmiles(mol)}")
+        logger.debug(f"Changed mol: {Chem.MolToSmiles(mol_changed)}")
+        logger.debug(
             f"This should only happen for the test set. pka: {pka},charge:{charge},Explicit Hs:{Ex_Hs}, Total Hs:{Tot_Hs}, reaction center atomic number: {atom.GetAtomicNum()}"
         )
         raise RuntimeError("danger")
