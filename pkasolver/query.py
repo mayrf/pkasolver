@@ -320,10 +320,7 @@ def calculate_microstate_pka_values(
             for i in used_reaction_center_atom_idxs:
                 try:
                     conj = create_conjugate(
-                        mol_at_state,
-                        i,
-                        pka=0.0,
-                        known_pka_values=False,
+                        mol_at_state, i, pka=0.0, known_pka_values=False,
                     )
                 except:
                     continue
@@ -507,8 +504,10 @@ def draw_pka_reactions(protonation_states: list, height=250):
         highlightAtomLists=pair_atoms,
         useSVG=True,
     )
-    s = s.data
-    s = s.replace("svg:", "")
+    if hasattr(
+        s, "data"
+    ):  # Draw.MolsToGridImage returns different output depending on whether it is called in a notebook or a script
+        s = s.data.replace("svg:", "")
     fig = sg.fromstring(s)
     for i, text in enumerate(legend):
         label = sg.TextElement(
