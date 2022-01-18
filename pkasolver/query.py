@@ -483,9 +483,12 @@ def draw_pka_map(protonation_states: list, size=(450, 450)):
     return Draw.MolToImage(mol_at_ph_7, size=size)
 
 
-def draw_pka_reactions(protonation_states: list, height=250):
+def draw_pka_reactions(
+    protonation_states: list, height=250, write_png_to_file: str = ""
+):
     """
     Draws protonation states.
+    file can be saved as png using `write_png_to_file` parameter.
     """
     draw_pairs, pair_atoms, legend = [], [], []
     for i in range(len(protonation_states)):
@@ -549,5 +552,9 @@ def draw_pka_reactions(protonation_states: list, height=250):
                 color="black",
             )
         )
-    cairosvg.svg2png(bytestring=fig.to_str(), write_to="svg_test" + ".png", dpi=300)
+    # if png file path is passed write png file
+    if write_png_to_file:
+        cairosvg.svg2png(
+            bytestring=fig.to_str(), write_to=f"{write_png_to_file}", dpi=300
+        )
     return SVG(fig.to_str())
