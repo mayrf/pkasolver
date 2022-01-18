@@ -20,6 +20,7 @@ dependencies:
  - tqdm
  - svgutils
  - cairosvg
+ - ipython
  - pip
  - pip:
      - torch-geometric==2.0.1
