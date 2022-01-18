@@ -18,6 +18,8 @@ dependencies:
  - numpy
  - scipy
  - tqdm
+ - svgutils
+ - cairosvg
  - pip
  - pip:
      - torch-geometric==2.0.1
