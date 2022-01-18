@@ -9,7 +9,6 @@ import cairosvg
 import numpy as np
 import svgutils.transform as sg
 import torch
-from IPython.display import SVG
 from rdkit import Chem, RDLogger
 from rdkit.Chem import Draw
 from torch_geometric.loader import DataLoader
@@ -490,6 +489,8 @@ def draw_pka_reactions(
     Draws protonation states.
     file can be saved as png using `write_png_to_file` parameter.
     """
+    from IPython.display import SVG
+
     draw_pairs, pair_atoms, legend = [], [], []
     for i in range(len(protonation_states)):
 
