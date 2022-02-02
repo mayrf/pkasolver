@@ -5,6 +5,7 @@ pkasolver
 [![codecov](https://codecov.io/gh/mayrf/pkasolver/branch/master/graph/badge.svg)](https://codecov.io/gh/mayrf/pkasolver/branch/master)
 
 pKasolver is a package that enables prediction of pKa values of small molecules via graph convolutional networks. 
+This repository and data was used for the preprint [**Improving Small Molecule pKa Prediction Using Transfer Learning with Graph Neural Networks**](https://www.biorxiv.org/content/10.1101/2022.01.20.476787v1).
 
 ## Prerequisites
 
