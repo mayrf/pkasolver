@@ -19,7 +19,7 @@ After activating the conda environment the package can be installed with `python
 ## How to use pkasolver to predict microstate pka values
 
 Depending on your needs you can either use the juptyer notebook deposited in the `notebooks` directory which demonstrate the usage of the pkasolver package (this needs a local installation of the pkasolver package).
-Or you can use the provided google colabs that automatically installs everything in a hosted notebook and allows you to use the package for pka prediction without a local installation: https://colab.research.google.com/drive/1-2qvt7nJ7n3jHfJjYPcAnWLkSGmRWjD_?usp=sharing
+Or you can use the provided google colabs that automatically installs everything in a hosted notebook and allows you to use the package for pka prediction without a local installation: https://github.com/mayrf/pkasolver/blob/main/notebooks/pka_prediction.ipynb
 
 To generate your own models, take a look at the `scripts` folder in the corresponding data repository: https://github.com/wiederm/pkasolver-data. It contains notebooks to reproduce the plots shwon in [placeholder] and python scripts to prepare the data, train models and visualize their performance.
 
