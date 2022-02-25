@@ -10,10 +10,11 @@ with open(input, "rb") as fh:
     for i, mol in enumerate(suppl):
         mollist.append(mol)
 
-
+@pytest.mark.skipif(
+    os.getenv("CI") == "true", reason="Needs pretrained GNN models",
+)
 def test_generate_query():
     from pkasolver.query import QueryModel
-
     q = QueryModel()
 
 
