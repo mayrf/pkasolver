@@ -1,6 +1,7 @@
 import numpy as np
 from pkasolver.query import _get_ionization_indices, calculate_microstate_pka_values
 from rdkit import Chem
+import pytest, os
 
 input = "pkasolver/tests/testdata/00_chembl_subset.sdf"
 mollist = []
@@ -15,7 +16,10 @@ def test_generate_query():
 
     q = QueryModel()
 
-
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_predict():
     from pkasolver.constants import EDGE_FEATURES, NODE_FEATURES
     from pkasolver.data import make_features_dicts, mol_to_paired_mol_data
@@ -95,7 +99,10 @@ def test_predict():
     loader = dataset_to_dataloader([m], 1, shuffle=False)
     assert np.isclose(query_model.predict_pka_value(loader)[0], 11.142233619689941)
 
-
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_piperidine():
     # https://www.masterorganicchemistry.com/2017/04/18/basicity-of-amines-and-pkah/
     mol = Chem.MolFromSmiles("C1CCNCC1")
@@ -126,6 +133,10 @@ def test_piperidine():
     assert state.reaction_center_idx == 3
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_pyridine():
     # https://www.masterorganicchemistry.com/2017/04/18/basicity-of-amines-and-pkah/
     mol = Chem.MolFromSmiles("C1=CC=NC=C1")
@@ -143,6 +154,10 @@ def test_pyridine():
     assert state.reaction_center_idx == 3
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_acetic_acid():
     # https://en.wikipedia.org/wiki/Acetic_acid
     mol = Chem.MolFromSmiles("CC(=O)[O-]")
@@ -174,6 +189,10 @@ def test_acetic_acid():
     assert state.reaction_center_idx == 3
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_fumaric_acid():
     # https://www.waters.com/nextgen/ca/en/library/application-notes/2020/analysis-of-organic-acids-using-a-mixed-mode-lc-column-and-an-acquity-qda-mass-detector.html
     mol = Chem.MolFromSmiles("O=C(O)/C=C/C(=O)O")
@@ -213,6 +232,10 @@ def test_fumaric_acid():
     assert state.reaction_center_idx == 2 or state.reaction_center_idx == 7
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_malic_acid():
     # https://www.waters.com/nextgen/ca/en/library/application-notes/2020/analysis-of-organic-acids-using-a-mixed-mode-lc-column-and-an-acquity-qda-mass-detector.html
     mol = Chem.MolFromSmiles("O=C(O)CC(O)C(=O)O")
@@ -268,6 +291,10 @@ def test_malic_acid():
     assert state.reaction_center_idx == 5
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_citric_acid():
     # https://www.waters.com/nextgen/ca/en/library/application-notes/2020/analysis-of-organic-acids-using-a-mixed-mode-lc-column-and-an-acquity-qda-mass-detector.html
     mol = Chem.MolFromSmiles("O=C(O)CC(O)(CC(=O)O)C(=O)O")
@@ -347,6 +374,10 @@ def test_citric_acid():
     assert state.reaction_center_idx == 5
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_ascorbic_acid():
     # https://www.waters.com/nextgen/ca/en/library/application-notes/2020/analysis-of-organic-acids-using-a-mixed-mode-lc-column-and-an-acquity-qda-mass-detector.html
     mol = Chem.MolFromSmiles("C(C(C1C(=C(C(=O)O1)O)O)O)O")
@@ -403,6 +434,10 @@ def test_ascorbic_acid():
     assert state.reaction_center_idx == 7
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_quinic_acid():
     # https://www.waters.com/nextgen/ca/en/library/application-notes/2020/analysis-of-organic-acids-using-a-mixed-mode-lc-column-and-an-acquity-qda-mass-detector.html
     mol = Chem.MolFromSmiles("O=C(O)[C@]1(O)C[C@@H](O)[C@@H](O)[C@H](O)C1")
@@ -459,6 +494,10 @@ def test_quinic_acid():
     ################################################
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_cocaine():
     # https://www.waters.com/nextgen/ca/en/library/application-notes/2020/analysis-of-organic-acids-using-a-mixed-mode-lc-column-and-an-acquity-qda-mass-detector.html
     mol = Chem.MolFromSmiles("COC(=O)C1C(OC(=O)C2=CC=CC=C2)CC2CCC1N2C")
@@ -495,6 +534,10 @@ def test_cocaine():
     ################################################
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_tyrosine():
     # https://www.vanderbilt.edu/AnS/Chemistry/Rizzo/stuff/AA/AminoAcids.html
     mol = Chem.MolFromSmiles("NC(CC1=CC=C(O)C=C1)C(=O)O")
@@ -543,6 +586,10 @@ def test_tyrosine():
     ################################################
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_aspartic_acid():
     # https://chem.libretexts.org/Courses/University_of_Arkansas_Little_Rock/CHEM_4320_5320%3A_Biochemistry_1/01%3A_Amino_Acids/1.4%3A_Reactions_of_Amino_Acids/1.4.1_Acid-base_Chemistry_of_Amino_Acids
     mol = Chem.MolFromSmiles("N[C@@H](CC(=O)O)C(=O)O")
@@ -593,6 +640,10 @@ def test_aspartic_acid():
     ################################################
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_taurin():
     # http://www2.chm.ulaval.ca/gecha/chm1903/4_acide-base/organic_acids.pdf
     mol = Chem.MolFromSmiles("NCCS(=O)(=O)O")
@@ -623,6 +674,10 @@ def test_taurin():
     ################################################
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_cysteamine():
     # http://www2.chm.ulaval.ca/gecha/chm1903/4_acide-base/organic_acids.pdf
     mol = Chem.MolFromSmiles("NCCS")
@@ -671,6 +726,10 @@ def test_cysteamine():
     ################################################
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_diphonoethane():
     # http://www2.chm.ulaval.ca/gecha/chm1903/4_acide-base/organic_acids.pdf
     mol = Chem.MolFromSmiles("CC(O)(P(=O)(O)O)P(=O)(O)O")
@@ -739,6 +798,10 @@ def test_diphonoethane():
     ################################################
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_arginin():
     # https://chem.libretexts.org/Courses/University_of_Arkansas_Little_Rock/CHEM_4320_5320%3A_Biochemistry_1/01%3A_Amino_Acids/1.4%3A_Reactions_of_Amino_Acids/1.4.1_Acid-base_Chemistry_of_Amino_Acids
     mol = Chem.MolFromSmiles("NC(N)=NCCCC(N)C(=O)O")
@@ -789,6 +852,10 @@ def test_arginin():
     ################################################
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_thiophenecarboxylicacid():
     # http://www2.chm.ulaval.ca/gecha/chm1903/4_acide-base/organic_acids.pdf
     mol = Chem.MolFromSmiles("O=C(O)C1=CSC=C1")
@@ -818,6 +885,10 @@ def test_thiophenecarboxylicacid():
     assert state.reaction_center_idx == 2
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_nitroaniline():
     # http://www2.chm.ulaval.ca/gecha/chm1903/4_acide-base/organic_acids.pdf
     mol = Chem.MolFromSmiles("NC1=CC([N+](=O)[O-])=CC=C1")
@@ -856,6 +927,10 @@ def test_nitroaniline():
     assert state.reaction_center_idx == 0
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_benzenesulfinicacid():
     # http://www2.chm.ulaval.ca/gecha/chm1903/4_acide-base/organic_acids.pdf
     mol = Chem.MolFromSmiles("O=S(O)C1=CC=CC=C1")
@@ -885,6 +960,10 @@ def test_benzenesulfinicacid():
     assert state.reaction_center_idx == 2
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_bromobenzoicacid():
     # http://www2.chm.ulaval.ca/gecha/chm1903/4_acide-base/organic_acids.pdf
     mol = Chem.MolFromSmiles("O=C(O)C1=CC(Br)=CC=C1")
@@ -914,6 +993,10 @@ def test_bromobenzoicacid():
     assert state.reaction_center_idx == 2
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_benzaldehyde():
     # http://www2.chm.ulaval.ca/gecha/chm1903/4_acide-base/organic_acids.pdf
     mol = Chem.MolFromSmiles("O=CC1=CC=CC=C1")
@@ -935,6 +1018,10 @@ def test_benzaldehyde():
     ################################################
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_mol_00():
     # 00 Chembl molecule
     mol = mollist[0]
@@ -1018,6 +1105,10 @@ def test_mol_00():
     print("#####################################################")
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_mol_14():
     # 14th Chembl molecule
     mol = mollist[14]
@@ -1049,6 +1140,10 @@ def test_mol_14():
     assert state.reaction_center_idx == 1
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_mol_20():
     # 20th Chembl molecule
     mol = mollist[20]
@@ -1080,6 +1175,10 @@ def test_mol_20():
     assert state.reaction_center_idx == 25
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_mol_58():
     # 58th Chembl molecule
     mol = mollist[58]
@@ -1126,6 +1225,10 @@ def test_mol_58():
     assert state.reaction_center_idx == 9
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_mol_59():
     # 59th Chembl molecule
     mol = mollist[59]
@@ -1158,6 +1261,10 @@ def test_mol_59():
     assert state.reaction_center_idx == 18
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_mol_62():
     # 62th Chembl molecule
     mol = mollist[62]
@@ -1204,6 +1311,10 @@ def test_mol_62():
     assert state.reaction_center_idx == 24
 
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Needs pretrained GNN models",
+)
 def test_mol_70():
     # 70th Chembl molecule
     mol = mollist[70]
