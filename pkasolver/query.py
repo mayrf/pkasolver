@@ -73,12 +73,12 @@ class QueryModel:
             base_path = path.dirname(__file__)
             if torch.cuda.is_available() == False:  # If only CPU is available
                 checkpoint = torch.load(
-                    f"{base_path}/trained_model/fine_tuned_model_{i}.pt",
+                    f"{base_path}/trained_model_without_epik/best_model_{i}.pt",
                     map_location=torch.device("cpu"),
                 )
             else:
                 checkpoint = torch.load(
-                    f"{base_path}/trained_model/fine_tuned_model_{i}.pt"
+                    f"{base_path}/trained_model_without_epik/best_model_{i}.pt"
                 )
 
             model.load_state_dict(checkpoint["model_state_dict"])
