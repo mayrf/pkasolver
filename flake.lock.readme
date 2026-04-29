@@ -1,0 +1,7 @@
+# Nix flake lock file — pin nixpkgs and flake inputs for reproducibility.
+# Update with: nix flake update
+# This file should be committed. The flake inputs are pinned to the versions
+# recorded here, so builds are reproducible without regularly updating.
+#
+# To update selectively:
+#   nix flake lock --update-input nixpkgs
