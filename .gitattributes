@@ -1,0 +1,19 @@
+# Git LFS tracking configuration
+#
+# Model checkpoint files (.pt) are tracked via Git LFS to prevent future
+# commits from inflating repository size.
+#
+# For historical context: early commits in this repository included .pt files
+# directly in git history. To avoid downloading this history, clone with:
+#   git clone --depth 1 https://github.com/mayrf/pkasolver
+#
+# Setup: install git-lfs and run `git lfs install` once per machine.
+# See: https://git-lfs.com/
+
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.pth filter=lfs diff=lfs merge=lfs -text
+*.ckpt filter=lfs diff=lfs merge=lfs -text
+*.pkl filter=lfs diff=lfs merge=lfs -text
+
+# Prevent large data files from being committed directly
+*.sdf.gz filter=lfs diff=lfs merge=lfs -text
