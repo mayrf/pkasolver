@@ -1,6 +1,5 @@
-include LICENSE
-include MANIFEST.in
-include versioneer.py
+include LICENSE.md
+include README.md
 
 graft pkasolver
 global-exclude *.py[cod] __pycache__ *.so
