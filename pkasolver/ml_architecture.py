@@ -53,7 +53,13 @@ def forward_lins(x, l: list):
 # defining GCN for single state
 #####################################
 #####################################
-from torch_geometric.nn.models import GAT, GIN, AttentiveFP
+from torch_geometric.nn import GINConv
+from torch_geometric.nn.models import GAT, AttentiveFP
+
+try:
+    from torch_geometric.nn.models import GIN
+except ImportError:
+    GIN = None  # not available in all PyG versions
 
 
 class AttentivePka(AttentiveFP):
@@ -135,7 +141,17 @@ class GATpKa(GAT):
         return ModuleList(lins)
 
 
-class GINpKa(GIN):
+class GINpKa(torch.nn.Module):
+    """PyG-version-independent GIN implementation.
+
+    Uses explicit GINConv layers rather than subclassing
+    torch_geometric.nn.models.GIN, whose internal parameter naming changed
+    between PyG versions (breaking checkpoint loading with older .pt files).
+
+    The parameter names produced here match those saved in the distributed
+    checkpoints (trained with PyG 2.0.x), ensuring forward compatibility.
+    """
+
     def __init__(
         self,
         in_channels: int,
@@ -144,14 +160,25 @@ class GINpKa(GIN):
         out_channels: int,
         dropout: float,
     ):
-        super().__init__(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            hidden_channels=hidden_channels,
-            num_layers=num_layers,
-            dropout=dropout,
-        )
+        super().__init__()
         torch.manual_seed(SEED)
+
+        self.dropout = dropout
+        self.out_channels = out_channels
+
+        # Build GINConv layers explicitly so that parameter key names are
+        # stable across PyG versions.
+        convs = []
+        for i in range(num_layers):
+            in_ch = in_channels if i == 0 else hidden_channels
+            out_ch = out_channels if i == num_layers - 1 else hidden_channels
+            nn = Sequential(
+                Linear(in_ch, hidden_channels),
+                ReLU(),
+                Linear(hidden_channels, out_ch),
+            )
+            convs.append(GINConv(nn))
+        self.convs = ModuleList(convs)
 
         self.checkpoint = {
             "epoch": 0,
@@ -161,9 +188,19 @@ class GINpKa(GIN):
             "progress_table": {"epoch": [], "train_loss": [], "validation_loss": []},
         }
 
+    def forward(self, x, edge_index):
+        for i, conv in enumerate(self.convs):
+            x = conv(x, edge_index)
+            if i < len(self.convs) - 1:
+                x = F.relu(x)
+                x = F.dropout(x, p=self.dropout, training=self.training)
+        return x
+
     @staticmethod
     def _return_lin(
-        input_dim: int, nr_of_lin_layers: int, embeding_size: int,
+        input_dim: int,
+        nr_of_lin_layers: int,
+        embeding_size: int,
     ):
         lins = []
         lins.append(Linear(input_dim, embeding_size))

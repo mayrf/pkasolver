@@ -1,19 +1,24 @@
 import logging
 
-from pkasolver.chem import (atom_smarts_query, bond_smarts_query,
-                            make_smarts_features)
+import torch
+
+from pkasolver.chem import atom_smarts_query, bond_smarts_query, make_smarts_features
 
 logger = logging.getLogger(__name__)
 
-import torch
-
-NUM_THREADS = 1
-torch.set_num_threads(NUM_THREADS)
-logger.debug(f"Setting num threads to {NUM_THREADS}")
-
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SEED = 42
-logger.debug(f"Pytorch will use {DEVICE}")
+
+# Default device: CUDA if available, MPS (Apple Silicon) if available, else CPU.
+# Users can override this by passing device= to QueryModel or calculate_microstate_pka_values.
+def get_default_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    # ROCm exposes itself through the CUDA API, so cuda.is_available() covers ROCm too.
+    return torch.device("cpu")
+
+
+DEVICE = get_default_device()
+logger.debug(f"PyTorch will use {DEVICE}")
 
 # Defining Smarts patterns used to calculate some node and edge features
 rotatable_bond = "[!$(*#*)&!D1]-&!@[!$(*#*)&!D1]"
