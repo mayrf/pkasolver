@@ -28,9 +28,9 @@ copyright = ("2020, Fritz Mayr. Project structure based on the "
 author = 'Fritz Mayr'
 
 # The short X.Y version
-version = ''
+version = pkasolver.__version__
 # The full version, including alpha/beta/rc tags
-release = ''
+release = pkasolver.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -50,6 +50,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx.ext.extlinks',
+    'sphinx_click',
 ]
 
 autosummary_generate = True

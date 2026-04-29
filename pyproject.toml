@@ -54,6 +54,7 @@ dev = [
 docs = [
     "sphinx>=7.0",
     "sphinx-rtd-theme>=2.0",
+    "sphinx-click>=5.0",
     "nbsphinx>=0.9",
 ]
 notebooks = [
