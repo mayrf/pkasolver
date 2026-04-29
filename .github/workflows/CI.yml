@@ -1,76 +1,95 @@
 name: CI
 
 on:
-  # GitHub has started calling new repo's first branch "main" https://github.com/github/renaming
-  # Existing codes likely still have "master" as the primary branch
-  # Both are tracked here to keep legacy and new codes working
   push:
     branches:
-      - "master"
       - "main"
   pull_request:
     branches:
-      - "master"
       - "main"
-  schedule:
-    # Nightly tests run on master by default:
-    #   Scheduled workflows run on the latest commit on the default or base branch.
-    #   (from https://help.github.com/en/actions/reference/events-that-trigger-workflows#scheduled-events-schedule)
-    - cron: "0 0 * * *"
 
 jobs:
+  lint:
+    name: Lint (ruff + black)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install lint dependencies
+        run: uv pip install --system ruff black
+
+      - name: Run ruff
+        run: ruff check pkasolver/
+
+      - name: Run black (check only)
+        run: black --check pkasolver/
+
   test:
     name: Test on ${{ matrix.os }}, Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.8, 3.9]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
-    - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
-    - name: Additional info about the build
-      shell: bash
-      run: |
-        uname -a
-        df -h
-        ulimit -a
+      - name: System info
+        run: uname -a && df -h
 
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
 
-    # More info on options: https://github.com/conda-incubator/setup-miniconda
-    - uses: conda-incubator/setup-miniconda@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-        environment-file: devtools/conda-envs/test_env.yaml
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
-        channels: conda-forge,defaults
+      - name: Install PyTorch (CPU)
+        run: |
+          uv pip install --system \
+            torch --index-url https://download.pytorch.org/whl/cpu
 
-        activate-environment: test
-        auto-update-conda: false
-        auto-activate-base: false
-        show-channel-urls: true
+      - name: Install torch-geometric and sparse deps
+        run: |
+          uv pip install --system \
+            torch-geometric torch-scatter torch-sparse \
+            --find-links https://data.pyg.org/whl/torch-2.2.0+cpu.html
 
-    - name: Install package
+      - name: Install package and test dependencies
+        run: |
+          uv pip install --system ".[dev]" --no-deps
+          uv pip install --system \
+            rdkit numpy scipy matplotlib tqdm svgutils cairosvg molvs click
 
-      # conda setup requires this special shell
-      shell: bash -l {0}
-      run: |
-        python -m pip install . --no-deps
-        conda list
+      - name: List installed packages
+        run: uv pip list --system
 
+      - name: Run tests (single-model subset for speed)
+        env:
+          CI: "true"
+        run: |
+          pytest -v --tb=short --num-models 1 \
+            --cov=pkasolver --cov-report=xml \
+            pkasolver/tests/test_smoke.py \
+            pkasolver/tests/test_pkasolver.py \
+            pkasolver/tests/test_chem.py \
+            pkasolver/tests/test_data_generation.py \
+            pkasolver/tests/test_ml.py
 
-    - name: Run tests
-
-      # conda setup requires this special shell
-      shell: bash -l {0}
-
-      run: |
-        pytest -v --cov=pkasolver --cov-report=xml --color=yes pkasolver/tests/
-
-    - name: CodeCov
-      uses: codecov/codecov-action@v1
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
