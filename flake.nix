@@ -47,10 +47,12 @@
 
           shellHook = ''
             echo "pkasolver dev shell (CPU)"
-            echo "Run: uv sync --extra dev  to set up the virtualenv"
             export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath sharedLibDeps}:$LD_LIBRARY_PATH"
             # Point uv at the Nix-provided Python so it uses the right interpreter
             export UV_PYTHON="${python}/bin/python"
+            uv sync --extra dev --quiet
+            source .venv/bin/activate
+            echo "Ready. Python: $(python --version), pkasolver: $(python -c 'import pkasolver; print(pkasolver.__version__)' 2>/dev/null || echo 'not installed')"
           '';
         };
 
@@ -73,12 +75,13 @@
 
             shellHook = ''
               echo "pkasolver dev shell (CUDA)"
-              echo "Run: uv sync --extra dev  to set up the virtualenv"
-              echo "Then install CUDA PyTorch:"
-              echo "  uv pip install torch --index-url https://download.pytorch.org/whl/cu121"
               export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath sharedLibDeps}:$LD_LIBRARY_PATH"
               export CUDA_HOME="${cudaPkgs.cudatoolkit}"
               export UV_PYTHON="${python}/bin/python"
+              uv sync --extra dev --quiet
+              source .venv/bin/activate
+              echo "Ready (CUDA). Run: uv pip install torch --index-url https://download.pytorch.org/whl/cu121"
+              echo "to replace the CPU torch wheel with a CUDA-enabled one."
             '';
           };
 
@@ -97,11 +100,12 @@
 
           shellHook = ''
             echo "pkasolver dev shell (ROCm)"
-            echo "Run: uv sync --extra dev  to set up the virtualenv"
-            echo "Then install ROCm PyTorch:"
-            echo "  uv pip install torch --index-url https://download.pytorch.org/whl/rocm6.0"
             export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath sharedLibDeps}:$LD_LIBRARY_PATH"
             export UV_PYTHON="${python}/bin/python"
+            uv sync --extra dev --quiet
+            source .venv/bin/activate
+            echo "Ready (ROCm). Run: uv pip install torch --index-url https://download.pytorch.org/whl/rocm6.0"
+            echo "to replace the CPU torch wheel with a ROCm-enabled one."
           '';
         };
 
