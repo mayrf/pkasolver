@@ -1,0 +1,156 @@
+[build-system]
+requires = ["setuptools>=69.0.3", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pkasolver"
+description = "Toolkit for predicting microstate pKa values of small molecules via graph neural networks"
+readme = "README.md"
+license = { file = "LICENSE.md" }
+authors = [
+    { name = "Fritz Mayr", email = "fritz.mayr@univie.ac.at" },
+    { name = "Oliver Wieder" },
+    { name = "Marcus Wieder" },
+    { name = "Thierry Langer" },
+]
+keywords = ["pKa", "cheminformatics", "graph neural network", "machine learning", "drug discovery"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.10"
+dynamic = ["version"]
+
+dependencies = [
+    "torch>=2.0",
+    "torch-geometric>=2.3",
+    "rdkit>=2023.3",
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+    "pandas>=2.0",
+    "tqdm>=4.65",
+    "svgutils>=0.3.4",
+    "cairosvg>=2.7",
+    "molvs>=0.1.1",
+    "click>=8.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "black>=24.0",
+    "ruff>=0.4",
+    "pre-commit>=3.7",
+    "ipython",
+]
+docs = [
+    "sphinx>=7.0",
+    "sphinx-rtd-theme>=2.0",
+    "sphinx-click>=5.0",
+    "nbsphinx>=0.9",
+]
+notebooks = [
+    "jupyter>=1.0",
+    "ipython>=8.0",
+    "ipykernel>=6.0",
+]
+# torch index extras — mutually exclusive, pick one:
+#   uv sync --extra cpu    → CPU-only torch (also used by Nix shells; GPU
+#                            acceleration still works via LD_LIBRARY_PATH)
+#   uv sync --extra cuda   → CUDA torch wheels (non-Nix GPU users)
+#   uv sync --extra rocm   → ROCm torch wheels (non-Nix AMD GPU users)
+cpu  = ["torch>=2.0"]
+cuda = ["torch>=2.0"]
+rocm = ["torch>=2.0"]
+
+[project.scripts]
+pkasolver = "pkasolver.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/mayrf/pkasolver"
+Repository = "https://github.com/mayrf/pkasolver"
+"Bug Tracker" = "https://github.com/mayrf/pkasolver/issues"
+Paper = "https://www.biorxiv.org/content/10.1101/2022.01.20.476787v1"
+
+[tool.setuptools]
+packages = { find = {} }
+include-package-data = true
+
+[tool.setuptools.package-data]
+pkasolver = [
+    "trained_model_without_epik/*.pt",
+    "dimorphite_dl/*.smarts",
+    "dimorphite_dl/*.json",
+    "dimorphite_dl/*.smi",
+    "dimorphite_dl/training_data/*.json",
+]
+
+[tool.setuptools_scm]
+write_to = "pkasolver/_version.py"
+version_scheme = "post-release"
+local_scheme = "dirty-tag"
+
+[tool.black]
+line-length = 119
+target-version = ["py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 119
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E501"]  # line length handled by black
+
+[tool.pytest.ini_options]
+testpaths = ["pkasolver/tests"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["pkasolver"]
+
+# ── uv configuration ────────────────────────────────────────────────────────
+# torch is resolved from different indexes depending on which extra is active.
+# The cpu/cuda/rocm extras are mutually exclusive.
+# Nix devshells use --extra cpu; the CPU wheel still uses GPU at runtime via
+# LD_LIBRARY_PATH pointing at Nix-provided CUDA/ROCm libs (no pip NVIDIA wheels).
+[tool.uv]
+conflicts = [[
+    { extra = "cpu" },
+    { extra = "cuda" },
+    { extra = "rocm" },
+]]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url  = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url  = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-rocm6"
+url  = "https://download.pytorch.org/whl/rocm6.2"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu",   extra = "cpu"  },
+    { index = "pytorch-cu128", extra = "cuda" },
+    { index = "pytorch-rocm6", extra = "rocm" },
+]
+
+[tool.coverage.report]
+omit = ["pkasolver/tests/*", "pkasolver/_version.py"]
