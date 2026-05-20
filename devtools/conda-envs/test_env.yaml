@@ -1,30 +1,31 @@
 name: pka_prediction
 channels:
- - pytorch
- - conda-forge
- - defaults
+  - pytorch
+  - conda-forge
+  - defaults
 dependencies:
- - rdkit
- - matplotlib
- - pytorch
- - cudatoolkit
- - torchvision
- - torchaudio
- - python
-   # Testing
- - pytest
- - pytest-cov
- - codecov
- - numpy
- - scipy
- - tqdm
- - svgutils
- - cairosvg
- - ipython
- - pip
- - pip:
-     - torch-geometric==2.0.1
-     - torch-sparse
-     - torch-scatter
-     - molvs
-     - chembl_webresource_client 
+  - python>=3.10
+  - rdkit>=2023.3
+  - matplotlib>=3.7
+  - numpy>=1.24
+  - scipy>=1.10
+  - tqdm>=4.65
+  - svgutils>=0.3.4
+  - cairosvg>=2.7
+  - ipython>=8.0
+  - jupyter
+  # Testing
+  - pytest>=7.4
+  - pytest-cov>=4.1
+  # PyTorch - install CPU build by default; for GPU see README
+  - pytorch>=2.0
+  - cpuonly          # remove this line and install pytorch-cuda=12.1 for CUDA
+  - pip
+  - pip:
+      - torch-geometric>=2.3
+      - torch-scatter
+      - torch-sparse
+      - molvs>=0.1.1
+      - click>=8.1
+      - setuptools-scm>=8
+      - pkasolver  # installs this package

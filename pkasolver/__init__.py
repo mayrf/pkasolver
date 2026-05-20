@@ -1,23 +1,24 @@
 """
 pkasolver
-toolset for predicting the pka values of small molecules
+Toolkit for predicting microstate pKa values of small molecules
+via Graph Isomorphism Networks (GINs).
 """
-
-# Add imports here
-from .pkasolver import *
-from .dimorphite_dl.dimorphite_dl import run_with_mol_list
-
-# Handle versioneer
-from ._version import get_versions
-
-versions = get_versions()
-__version__ = versions["version"]
-__git_revision__ = versions["full-revisionid"]
-del get_versions, versions
 
 import logging
 
-# format logging message
-FORMAT = "[%(filename)s:%(lineno)s - %(funcName)1s()] %(message)s"
-# set logging level
-logging.basicConfig(format=FORMAT, datefmt="%d-%m-%Y:%H:%M", level=logging.INFO)
+from .dimorphite_dl.dimorphite_dl import run_with_mol_list  # noqa: F401
+
+try:
+    from ._version import __version__
+except ImportError:
+    # Package not installed (e.g. running from source without build)
+    __version__ = "0.0.0+unknown"
+
+__all__ = [
+    "__version__",
+    "run_with_mol_list",
+]
+
+# Configure logging
+FORMAT = "[%(filename)s:%(lineno)s - %(funcName)s()] %(message)s"
+logging.basicConfig(format=FORMAT, datefmt="%d-%m-%Y:%H:%M", level=logging.WARNING)
